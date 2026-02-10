@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package game;
+
+option go_package = "github.com/crypto-snake-arena/server/proto";
+
+// Снимок мира (сервер -> клиент)
+message WorldSnapshot {
+    uint64 tick = 1;
+    repeated Snake snakes = 2;
+    repeated Coin coins = 3;
+}
+
+message Snake {
+    uint64 id = 1;
+    Point head = 2;
+    repeated Point body = 3;
+    float angle = 4;
+    float score = 5;
+}
+
+message Coin {
+    string id = 1;
+    Point pos = 2;
+    float value = 3;
+}
+
+message Point {
+    float x = 1;
+    float y = 2;
+}
+
+// Ввод игрока (клиент -> сервер)
+message PlayerInput {
+    float angle = 1;
+    bool boost = 2;
+}

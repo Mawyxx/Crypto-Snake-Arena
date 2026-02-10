@@ -1,0 +1,5 @@
+export { HomeView } from './HomeView'
+export { LeaderboardView } from './LeaderboardView'
+export { FrensView } from './FrensView'
+export { ProfileView } from './ProfileView'
+export { GameView } from './GameView'
