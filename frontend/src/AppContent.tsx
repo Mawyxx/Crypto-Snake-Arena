@@ -62,12 +62,10 @@ export function AppContent() {
   const Component = screenComponents[screen]
   const isGame = screen === 'game'
 
-  const wrapperVariants = { initial: {}, animate: {}, exit: {} }
-
   const contentVariants = {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0 },
+    initial: { opacity: 0, scale: 0.98 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.98 },
   }
 
   const overlayVariants = {
@@ -76,7 +74,7 @@ export function AppContent() {
     exit: { opacity: 1 },
   }
 
-  const contentTransition = { duration: 0.35, ease: 'easeOut' as const }
+  const contentTransition = { duration: 0.25, ease: 'easeOut' as const }
   const overlayExitTransition = { duration: 0.15, ease: 'easeIn' as const }
 
   if (isGame) {
@@ -85,10 +83,6 @@ export function AppContent() {
         <AnimatePresence mode="wait">
           <motion.div
             key={screen}
-            variants={wrapperVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
             className="relative h-full"
           >
             <motion.div
@@ -115,10 +109,6 @@ export function AppContent() {
         <AnimatePresence mode="wait">
           <motion.div
             key={screen}
-            variants={wrapperVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
             className="h-full absolute inset-0"
           >
             <motion.div

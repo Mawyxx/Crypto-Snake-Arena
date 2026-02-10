@@ -61,18 +61,18 @@ function HoldToExitOverlay({
     >
       <button
         type="button"
-        className="relative w-14 h-14 rounded-2xl bg-black/60 border border-white/20 flex flex-col items-center justify-center active:bg-black/80 transition-colors overflow-hidden"
+        className="relative w-[60px] h-[60px] rounded-[20px] bg-[#111111] border border-white/10 flex flex-col items-center justify-center active:bg-[#1C1C1E] transition-colors overflow-hidden"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onPointerCancel={handlePointerUp}
       >
-        <span className="relative z-10 text-[10px] text-white/90 font-medium">Выйти</span>
-        <span className="relative z-10 text-[8px] text-white/60">удерж. 4с</span>
+        <span className="relative z-10 text-[10px] text-white font-medium">Выйти</span>
+        <span className="relative z-10 text-[8px] text-[#8E8E93]">удерж. 4с</span>
         {progress > 0 && (
           <div
-            className="absolute inset-0 bg-emerald-500/50 transition-none"
-            style={{ height: `${progress * 100}%`, bottom: 0 }}
+            className="absolute inset-x-0 bottom-0 bg-[#26D07C]/70 transition-none"
+            style={{ height: `${progress * 100}%` }}
           />
         )}
       </button>
@@ -173,7 +173,7 @@ export function GameView() {
   }, [])
 
   return (
-    <div className="h-full flex flex-col touch-none pt-[env(safe-area-inset-top)] bg-[var(--bg-main)]">
+    <div className="h-full flex flex-col touch-none pt-[env(safe-area-inset-top)] bg-[#0A0A0B]">
       <div className="flex-1 min-h-0 pb-[env(safe-area-inset-bottom)] relative">
         {!gameResult && (
           <>
@@ -187,7 +187,31 @@ export function GameView() {
               cashOutRequested={cashOutRequested}
               blockInputRef={blockInputRef}
             />
-            {/* Кнопка Забрать — компактно для режима шторки */}
+            {/* Top overlay with stake summary */}
+            <div className="absolute top-3 left-3 right-3 z-20 pointer-events-none">
+              <div className="flex items-center justify-between gap-3 pointer-events-auto rounded-[28px] bg-[#161618]/95 px-4 py-3">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">
+                    Раунд
+                  </span>
+                  <span className="text-sm font-semibold text-white">
+                    Боевой режим
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[11px] text-white/40">
+                    Ставка
+                  </span>
+                  <span className="text-sm font-semibold text-white tabular-nums">
+                    {Math.max(0.3, bet / 100).toLocaleString('ru-RU', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    <span className="text-[11px] text-white/40">USDT</span>
+                  </span>
+                </div>
+              </div>
+            </div>
             <div
               className="absolute right-3 bottom-3 z-20"
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
@@ -195,8 +219,7 @@ export function GameView() {
               <button
                 type="button"
                 onClick={handleCashOut}
-                className="px-3 py-1.5 rounded-lg bg-[#4C447c]/95 border border-white/30 text-white font-bold text-xs shadow-lg shadow-black/40 active:scale-95 transition-transform"
-                style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
+                className="px-3 py-1.5 rounded-[20px] bg-[#161618] border border-white/10 text-[11px] font-semibold text-white active:scale-95 transition-transform"
               >
                 Забрать
               </button>

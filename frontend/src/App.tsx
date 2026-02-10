@@ -7,8 +7,8 @@ function App() {
       style={{
         height: 'var(--tg-viewport-height, 100vh)',
         minHeight: '100vh',
-        backgroundColor: '#0a0a0a',
-        color: '#fff',
+        backgroundColor: '#0A0A0B',
+        color: '#ffffff',
       }}
     >
       <AppContent />

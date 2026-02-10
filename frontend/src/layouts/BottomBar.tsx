@@ -21,7 +21,7 @@ export function BottomBar() {
   }
 
   return (
-    <nav className="bottom-bar-fixed bottom-bar-compact flex shrink-0 items-center justify-around py-2 px-2 bg-[var(--bg-main)] backdrop-blur-xl border-t border-white/[0.06]">
+    <nav className="bottom-bar-fixed bottom-bar-compact flex shrink-0 items-center justify-around py-2 px-2 bg-black border-t border-white/10">
       {tabs.map((tab) => {
         const isActive = screen === tab.id
         return (
