@@ -25,6 +25,7 @@ export const HomeView = React.memo(function HomeView() {
   const { photoUrl, initData } = useTelegram()
   const [games, setGames] = useState<RecentGame[]>([])
   const [loading, setLoading] = useState(true)
+  const [gamesExpanded, setGamesExpanded] = useState(false)
 
   const validBet = useMemo(() => {
     if (BET_OPTIONS.includes(bet)) return bet
@@ -166,7 +167,7 @@ export const HomeView = React.memo(function HomeView() {
             onClick={handlePlay}
             disabled={!canPlay}
             className={`w-full py-5 rounded-2xl text-white font-black text-lg uppercase tracking-[0.2em] active:scale-[0.98] transition-all ${
-              canPlay ? 'bg-primary play-button-glow' : 'bg-white/5 border border-white/10 cursor-not-allowed opacity-70'
+              canPlay ? 'bg-[#007AFF] play-button-glow' : 'bg-white/5 border border-white/10 cursor-not-allowed opacity-70'
             }`}
           >
             {t('home.playButton')}
@@ -189,13 +190,15 @@ export const HomeView = React.memo(function HomeView() {
         <div className="premium-card p-6">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-[13px] font-black text-white uppercase tracking-widest">{t('home.recentGames')}</h3>
-            <button
-              type="button"
-              onClick={() => { impact('light'); setScreen('leaderboard') }}
-              className="text-[11px] font-bold text-primary uppercase tracking-wider active:scale-95 transition-transform"
-            >
-              {t('common.showAll')}
-            </button>
+            {games.length > 5 && (
+              <button
+                type="button"
+                onClick={() => { impact('light'); setGamesExpanded(!gamesExpanded) }}
+                className="text-[11px] font-bold text-[#007AFF] uppercase tracking-wider active:scale-95 transition-transform"
+              >
+                {gamesExpanded ? t('home.showLess') : t('common.showAll')}
+              </button>
+            )}
           </div>
           <div className="space-y-5">
             {loading ? (
@@ -218,7 +221,7 @@ export const HomeView = React.memo(function HomeView() {
                 <p className="text-sm text-white/40 text-center">{t('home.playFirst')}</p>
               </div>
             ) : (
-              games.map((game, i) => {
+              (gamesExpanded ? games : games.slice(0, 5)).map((game, i) => {
                 const isWin = game.status === 'win'
                 return (
                   <button

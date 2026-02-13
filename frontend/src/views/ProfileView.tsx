@@ -5,7 +5,7 @@ import { useTelegram } from '@/features/auth'
 import { useBalance } from '@/entities/balance'
 import { UserAvatar } from '@/entities/user'
 import { IconRound } from '@/shared/ui'
-import { setStoredLang, LANG_RU, LANG_EN, type LangCode } from '@/shared/lib'
+import { setStoredLang, LANG_RU, LANG_EN, getTelegramUserFromInitData, type LangCode } from '@/shared/lib'
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation()
@@ -45,6 +45,13 @@ export const ProfileView = React.memo(function ProfileView() {
   const { photoUrl } = useTelegram()
 
   const { t } = useTranslation()
+  const tgUser = getTelegramUserFromInitData()
+  const displayName = username || tgUser?.first_name || ''
+  const handleStr = tgUser?.username ? `@${tgUser.username}` : (username ? `@${String(username).replace(/\s/g, '_').toLowerCase().slice(0, 20)}` : '')
+  const bannerLine1 = handleStr ? `${displayName || t('leaderboard.player')} | ${handleStr}` : (displayName || t('leaderboard.player'))
+  const rankStr = gamesPlayed === 0 || rank === 0 ? '???' : String(rank)
+  const bannerLine2 = handleStr ? `${handleStr} • Rank #${rankStr}` : `Rank #${rankStr}`
+
   const handleDeposit = () => {
     const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
     if (tg?.showAlert) tg.showAlert(t('common.deposit'))
@@ -57,17 +64,16 @@ export const ProfileView = React.memo(function ProfileView() {
 
   return (
     <main className="flex-1 flex flex-col justify-start gap-3 pt-4 px-5 pb-bottom-bar">
-      <section className="bg-gradient-to-br from-[#067bf9] to-[#001a3d] rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center border border-white/5">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-3xl" />
+      <section className="bg-[#001a3d] rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center">
         <div className="relative z-10 flex flex-col items-center text-center">
           <div className="w-20 h-20 rounded-full border-4 border-white/10 p-1 avatar-glow mb-3 overflow-hidden">
             <UserAvatar src={photoUrl} name={username} size={72} className="rounded-full" />
           </div>
           <h2 className="text-lg font-bold tracking-tight text-white truncate max-w-full">
-            {username || ''}
+            {bannerLine1 || t('leaderboard.player')}
           </h2>
-          <p className="text-[13px] font-medium text-white/60">
-            {(username ? `@${String(username).replace(/\s/g, '_').toLowerCase().slice(0, 20)} • ` : '')}{t('profile.rank', { rank: gamesPlayed === 0 || rank === 0 ? '???' : rank })}
+          <p className="text-[13px] font-medium text-white/60 mt-0.5">
+            {bannerLine2}
           </p>
         </div>
       </section>
@@ -126,13 +132,9 @@ export const ProfileView = React.memo(function ProfileView() {
             role="switch"
             aria-checked={soundEnabled}
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${soundEnabled ? 'bg-[#007AFF]' : 'bg-white/10'}`}
+            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${soundEnabled ? 'bg-[#007AFF] justify-end' : 'bg-white/10 justify-start'}`}
           >
-            <div
-              className={`w-4 h-4 bg-white rounded-full shadow-sm ml-auto transition-transform duration-200 [transition-timing-function:var(--ease-smooth)] ${
-                soundEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
+            <div className="w-4 h-4 bg-white rounded-full shadow-sm flex-shrink-0" />
           </button>
         </div>
         <div className="px-6 py-4 flex justify-between items-center">
@@ -145,13 +147,9 @@ export const ProfileView = React.memo(function ProfileView() {
             role="switch"
             aria-checked={vibrationEnabled}
             onClick={() => setVibrationEnabled(!vibrationEnabled)}
-            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${vibrationEnabled ? 'bg-[#007AFF]' : 'bg-white/10'}`}
+            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${vibrationEnabled ? 'bg-[#007AFF] justify-end' : 'bg-white/10 justify-start'}`}
           >
-            <div
-              className={`w-4 h-4 bg-white rounded-full shadow-sm ml-auto transition-transform duration-200 [transition-timing-function:var(--ease-smooth)] ${
-                vibrationEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
+            <div className="w-4 h-4 bg-white rounded-full shadow-sm flex-shrink-0" />
           </button>
         </div>
         <div className="px-6 py-4 flex justify-between items-center">

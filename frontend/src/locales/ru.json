@@ -32,7 +32,8 @@
     "arena": "ARENA",
     "theUltimateDuel": "THE ULTIMATE DUEL",
     "win": "WIN",
-    "lose": "LOSE"
+    "lose": "LOSE",
+    "showLess": "СВЕРНУТЬ"
   },
   "profile": {
     "balance": "Ваш баланс",
