@@ -7,8 +7,9 @@ INCOMING="$APP_DIR/incoming"
 
 cd "$APP_DIR"
 
-# Копируем бинарник бэкенда
+# Копируем бинарники бэкенда
 cp -f "$INCOMING/backend/server" "$APP_DIR/backend/server"
+[ -f "$INCOMING/backend/addbalance" ] && cp -f "$INCOMING/backend/addbalance" "$APP_DIR/backend/addbalance" && chmod +x "$APP_DIR/backend/addbalance"
 chmod +x "$APP_DIR/backend/server"
 
 # Копируем статику фронтенда
@@ -19,6 +20,12 @@ cp -r "$INCOMING/frontend/dist" "$APP_DIR/frontend/"
 if [ -f "$INCOMING/deploy/nginx-crypto-snake.conf" ]; then
   cp "$INCOMING/deploy/nginx-crypto-snake.conf" /etc/nginx/sites-available/crypto-snake
   nginx -t && systemctl reload nginx
+fi
+# Копируем addbalance-server.sh для ручного начисления на проде
+if [ -f "$INCOMING/deploy/addbalance-server.sh" ]; then
+  mkdir -p "$APP_DIR/deploy"
+  cp "$INCOMING/deploy/addbalance-server.sh" "$APP_DIR/deploy/"
+  chmod +x "$APP_DIR/deploy/addbalance-server.sh"
 fi
 
 # Рестарт systemd

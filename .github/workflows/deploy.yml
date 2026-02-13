@@ -24,6 +24,7 @@ jobs:
         run: |
           cd backend
           go build -o server ./cmd/server
+          go build -o addbalance ./cmd/addbalance
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -47,7 +48,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: 'backend/server,frontend/dist,deploy/run-deploy.sh,deploy/nginx-crypto-snake.conf'
+          source: 'backend/server,backend/addbalance,frontend/dist,deploy/run-deploy.sh,deploy/nginx-crypto-snake.conf,deploy/addbalance-server.sh'
           target: '/opt/crypto-snake-arena/incoming'
 
       - name: Run deploy script on server

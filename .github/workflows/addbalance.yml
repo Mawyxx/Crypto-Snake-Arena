@@ -1,0 +1,46 @@
+# Ручной запуск: начисление 500 USDT пользователю 7175104609 на ПРОД-сервере
+# Actions → Addbalance → Run workflow
+
+name: Add balance (500 USDT)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  addbalance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build addbalance
+        run: |
+          cd backend
+          go build -o addbalance ./cmd/addbalance
+
+      - name: Copy addbalance to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: 'backend/addbalance'
+          target: '/opt/crypto-snake-arena/incoming/backend'
+
+      - name: Run addbalance on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cp -f /opt/crypto-snake-arena/incoming/backend/addbalance /opt/crypto-snake-arena/backend/addbalance
+            chmod +x /opt/crypto-snake-arena/backend/addbalance
+            cd /opt/crypto-snake-arena/backend
+            set -a && [ -f .env ] && source .env && set +a
+            ./addbalance
