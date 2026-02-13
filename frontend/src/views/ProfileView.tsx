@@ -46,9 +46,11 @@ export const ProfileView = React.memo(function ProfileView() {
 
   const { t } = useTranslation()
   const tgUser = getTelegramUserFromInitData()
-  const displayName = username || tgUser?.first_name || ''
-  const handleStr = tgUser?.username ? `@${tgUser.username}` : (username ? `@${String(username).replace(/\s/g, '_').toLowerCase().slice(0, 20)}` : '')
-  const bannerLine1 = handleStr ? `${displayName || t('leaderboard.player')} | ${handleStr}` : (displayName || t('leaderboard.player'))
+  const first = tgUser && tgUser.first_name ? tgUser.first_name : ''
+  const last = tgUser && tgUser.last_name ? tgUser.last_name : ''
+  const fullName = [first, last].filter(Boolean).join(' ').trim() || username || ''
+  const handleStr = tgUser && tgUser.username ? '@' + tgUser.username : (username ? '@' + String(username).replace(/\s/g, '_').toLowerCase() : '')
+  const bannerLine1 = handleStr ? `${fullName || t('leaderboard.player')} | ${handleStr}` : (fullName || t('leaderboard.player'))
   const rankStr = gamesPlayed === 0 || rank === 0 ? '???' : String(rank)
   const bannerLine2 = handleStr ? `${handleStr} • Rank #${rankStr}` : `Rank #${rankStr}`
 
@@ -64,12 +66,12 @@ export const ProfileView = React.memo(function ProfileView() {
 
   return (
     <main className="flex-1 flex flex-col justify-start gap-3 pt-4 px-5 pb-bottom-bar">
-      <section className="bg-[#001a3d] rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center">
-        <div className="relative z-10 flex flex-col items-center text-center">
-          <div className="w-20 h-20 rounded-full border-4 border-white/10 p-1 avatar-glow mb-3 overflow-hidden">
+      <section className="bg-gradient-to-br from-[#007AFF] via-[#0047a0] to-[#001a3d] rounded-2xl p-6 relative flex flex-col items-center justify-center overflow-hidden">
+        <div className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-1">
+          <div className="w-20 h-20 rounded-full border-4 border-white/10 p-1 avatar-glow mb-3 overflow-hidden shrink-0">
             <UserAvatar src={photoUrl} name={username} size={72} className="rounded-full" />
           </div>
-          <h2 className="text-lg font-bold tracking-tight text-white truncate max-w-full">
+          <h2 className="text-base font-bold tracking-tight text-white break-words text-center w-full leading-snug">
             {bannerLine1 || t('leaderboard.player')}
           </h2>
           <p className="text-[13px] font-medium text-white/60 mt-0.5">
@@ -115,7 +117,7 @@ export const ProfileView = React.memo(function ProfileView() {
         </div>
         <div className="bg-[#111111] rounded-2xl p-5 border border-white/5 flex flex-col items-center justify-center">
           <span className="text-[10px] font-medium text-white/40 tracking-widest mb-1 uppercase">{t('profile.totalProfit')}</span>
-          <span className={`text-2xl font-bold tracking-tight ${totalProfit >= 0 ? 'text-[#22C55E]' : 'text-[#FF3B30]'}`}>
+          <span className={`text-2xl font-bold tracking-tight ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
             {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}
           </span>
         </div>
@@ -132,7 +134,7 @@ export const ProfileView = React.memo(function ProfileView() {
             role="switch"
             aria-checked={soundEnabled}
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${soundEnabled ? 'bg-[#007AFF] justify-end' : 'bg-white/10 justify-start'}`}
+            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 active:scale-95 ${soundEnabled ? 'bg-primary justify-end' : 'bg-white/10 justify-start'}`}
           >
             <div className="w-4 h-4 bg-white rounded-full shadow-sm flex-shrink-0" />
           </button>
@@ -147,7 +149,7 @@ export const ProfileView = React.memo(function ProfileView() {
             role="switch"
             aria-checked={vibrationEnabled}
             onClick={() => setVibrationEnabled(!vibrationEnabled)}
-            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${vibrationEnabled ? 'bg-[#007AFF] justify-end' : 'bg-white/10 justify-start'}`}
+            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 active:scale-95 ${vibrationEnabled ? 'bg-primary justify-end' : 'bg-white/10 justify-start'}`}
           >
             <div className="w-4 h-4 bg-white rounded-full shadow-sm flex-shrink-0" />
           </button>
