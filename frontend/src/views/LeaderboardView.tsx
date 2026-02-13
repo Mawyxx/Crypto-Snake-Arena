@@ -73,7 +73,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
       </div>
 
       <div className="flex-1 flex flex-col gap-3">
-        <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/10 flex justify-between items-center relative overflow-hidden flex-shrink-0">
+        <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/15 flex justify-between items-center relative overflow-hidden flex-shrink-0">
           <div className="space-y-1 relative z-10">
             <p className="text-[10px] font-bold text-secondary tracking-[0.15em] uppercase">{t('leaderboard.totalProfit')}</p>
             <div className="flex items-center gap-2">
@@ -86,18 +86,18 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
           <button
             type="button"
             onClick={handleShare}
-            className="relative z-10 w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-white/10 flex items-center justify-center active:scale-90 transition-transform"
+            className="relative z-10 w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-white/15 flex items-center justify-center active:scale-90 transition-transform"
           >
             <Icon name="share" size={20} className="text-white" />
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 flex-shrink-0">
-          <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/10 space-y-1">
+          <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/15 space-y-1">
             <p className="text-[10px] font-bold text-secondary tracking-[0.15em] uppercase">{t('leaderboard.totalWins')}</p>
             <p className="text-2xl font-bold text-white tracking-tight tabular-nums">{gamesPlayed}</p>
           </div>
-          <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/10 space-y-1">
+          <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/15 space-y-1">
             <p className="text-[10px] font-bold text-secondary tracking-[0.15em] uppercase">{t('leaderboard.bestProfit')}</p>
             <p className="text-2xl font-bold text-neon-green tracking-tight tabular-nums">
               {totalProfit > 0 ? totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '0.00'}
@@ -116,7 +116,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <p className="text-sm text-white/50 text-center">{error}</p>
+                <p className="text-sm text-secondary text-center">{error}</p>
                 <button
                   type="button"
                   onClick={() => { impact('light'); refetch() }}
@@ -127,7 +127,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
               </div>
             ) : entries.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <p className="text-sm text-white/50 text-center">{t('leaderboard.playFirstRank')}</p>
+                <p className="text-sm text-secondary text-center">{t('leaderboard.playFirstRank')}</p>
                 <button
                   type="button"
                   onClick={handlePlay}

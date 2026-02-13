@@ -154,7 +154,7 @@ export const FrensView = React.memo(function FrensView() {
             </div>
           ) : entries.length === 0 ? (
             <div className="px-5 py-6 text-center">
-              <p className="text-sm text-white/50">{t('frens.invitedHere')}</p>
+              <p className="text-sm text-secondary">{t('frens.invitedHere')}</p>
             </div>
           ) : (
             entries.map((entry, i) => (

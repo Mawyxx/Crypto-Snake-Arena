@@ -86,7 +86,7 @@ export const ProfileView = React.memo(function ProfileView() {
           <button
             type="button"
             onClick={handleDeposit}
-            className="flex-1 bg-[var(--bg-menu-card)] border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-[var(--bg-elevated)]"
+            className="flex-1 bg-primary text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:brightness-110"
           >
             <IconRound name="add_circle" size={16} />
             {t('profile.deposit')}
@@ -94,7 +94,7 @@ export const ProfileView = React.memo(function ProfileView() {
           <button
             type="button"
             onClick={handleWithdraw}
-            className="flex-1 bg-[var(--bg-menu-card)] border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-[var(--bg-elevated)]"
+            className="flex-1 border border-white/15 bg-transparent text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-white/5"
           >
             <IconRound name="file_upload" size={16} />
             {t('profile.withdraw')}
