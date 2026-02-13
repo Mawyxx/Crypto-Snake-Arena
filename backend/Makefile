@@ -2,6 +2,10 @@
 run:
 	go run ./cmd/server
 
+.PHONY: addbalance
+addbalance:
+	go run ./cmd/addbalance
+
 # Сброс БД для разработки: drop + create + миграции (без psql)
 .PHONY: reset-db
 reset-db:

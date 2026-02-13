@@ -3,8 +3,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/repository"
@@ -39,7 +41,7 @@ func main() {
 		log.Fatalf("get/create user: %v", err)
 	}
 
-	externalID := "admin_credit_7175104609_500"
+	externalID := fmt.Sprintf("admin_credit_%d_%d_%d", tgID, int(amount), time.Now().UnixNano())
 	if err := txManager.ProcessDeposit(ctx, tgID, amount, externalID); err != nil {
 		log.Fatalf("deposit: %v", err)
 	}

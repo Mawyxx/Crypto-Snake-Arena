@@ -166,9 +166,7 @@ export const HomeView = React.memo(function HomeView() {
             type="button"
             onClick={handlePlay}
             disabled={!canPlay}
-            className={`w-full py-5 rounded-2xl text-white font-black text-lg uppercase tracking-[0.2em] active:scale-[0.98] transition-all ${
-              canPlay ? 'bg-[#007AFF] play-button-glow' : 'bg-white/5 border border-white/10 cursor-not-allowed opacity-70'
-            }`}
+            className={`w-full py-5 rounded-2xl text-white font-black text-lg uppercase tracking-[0.2em] active:scale-[0.98] transition-all bg-[#007AFF] play-button-glow ${!canPlay ? 'opacity-80 cursor-not-allowed' : ''}`}
           >
             {t('home.playButton')}
           </button>
