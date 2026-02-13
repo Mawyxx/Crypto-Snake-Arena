@@ -11,18 +11,29 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
   const { t } = useTranslation()
   const setScreen = useGameStore((s) => s.setScreen)
   const setInGame = useGameStore((s) => s.setInGame)
+  const bet = useGameStore((s) => s.bet)
+  const balance = useGameStore((s) => s.balance)
   const rank = useGameStore((s) => s.rank)
   const userId = useGameStore((s) => s.userId)
   const gamesPlayed = useGameStore((s) => s.gamesPlayed)
   const totalProfit = useGameStore((s) => s.totalProfit)
   const activePlayers7d = useGameStore((s) => s.activePlayers7d)
-  const { impact } = useHaptic()
+  const { impact, notify } = useHaptic()
   const { entries, loading, error, refetch } = useLeaderboard({ limit: 50 })
   useBalance({ refetchOnMount: true })
 
+  const stakeUsdt = bet / 100
+  const canPlay = balance >= stakeUsdt
+
   const handlePlay = () => {
+    if (!canPlay) {
+      setScreen('home')
+      return
+    }
     impact('medium')
-    setScreen('home')
+    notify('success')
+    setInGame(true)
+    setScreen('game')
   }
 
   const handleShare = () => {
@@ -75,7 +86,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
       </div>
 
       <div className="flex-1 flex flex-col gap-3">
-        <div className="bg-[#111111] p-5 rounded-[28px] border border-white/10 flex justify-between items-center flex-shrink-0">
+        <div className="bg-[#111111] p-5 rounded-[28px] border border-white/5 flex justify-between items-center flex-shrink-0">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.totalProfit')}</p>
             <div className="flex items-center gap-2">
@@ -88,18 +99,18 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
           <button
             type="button"
             onClick={handleShare}
-            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform"
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/5 flex items-center justify-center active:scale-90 transition-transform"
           >
             <Icon name="share" size={20} className="text-white/70" />
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 flex-shrink-0">
-          <div className="bg-[#111111] p-5 rounded-[28px] border border-white/10 space-y-1">
+          <div className="bg-[#111111] p-5 rounded-[28px] border border-white/5 space-y-1">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.totalWins')}</p>
             <p className="text-2xl font-bold text-white tracking-tight">{gamesPlayed}</p>
           </div>
-          <div className="bg-[#111111] p-5 rounded-[28px] border border-white/10 space-y-1">
+          <div className="bg-[#111111] p-5 rounded-[28px] border border-white/5 space-y-1">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.bestProfit')}</p>
             <p className="text-2xl font-bold text-[#22C55E] tracking-tight">
               {totalProfit > 0 ? totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '0.00'}
