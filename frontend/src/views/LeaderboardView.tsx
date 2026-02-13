@@ -22,8 +22,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
 
   const handlePlay = () => {
     impact('medium')
-    setInGame(true)
-    setScreen('game')
+    setScreen('home')
   }
 
   const handleShare = () => {

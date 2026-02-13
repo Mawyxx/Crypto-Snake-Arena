@@ -62,8 +62,9 @@ export const FrensView = React.memo(function FrensView() {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pb-bottom-bar">
       <div className="px-5 pt-6 pb-2">
-        <div className="bg-gradient-to-br from-[#007AFF] to-[#0056B3] rounded-[28px] p-7 relative overflow-hidden shadow-2xl shadow-primary/10">
-          <div className="absolute -right-6 -bottom-6 opacity-30 -rotate-12 pointer-events-none">
+        <div className="bg-gradient-to-br from-[#007AFF] via-[#0060FF] to-[#004BDD] rounded-[28px] p-7 relative overflow-hidden shadow-[0_15px_45px_rgba(0,122,255,0.4)]">
+          <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10" />
+          <div className="absolute -right-6 -bottom-6 opacity-30 -rotate-12 pointer-events-none z-0">
             <Icon name="card_giftcard" size={140} className="text-white leading-none" />
           </div>
           <div className="relative z-10">
