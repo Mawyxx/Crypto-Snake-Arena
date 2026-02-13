@@ -80,7 +80,7 @@ export const FrensView = React.memo(function FrensView() {
       <div className="px-5 py-3">
         <div className="bg-[var(--bg-menu-card)] card-border rounded-card p-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 bg-white/5 rounded-2xl px-5 py-4 border border-white/5 overflow-hidden">
+            <div className="flex-1 bg-[var(--bg-menu-card)] rounded-2xl px-5 py-4 border border-white/5 overflow-hidden">
               <span className="text-primary font-semibold text-sm tracking-tight truncate block">
                 {referralLink ? `${referralLink.slice(0, 24)}...` : '—'}
               </span>

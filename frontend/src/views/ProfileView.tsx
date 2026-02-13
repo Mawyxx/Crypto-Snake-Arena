@@ -126,7 +126,7 @@ export const ProfileView = React.memo(function ProfileView() {
             role="switch"
             aria-checked={soundEnabled}
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${soundEnabled ? 'bg-primary' : 'bg-white/10'}`}
+            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${soundEnabled ? 'bg-primary' : 'bg-[var(--bg-menu-card)]'}`}
           >
             <div
               className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 [transition-timing-function:var(--ease-smooth)] ${
@@ -145,7 +145,7 @@ export const ProfileView = React.memo(function ProfileView() {
             role="switch"
             aria-checked={vibrationEnabled}
             onClick={() => setVibrationEnabled(!vibrationEnabled)}
-            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${vibrationEnabled ? 'bg-primary' : 'bg-white/10'}`}
+            className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 [transition-timing-function:var(--ease-smooth)] active:scale-95 ${vibrationEnabled ? 'bg-primary' : 'bg-[var(--bg-menu-card)]'}`}
           >
             <div
               className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 [transition-timing-function:var(--ease-smooth)] ${

@@ -105,7 +105,7 @@ export const HomeView = React.memo(function HomeView() {
         <button
           type="button"
           onClick={handleAddFunds}
-          className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 active:scale-95 transition-transform"
+          className="bg-[var(--bg-menu-card)] border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 active:scale-95 transition-transform"
         >
           <span className="text-[14px] font-bold tracking-tight text-white tabular-nums">
             {(Number(balance) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -142,7 +142,7 @@ export const HomeView = React.memo(function HomeView() {
               <button
                 type="button"
                 onClick={() => handleBetChange(-1)}
-                className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+                className="w-12 h-12 rounded-2xl bg-[var(--bg-menu-card)] flex items-center justify-center active:scale-90 transition-transform"
               >
                 <Icon name="remove" size={20} className="text-white/60" />
               </button>
@@ -155,7 +155,7 @@ export const HomeView = React.memo(function HomeView() {
               <button
                 type="button"
                 onClick={() => handleBetChange(1)}
-                className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+                className="w-12 h-12 rounded-2xl bg-[var(--bg-menu-card)] flex items-center justify-center active:scale-90 transition-transform"
               >
                 <Icon name="add" size={20} className="text-white/60" />
               </button>
@@ -166,7 +166,7 @@ export const HomeView = React.memo(function HomeView() {
             onClick={handlePlay}
             disabled={!canPlay}
             className={`w-full py-5 rounded-2xl text-white font-black text-lg uppercase tracking-[0.2em] active:scale-[0.98] transition-all ${
-              canPlay ? 'bg-primary play-button-glow' : 'bg-white/10 cursor-not-allowed opacity-60'
+              canPlay ? 'bg-primary play-button-glow' : 'bg-[var(--bg-menu-card)] cursor-not-allowed opacity-60'
             }`}
           >
             {t('home.playButton')}

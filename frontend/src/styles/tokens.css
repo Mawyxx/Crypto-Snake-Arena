@@ -14,13 +14,13 @@
 
   /* Buttons */
   --btn-primary-bg: var(--primary);
-  --btn-secondary-bg: rgba(255, 255, 255, 0.05);
+  --btn-secondary-bg: #1A1A1A;
   --btn-secondary-border: rgba(255, 255, 255, 0.1);
 
   /* Hero/Banner — vibrant-banner из crypto_snake_arena_home */
-  --gradient-hero: linear-gradient(135deg, #007AFF 0%, #002D62 100%);
-  /* Цвет карточек главного меню — единый источник, применяется везде (тёмно-серый) */
-  --bg-menu-card: #161618;
+  --gradient-hero: linear-gradient(135deg, #0077FF 0%, #002D62 100%);
+  /* Цвет карточек/UI элементов — из референса (#1A1A1A) */
+  --bg-menu-card: #1A1A1A;
   --bg-card: var(--bg-menu-card);
   --bg-card-elevated: var(--bg-menu-card);
   --bg-surface-alt: var(--bg-menu-card);
@@ -36,18 +36,18 @@
   --border-light: rgba(255, 255, 255, 0.05);
   --border-nav: rgba(255, 255, 255, 0.08);
 
-  /* Primary / Accent */
-  --primary: #007aff;
+  /* Primary / Accent — яркий синий из референса */
+  --primary: #0077FF;
   --primary-mid: #0060ff;
   --primary-deep: #0056b3;
   --primary-dark: #004bdd;
   --primary-hero-end: #001a3d;
 
-  /* Semantic */
-  --accent-mint: #22c55e;
-  --accent-emerald: #22c55e;
-  --color-success: #22c55e;
-  --color-error: #ff3b30;
+  /* Semantic — из референса */
+  --accent-mint: #00C853;
+  --accent-emerald: #00C853;
+  --color-success: #00C853;
+  --color-error: #DC3545;
 
   /* Radius */
   --radius-card: 28px;
