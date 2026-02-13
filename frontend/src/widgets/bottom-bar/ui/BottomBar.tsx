@@ -44,11 +44,11 @@ export function BottomBar() {
               type="button"
               onClick={() => handleTab(tab.id)}
               className={`tab-btn flex flex-col items-center justify-center flex-1 py-1.5 transition-all duration-200 active:scale-95 hover:opacity-70 ${
-                isActive ? 'text-primary' : 'opacity-40 text-white'
+                isActive ? 'text-primary' : 'text-secondary'
               }`}
             >
-              <Icon name={iconName} size={22} filled={isActive} className={isActive ? 'text-primary' : ''} />
-              <span className={`text-[8px] font-bold uppercase mt-1 tracking-tighter ${isActive ? 'text-primary' : 'font-medium text-white'}`}>
+              <Icon name={iconName} size={22} filled={isActive} className={isActive ? 'text-primary' : 'text-secondary'} />
+              <span className={`text-[8px] font-bold uppercase mt-1 tracking-tighter ${isActive ? 'text-primary' : 'font-medium text-secondary'}`}>
                 {t(tab.labelKey)}
               </span>
             </button>

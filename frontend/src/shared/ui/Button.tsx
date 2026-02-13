@@ -23,7 +23,7 @@ export function Button({
     secondary:
       'bg-[var(--bg-menu-card)] border border-white/[0.08] text-white hover:border-white/15 hover:bg-white/[0.03]',
     ghost:
-      'bg-transparent text-white/80 border border-white/10 hover:bg-white/5 hover:border-white/15',
+      'bg-transparent text-secondary border border-white/10 hover:bg-white/5 hover:border-white/15',
   }
   const sizes = {
     sm: 'px-4 py-2 text-sm',

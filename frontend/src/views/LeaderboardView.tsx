@@ -49,7 +49,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
         <div className="relative z-10 flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <div className="space-y-0.5">
-              <p className="text-[9px] font-black tracking-[0.2em] text-white/70 uppercase">{t('leaderboard.yourRank')}</p>
+              <p className="text-[9px] font-black tracking-[0.2em] text-secondary uppercase">{t('leaderboard.yourRank')}</p>
               <h2 className="text-5xl font-bold tracking-tighter text-white">#{rank || 0}</h2>
             </div>
             <div className="medal-glow-effect">
@@ -61,7 +61,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
           <div className="flex items-center justify-between pt-3 border-t border-white/10">
             <div className="flex items-center gap-2">
               <div className="flex flex-col">
-                <p className="text-[8px] font-bold tracking-[0.1em] text-white/60 uppercase">{t('leaderboard.activePlayers')}</p>
+                <p className="text-[8px] font-bold tracking-[0.1em] text-secondary uppercase">{t('leaderboard.activePlayers')}</p>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold tracking-tight text-white tabular-nums">{activePlayers7d ?? 0}</span>
                   <span className="text-[8px] font-bold text-white bg-white/20 px-1.5 py-0.5 rounded-full">{t('leaderboard.in7Days')}</span>
@@ -75,12 +75,12 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
       <div className="flex-1 flex flex-col gap-3">
         <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/10 flex justify-between items-center relative overflow-hidden flex-shrink-0">
           <div className="space-y-1 relative z-10">
-            <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.totalProfit')}</p>
+            <p className="text-[10px] font-bold text-secondary tracking-[0.15em] uppercase">{t('leaderboard.totalProfit')}</p>
             <div className="flex items-center gap-2">
               <span className={`text-3xl font-bold tabular-nums ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
                 {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}
               </span>
-              <span className="text-sm font-bold text-neon-green/60 uppercase">USDT</span>
+              <span className="text-sm font-bold text-secondary uppercase">USDT</span>
             </div>
           </div>
           <button
@@ -88,17 +88,17 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
             onClick={handleShare}
             className="relative z-10 w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-white/10 flex items-center justify-center active:scale-90 transition-transform"
           >
-            <Icon name="share" size={20} className="text-white/70" />
+            <Icon name="share" size={20} className="text-white" />
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 flex-shrink-0">
           <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/10 space-y-1">
-            <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.totalWins')}</p>
+            <p className="text-[10px] font-bold text-secondary tracking-[0.15em] uppercase">{t('leaderboard.totalWins')}</p>
             <p className="text-2xl font-bold text-white tracking-tight tabular-nums">{gamesPlayed}</p>
           </div>
           <div className="bg-[var(--bg-menu-card)] p-5 rounded-[28px] border border-white/10 space-y-1">
-            <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.bestProfit')}</p>
+            <p className="text-[10px] font-bold text-secondary tracking-[0.15em] uppercase">{t('leaderboard.bestProfit')}</p>
             <p className="text-2xl font-bold text-neon-green tracking-tight tabular-nums">
               {totalProfit > 0 ? totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '0.00'}
             </p>
@@ -107,12 +107,12 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
 
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-2 mb-3">
-            <h3 className="text-[11px] font-bold text-white/30 tracking-[0.2em] uppercase">{t('leaderboard.topPlayers')}</h3>
+            <h3 className="text-[11px] font-bold text-secondary tracking-[0.2em] uppercase">{t('leaderboard.topPlayers')}</h3>
           </div>
           <div className="space-y-2 overflow-y-auto hide-scrollbar flex-1 pb-4">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <p className="text-sm text-white/50">{t('common.loading')}</p>
+                <p className="text-sm text-secondary">{t('common.loading')}</p>
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -148,7 +148,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
                 >
                   <div className="flex items-center gap-4">
                     <UserAvatar src={entry.avatar_url ?? undefined} name={entry.display_name} size={40} />
-                    <span className="text-lg font-bold text-white/60 tabular-nums w-8">#{entry.rank}</span>
+                    <span className="text-lg font-bold text-secondary tabular-nums w-8">#{entry.rank}</span>
                     <span className="text-sm font-bold text-white truncate max-w-[120px]">
                       {entry.display_name || ''}
                     </span>

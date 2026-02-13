@@ -30,10 +30,11 @@
   --bg-surface-alt: var(--bg-menu-card);
   --anthracite: var(--bg-menu-card);
 
-  /* Text */
+  /* Text — из референсов */
   --text-primary: #ffffff;
-  --text-secondary: #8e8e93;
-  --text-muted: #5c5c66;
+  --text-secondary: #b0b0b0;
+  --text-label: #b0b0b0;
+  --text-muted: #8e8e93;
 
   /* Borders */
   --border-subtle: rgba(255, 255, 255, 0.06);

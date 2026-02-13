@@ -97,7 +97,7 @@ export const HomeView = React.memo(function HomeView() {
             <span className="text-[17px] font-bold leading-none tracking-tight text-white truncate max-w-[140px]">
               {username || ''}
             </span>
-            <span className="text-[10px] font-bold text-white/30 uppercase mt-1 tracking-widest leading-none">
+            <span className="text-[10px] font-bold text-secondary uppercase mt-1 tracking-widest leading-none">
               {t('home.globalRank', { rank: rank || 0 })}
             </span>
           </div>
@@ -118,16 +118,16 @@ export const HomeView = React.memo(function HomeView() {
         <div className="hero-banner p-6 relative overflow-hidden flex flex-col justify-between h-[180px] min-h-[180px]">
           <div className="absolute -right-5 -top-5 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
           <div className="flex justify-between items-start relative z-10">
-            <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <div className="bg-[var(--bg-menu-card)] backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('home.online', { count: onlineCount ?? 0 })}</span>
             </div>
-            <Icon name="info" size={20} className="text-white/50" />
+            <Icon name="info" size={20} className="text-white" />
           </div>
           <div className="flex justify-between items-end relative z-10">
             <div className="flex flex-col">
               <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-[0.9]">{t('home.enterArena')}<br/>{t('home.arena')}</h2>
-              <p className="text-white/70 text-[11px] font-bold uppercase tracking-[0.2em] mt-3">{t('home.theUltimateDuel')}</p>
+              <p className="text-secondary text-[11px] font-bold uppercase tracking-[0.2em] mt-3">{t('home.theUltimateDuel')}</p>
             </div>
           </div>
         </div>
@@ -135,7 +135,7 @@ export const HomeView = React.memo(function HomeView() {
         <div className="premium-card p-6 space-y-6">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t('home.selectBet')}</span>
+              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.selectBet')}</span>
               <span className="text-[10px] font-black text-primary uppercase tracking-widest">{t('home.maxBet')}</span>
             </div>
             <div className="flex items-center gap-4">
@@ -144,20 +144,20 @@ export const HomeView = React.memo(function HomeView() {
                 onClick={() => handleBetChange(-1)}
                 className="w-12 h-12 rounded-2xl bg-[var(--bg-menu-card)] flex items-center justify-center active:scale-90 transition-transform"
               >
-                <Icon name="remove" size={20} className="text-white/60" />
+                <Icon name="remove" size={20} className="text-white" />
               </button>
               <div className="flex-grow h-14 recessed-field rounded-2xl flex items-center justify-center gap-2">
                 <span className="text-xl font-bold text-white tabular-nums">
                   {stakeUsdt.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-[10px] font-bold text-white/30 uppercase">USDT</span>
+                <span className="text-[10px] font-bold text-secondary uppercase">USDT</span>
               </div>
               <button
                 type="button"
                 onClick={() => handleBetChange(1)}
                 className="w-12 h-12 rounded-2xl bg-[var(--bg-menu-card)] flex items-center justify-center active:scale-90 transition-transform"
               >
-                <Icon name="add" size={20} className="text-white/60" />
+                <Icon name="add" size={20} className="text-white" />
               </button>
             </div>
           </div>
@@ -175,11 +175,11 @@ export const HomeView = React.memo(function HomeView() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="premium-card p-5">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{t('home.myGames')}</span>
+            <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.myGames')}</span>
             <div className="text-2xl font-bold mt-1 tracking-tight text-white tabular-nums">{gamesPlayed}</div>
           </div>
           <div className="premium-card p-5">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{t('home.totalProfit')}</span>
+            <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.totalProfit')}</span>
             <div className={`text-2xl font-bold mt-1 tracking-tight tabular-nums ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
               {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
@@ -215,7 +215,7 @@ export const HomeView = React.memo(function HomeView() {
               </>
             ) : games.length === 0 ? (
               <div className="py-6 flex flex-col items-center justify-center">
-                <p className="text-sm text-white/50 text-center">{t('home.playFirst')}</p>
+                <p className="text-sm text-secondary text-center">{t('home.playFirst')}</p>
               </div>
             ) : (
               games.map((game, i) => {
@@ -247,7 +247,7 @@ export const HomeView = React.memo(function HomeView() {
                         >
                           {isWin ? t('home.win') : t('home.lose')}
                         </span>
-                        <span className="text-[10px] text-white/30 font-medium uppercase">
+                        <span className="text-[10px] text-secondary font-medium uppercase">
                           {formatRelativeTime(game.created_at, t, i18n.language)}
                         </span>
                       </div>

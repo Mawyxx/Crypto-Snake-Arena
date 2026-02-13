@@ -23,6 +23,7 @@ export default {
         text: {
           primary: 'var(--text-primary)',
           secondary: 'var(--text-secondary)',
+          label: 'var(--text-label)',
         },
       },
       fontFamily: {

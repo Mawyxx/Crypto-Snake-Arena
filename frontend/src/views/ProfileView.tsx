@@ -19,7 +19,7 @@ function LanguageSwitcher() {
     <button
       type="button"
       onClick={handleClick}
-      className="flex items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors active:scale-95"
+      className="flex items-center gap-1.5 text-secondary hover:text-white transition-colors active:scale-95"
     >
       <span className="text-[11px] font-bold">{lang.toUpperCase()}</span>
       <IconRound name="chevron_right" size={20} />
@@ -66,7 +66,7 @@ export const ProfileView = React.memo(function ProfileView() {
           <h2 className="text-lg font-bold tracking-tight text-white truncate max-w-full">
             {username || ''}
           </h2>
-          <p className="text-[13px] font-medium text-white/60">
+          <p className="text-[13px] font-medium text-secondary">
             {(username ? `@${String(username).replace(/\s/g, '_').toLowerCase().slice(0, 20)} • ` : '')}{t('profile.rank', { rank: rank || 0 })}
           </p>
         </div>
@@ -74,12 +74,12 @@ export const ProfileView = React.memo(function ProfileView() {
 
       <section className="bg-[var(--bg-menu-card)] rounded-2xl p-6 card-border">
         <div className="flex flex-col items-center text-center mb-5">
-          <span className="text-[10px] font-medium text-white/40 tracking-[0.2em] mb-1.5 uppercase">{t('profile.balance')}</span>
+          <span className="text-[10px] font-medium text-secondary tracking-[0.2em] mb-1.5 uppercase">{t('profile.balance')}</span>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-bold text-neon-green tracking-tight tabular-nums">
               {(Number(balance) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <span className="text-base font-bold text-white/30 uppercase tracking-widest">usdt</span>
+            <span className="text-base font-bold text-secondary uppercase tracking-widest">usdt</span>
           </div>
         </div>
         <div className="flex gap-3">
@@ -104,11 +104,11 @@ export const ProfileView = React.memo(function ProfileView() {
 
       <section className="grid grid-cols-2 gap-3">
         <div className="bg-[var(--bg-menu-card)] rounded-2xl p-5 card-border flex flex-col items-center justify-center">
-          <span className="text-[10px] font-medium text-white/40 tracking-widest mb-1 uppercase">{t('profile.gamesPlayed')}</span>
+          <span className="text-[10px] font-medium text-secondary tracking-widest mb-1 uppercase">{t('profile.gamesPlayed')}</span>
           <span className="text-2xl font-bold tracking-tight text-white tabular-nums">{gamesPlayed}</span>
         </div>
         <div className="bg-[var(--bg-menu-card)] rounded-2xl p-5 card-border flex flex-col items-center justify-center">
-          <span className="text-[10px] font-medium text-white/40 tracking-widest mb-1 uppercase">{t('profile.totalProfit')}</span>
+          <span className="text-[10px] font-medium text-secondary tracking-widest mb-1 uppercase">{t('profile.totalProfit')}</span>
           <span className={`text-2xl font-bold tracking-tight tabular-nums ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
             {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}
           </span>
@@ -119,7 +119,7 @@ export const ProfileView = React.memo(function ProfileView() {
         <div className="px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <IconRound name="volume_up" size={20} className="text-white" />
-            <span className="text-xs font-bold uppercase tracking-wider text-white/80">{t('profile.soundEffects')}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-white">{t('profile.soundEffects')}</span>
           </div>
           <button
             type="button"
@@ -138,7 +138,7 @@ export const ProfileView = React.memo(function ProfileView() {
         <div className="px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <IconRound name="vibration" size={20} className="text-white" />
-            <span className="text-xs font-bold uppercase tracking-wider text-white/80">{t('profile.vibration')}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-white">{t('profile.vibration')}</span>
           </div>
           <button
             type="button"
@@ -157,7 +157,7 @@ export const ProfileView = React.memo(function ProfileView() {
         <div className="px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <IconRound name="language" size={20} className="text-white" />
-            <span className="text-xs font-bold uppercase tracking-wider text-white/80">{t('profile.language')}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-white">{t('profile.language')}</span>
           </div>
           <LanguageSwitcher />
         </div>

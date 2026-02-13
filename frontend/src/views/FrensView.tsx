@@ -70,7 +70,7 @@ export const FrensView = React.memo(function FrensView() {
             <h1 className="text-3xl font-bold leading-tight tracking-tight text-white">
               {t('frens.earn30')} <span className="text-neon-green">30%</span>
             </h1>
-            <p className="text-white/80 text-sm mt-1.5 max-w-[220px] font-medium leading-relaxed">
+            <p className="text-secondary text-sm mt-1.5 max-w-[220px] font-medium leading-relaxed">
               {t('frens.fromCommissions')}
             </p>
           </div>
@@ -93,7 +93,7 @@ export const FrensView = React.memo(function FrensView() {
               <Icon name="content_copy" size={24} className={copied ? 'text-neon-green' : 'text-white'} />
             </button>
           </div>
-          <p className="text-[10px] text-white/30 mt-4 uppercase tracking-[0.15em] text-center font-bold">
+          <p className="text-[10px] text-secondary mt-4 uppercase tracking-[0.15em] text-center font-bold">
             {t('frens.shareLinkHint')}
           </p>
         </div>
@@ -112,11 +112,11 @@ export const FrensView = React.memo(function FrensView() {
 
       <div className="px-5 py-3 grid grid-cols-2 gap-4">
         <div className="bg-[var(--bg-menu-card)] card-border rounded-card p-6 flex flex-col justify-between h-32">
-          <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.totalFriends')}</span>
+          <span className="text-[10px] text-secondary font-bold tracking-[0.1em] uppercase">{t('frens.totalFriends')}</span>
           <span className="text-3xl font-bold text-white text-premium tabular-nums">{referralInvited}</span>
         </div>
         <div className="bg-[var(--bg-menu-card)] card-border rounded-card p-6 flex flex-col justify-between h-32">
-          <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.earned')}</span>
+          <span className="text-[10px] text-secondary font-bold tracking-[0.1em] uppercase">{t('frens.earned')}</span>
           <span className="text-3xl font-bold text-primary text-premium tabular-nums">
             ${referralEarned.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
@@ -125,7 +125,7 @@ export const FrensView = React.memo(function FrensView() {
 
       <div className="px-5 py-3">
         <div className="flex items-center justify-between mb-4 px-2">
-          <h2 className="text-[11px] font-bold text-white/30 tracking-[0.2em] uppercase">{t('frens.yourNetwork')}</h2>
+          <h2 className="text-[11px] font-bold text-secondary tracking-[0.2em] uppercase">{t('frens.yourNetwork')}</h2>
         </div>
         <div className="bg-[var(--bg-menu-card)] card-border rounded-card overflow-hidden">
           {loading ? (
@@ -143,7 +143,7 @@ export const FrensView = React.memo(function FrensView() {
             </>
           ) : error ? (
             <div className="px-5 py-6 text-center">
-              <p className="text-sm text-white/50">{error}</p>
+              <p className="text-sm text-secondary">{error}</p>
               <button
                 type="button"
                 onClick={() => { impact('light'); refetchReferrals() }}
@@ -167,7 +167,7 @@ export const FrensView = React.memo(function FrensView() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-sm text-white text-premium truncate">{entry.display_name || ''}</h4>
-                  <p className="text-[11px] text-white/40 mt-0.5 font-medium">
+                  <p className="text-[11px] text-secondary mt-0.5 font-medium">
                     {t('frens.joined', { time: formatRelativeTime(entry.joined_at, t, i18n.language) })}
                   </p>
                 </div>
