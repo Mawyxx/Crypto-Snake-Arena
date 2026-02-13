@@ -1,4 +1,5 @@
 import { AppContent } from './AppContent'
+import { TelegramGate } from './TelegramGate'
 import { designTokens } from '@/shared/config'
 
 function App() {
@@ -12,7 +13,9 @@ function App() {
         color: designTokens.textPrimary,
       }}
     >
-      <AppContent />
+      <TelegramGate>
+        <AppContent />
+      </TelegramGate>
     </div>
   )
 }
