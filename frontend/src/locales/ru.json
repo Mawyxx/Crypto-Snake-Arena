@@ -1,0 +1,107 @@
+{
+  "nav": {
+    "home": "Главная",
+    "leaderboard": "Рейтинг",
+    "frens": "Друзья",
+    "profile": "Профиль"
+  },
+  "common": {
+    "deposit": "Пополнение скоро",
+    "withdraw": "Вывод скоро",
+    "refresh": "Обновить",
+    "retry": "Повторить",
+    "loading": "Загрузка...",
+    "play": "Играть",
+    "showAll": "ПОКАЗАТЬ ВСЕ",
+    "toMainMenu": "В главное меню",
+    "reload": "Обновить",
+    "loadError": "Ошибка загрузки"
+  },
+  "home": {
+    "globalRank": "Global Rank #{{rank}}",
+    "online": "{{count}} Online",
+    "selectBet": "ВЫБЕРИТЕ СТАВКУ",
+    "maxBet": "Max 100 USDT",
+    "playButton": "ИГРАТЬ",
+    "myGames": "МОИ ИГРЫ",
+    "totalProfit": "ОБЩИЙ ПРОФИТ",
+    "recentGames": "ПОСЛЕДНИЕ ИГРЫ",
+    "playFirst": "Сыграй первую игру — появишься здесь",
+    "enterArena": "ENTER",
+    "arena": "ARENA",
+    "theUltimateDuel": "THE ULTIMATE DUEL",
+    "win": "WIN",
+    "lose": "LOSE"
+  },
+  "profile": {
+    "balance": "Ваш баланс",
+    "deposit": "ПОПОЛНИТЬ",
+    "withdraw": "ВЫВЕСТИ",
+    "gamesPlayed": "Всего игр",
+    "totalProfit": "Общий профит",
+    "soundEffects": "Звуковые эффекты",
+    "vibration": "Вибрация",
+    "language": "Язык",
+    "rank": "Rank #{{rank}}"
+  },
+  "frens": {
+    "earn30": "Зарабатывай",
+    "fromCommissions": "От каждой комиссии, которую твои друзья генерируют в игре",
+    "shareLinkHint": "Поделитесь ссылкой для заработка",
+    "inviteFriends": "Пригласить друзей",
+    "totalFriends": "Всего друзей",
+    "earned": "Заработано",
+    "yourNetwork": "Ваша сеть",
+    "invitedHere": "Приглашённые друзья появятся здесь",
+    "joined": "Присоединился {{time}}",
+    "shareText": "Играй в Crypto Snake Arena! Приглашай друзей — получай 30% нашей прибыли"
+  },
+  "leaderboard": {
+    "yourRank": "ВАШ РЕЙТИНГ",
+    "activePlayers": "АКТИВНЫЕ ИГРОКИ",
+    "in7Days": "ЗА 7 ДНЕЙ",
+    "totalProfit": "ОБЩИЙ ПРОФИТ",
+    "totalWins": "ВСЕГО ПОБЕД",
+    "bestProfit": "ЛУЧШИЙ ПРОФИТ",
+    "topPlayers": "ТОП ИГРОКОВ",
+    "playFirstRank": "Сыграй первую игру — появишься в рейтинге",
+    "shareText": "Попробуй побить мой рейтинг в Crypto Snake Arena!"
+  },
+  "game": {
+    "round": "Раунд",
+    "battleMode": "Боевой режим",
+    "stake": "Ставка",
+    "score": "Счёт",
+    "cashOut": "Забрать",
+    "exit": "Выйти",
+    "hold4s": "удерж. 4с",
+    "connecting": "Подключение...",
+    "reconnecting": "Переподключение...",
+    "noConnection": "Нет соединения",
+    "checkInternet": "Проверь интернет и попробуй снова",
+    "queueWaiting": "Ожидание...",
+    "queueHint": "Вы в очереди. Скоро попадёте в игру."
+  },
+  "gameOver": {
+    "title": "ГГ, ВЫРЕЗАЛСЯ!",
+    "coinsCollected": "Собрано монет",
+    "lostStake": "Потерянная ставка",
+    "tryAgain": "Попробовать снова",
+    "shareRecord": "Поделиться рекордом",
+    "shareText": "Я набрал {{score}} в Crypto Snake! Попробуй побить мой рекорд!"
+  },
+  "victory": {
+    "title": "УСПЕШНЫЙ ВЫХОД!",
+    "netProfit": "Чистый профит",
+    "finalBalance": "Итоговый баланс",
+    "collectAndExit": "Забрать и выйти"
+  },
+  "time": {
+    "justNow": "только что",
+    "minAgo": "{{count}} мин. назад",
+    "hourAgo": "1 час назад",
+    "hoursAgo": "{{count}} ч. назад",
+    "yesterday": "вчера",
+    "daysAgo": "{{count}} дн. назад"
+  }
+}

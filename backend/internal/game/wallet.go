@@ -2,6 +2,11 @@ package game
 
 import "context"
 
+// GameResultRecorder — запись результата игры для рейтинга. P = L − S.
+type GameResultRecorder interface {
+	RecordGameResult(ctx context.Context, userID uint, stake, loot float64, roomID string, status string, durationSec int) error
+}
+
 // RewardCreditor — интерфейс для начисления выигрыша (AddGameReward при выходе/refund).
 // referenceID — идемпотентность (roomID:snakeID или roomID:unreg:playerID).
 type RewardCreditor interface {

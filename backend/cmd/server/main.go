@@ -17,8 +17,10 @@ import (
 	"github.com/crypto-snake-arena/server/internal/game"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
+	"github.com/crypto-snake-arena/server/internal/infrastructure/presence"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/repository"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -44,7 +46,7 @@ func main() {
 	}
 	sqlDB.SetMaxOpenConns(50) // лимит при наплыве игроков
 	sqlDB.SetMaxIdleConns(10) // пул простаивающих соединений
-	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 	log.Println("postgres connected, migrations applied")
@@ -61,14 +63,61 @@ func main() {
 	userResolver := repository.NewUserResolverDB(db)
 
 	// Менеджер комнат: хранит map комнат, выдаёт свободную или создаёт новую; каждая комната — своя горутина и Ticker
-	roomManager := game.NewRoomManager(txManager, txManager)
+	roomManager := game.NewRoomManager(txManager, txManager, txManager)
 	log.Println("room manager started")
 
 	// WebSocket handler
 	wsHandler := ws.NewHandler(txManager, validator, userResolver)
 
+	// Redis для presence (online-счётчик, multi-instance)
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "localhost:6379"
+	}
+	var rdb *redis.Client
+	if strings.HasPrefix(redisURL, "redis://") || strings.HasPrefix(redisURL, "rediss://") {
+		opt, err := redis.ParseURL(redisURL)
+		if err != nil {
+			log.Fatalf("redis parse URL failed: %v", err)
+		}
+		rdb = redis.NewClient(opt)
+	} else {
+		rdb = redis.NewClient(&redis.Options{Addr: redisURL})
+	}
+	rdbCtx, rdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := rdb.Ping(rdbCtx).Err(); err != nil {
+		log.Fatalf("redis connect failed: %v", err)
+	}
+	rdbCancel()
+	defer rdb.Close()
+	log.Println("redis connected")
+
+	presenceStore := presence.NewRedisStore(rdb)
+
+	// Фоновая задача: обновление rank в users раз в 15 мин
+	go func() {
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+		updateRanks := func() {
+			if err := db.Exec(`
+				WITH ranked AS (
+					SELECT user_id, ROW_NUMBER() OVER (ORDER BY total DESC)::int as r
+					FROM (SELECT user_id, SUM(profit) as total FROM game_results GROUP BY user_id) t
+				)
+				UPDATE users u SET rank = ranked.r FROM ranked WHERE u.id = ranked.user_id
+			`).Error; err != nil {
+				log.Printf("[rank-updater] %v", err)
+			}
+		}
+		updateRanks() // первый раз сразу после старта
+		for range ticker.C {
+			updateRanks()
+		}
+	}()
+
 	// HTTP handler (REST API)
-	httpHandler := httphandler.NewHandler(validator, userResolver, botToken)
+	webhookSecret := os.Getenv("WEBHOOK_SECRET_TOKEN")
+	httpHandler := httphandler.NewHandler(validator, userResolver, presenceStore, botToken, webhookSecret)
 
 	// Router
 	mux := http.NewServeMux()

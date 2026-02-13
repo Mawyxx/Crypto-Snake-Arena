@@ -1,95 +1,184 @@
-import { useEffect, useState } from 'react'
-import { useHaptic } from '@/hooks/useHaptic'
+import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useHaptic } from '@/features/haptic'
 import { useGameStore } from '@/store'
-import { getUserIdFromInitData } from '@/lib/telegramInit'
+import { useReferrals } from '@/features/referrals'
+import { UserAvatar } from '@/entities/user'
+import { Icon } from '@/shared/ui'
+import { getUserIdFromInitData } from '@/shared/lib'
 import { useConfig } from '@/hooks/useConfig'
-import { Copy } from 'lucide-react'
+import { formatRelativeTime } from '@/features/game-history'
 
-// Username бота. Укажи в .env.local: VITE_TELEGRAM_BOT_USERNAME=ТвойБот
 const FALLBACK_BOT = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'GorillaCaseBot'
 
-export function FrensView() {
+export const FrensView = React.memo(function FrensView() {
+  const { t, i18n } = useTranslation()
   const { impact, notify } = useHaptic()
   const { refetch } = useConfig()
+  const { entries, loading, error, refetch: refetchReferrals } = useReferrals({ limit: 20 })
   const { referralInvited, referralEarned, botUsername } = useGameStore()
   const bot = botUsername || FALLBACK_BOT
 
-  // Повторный запрос конфига при открытии вкладки, если бот ещё не загружен
   useEffect(() => {
     if (!botUsername) refetch()
   }, [botUsername, refetch])
+
   const tgId = getUserIdFromInitData()
-  const referralLink = tgId && bot ? `https://t.me/${bot}?start=r_${tgId}` : ''
+  const referralLink = tgId && bot ? `https://t.me/${bot}?startapp=r_${tgId}` : ''
   const [copied, setCopied] = useState(false)
 
   const handleInvite = () => {
     impact('light')
     const openLink = window.Telegram?.WebApp?.openTelegramLink
     if (openLink && referralLink) {
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Играй в Crypto Snake Arena! Приглашай друзей — получай 30% нашей прибыли')}`
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(t('frens.shareText'))}`
       openLink(shareUrl)
     } else if (navigator.share && referralLink) {
       navigator.share({
         title: 'Crypto Snake Arena',
-        text: 'Играй в Crypto Snake Arena! Приглашай друзей — получай 30% нашей прибыли',
+        text: t('frens.shareText'),
         url: referralLink,
-      })
+      }).catch(() => {})
     } else if (referralLink) {
-      navigator.clipboard.writeText(referralLink)
-      notify('success')
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      navigator.clipboard.writeText(referralLink).then(() => {
+        notify('success')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }).catch(() => {})
     }
   }
 
   const handleCopy = () => {
     impact('light')
     if (referralLink) {
-      navigator.clipboard.writeText(referralLink)
-      notify('success')
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      navigator.clipboard.writeText(referralLink).then(() => {
+        notify('success')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }).catch(() => {})
     }
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-y-auto overscroll-contain touch-auto bg-[var(--bg-main)] pb-bottom-bar">
-      <div className="shrink-0 p-5 pb-8">
-        <h1 className="text-xl font-bold text-white mb-8 leading-tight">
-          Приглашай друзей — получай <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">30%</span> нашей прибыли
-        </h1>
-
-        <div className="flex gap-4 mb-8">
-          <div className="flex-1 card-premium-elevated p-5 rounded-2xl border border-white/[0.06]">
-            <p className="text-3xl font-extrabold text-white tabular-nums">{referralInvited}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-2 font-medium">Приглашено</p>
+    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pb-bottom-bar">
+      <div className="px-5 pt-6 pb-2">
+        <div className="banner-gradient rounded-card p-7 relative overflow-hidden shadow-2xl shadow-primary/10">
+          <div className="absolute -right-6 -bottom-6 opacity-30 -rotate-12 pointer-events-none">
+            <Icon name="card_giftcard" size={140} className="text-white leading-none" />
           </div>
-          <div className="flex-1 card-premium-elevated p-5 rounded-2xl border border-emerald-500/10 bg-emerald-500/5">
-            <p className="text-2xl font-extrabold text-[var(--accent-emerald)] tabular-nums">
-              {referralEarned.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="relative z-10">
+            <h1 className="text-3xl font-bold leading-tight tracking-tight text-white">
+              {t('frens.earn30')} <span className="text-neon-green">30%</span>
+            </h1>
+            <p className="text-white/80 text-sm mt-1.5 max-w-[220px] font-medium leading-relaxed">
+              {t('frens.fromCommissions')}
             </p>
-            <p className="text-xs text-[var(--text-secondary)] mt-2 font-medium">Заработано <span className="text-[var(--accent-emerald)]/80">USDT</span></p>
           </div>
         </div>
+      </div>
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handleInvite}
-            className="flex-1 py-4 rounded-2xl font-semibold text-white bg-gradient-to-r from-cyan-500 via-blue-600 to-blue-600 shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all"
-          >
-            Пригласить
-          </button>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="w-14 h-14 shrink-0 rounded-2xl bg-[var(--bg-card)] border border-white/[0.08] flex items-center justify-center text-white active:scale-95 transition-all hover:border-white/15"
-            title="Копировать ссылку"
-          >
-            <Copy size={22} className={copied ? 'text-emerald-400' : ''} strokeWidth={2.5} />
-          </button>
+      <div className="px-5 py-3">
+        <div className="bg-anthracite card-border rounded-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 bg-white/5 rounded-2xl px-5 py-4 border border-white/5 overflow-hidden">
+              <span className="text-primary font-semibold text-sm tracking-tight truncate block">
+                {referralLink ? `${referralLink.slice(0, 24)}...` : '—'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="bg-primary hover:bg-primary/90 transition-colors w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 active:scale-95"
+            >
+              <Icon name="content_copy" size={24} className={copied ? 'text-neon-green' : 'text-white'} />
+            </button>
+          </div>
+          <p className="text-[10px] text-white/30 mt-4 uppercase tracking-[0.15em] text-center font-bold">
+            {t('frens.shareLinkHint')}
+          </p>
+        </div>
+      </div>
+
+      <div className="px-5 py-2">
+        <button
+          type="button"
+          onClick={handleInvite}
+          className="glass-btn w-full h-16 rounded-card flex items-center justify-center gap-3 active:scale-95 transition-all"
+        >
+          <Icon name="share" size={20} className="text-primary" />
+          <span className="font-bold text-white text-base tracking-tight uppercase">{t('frens.inviteFriends')}</span>
+        </button>
+      </div>
+
+      <div className="px-5 py-3 grid grid-cols-2 gap-4">
+        <div className="bg-anthracite card-border rounded-card p-6 flex flex-col justify-between h-32">
+          <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.totalFriends')}</span>
+          <span className="text-3xl font-bold text-white text-premium tabular-nums">{referralInvited}</span>
+        </div>
+        <div className="bg-anthracite card-border rounded-card p-6 flex flex-col justify-between h-32">
+          <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.earned')}</span>
+          <span className="text-3xl font-bold text-primary text-premium tabular-nums">
+            ${referralEarned.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+
+      <div className="px-5 py-3">
+        <div className="flex items-center justify-between mb-4 px-2">
+          <h2 className="text-[11px] font-bold text-white/30 tracking-[0.2em] uppercase">{t('frens.yourNetwork')}</h2>
+        </div>
+        <div className="bg-anthracite card-border rounded-card overflow-hidden">
+          {loading ? (
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-5 border-b border-white/5 opacity-50">
+                  <div className="w-11 h-11 rounded-full bg-white/10 animate-pulse shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="h-3 w-20 bg-white/10 animate-pulse rounded" />
+                    <div className="h-2.5 w-28 bg-white/10 animate-pulse rounded" />
+                  </div>
+                  <div className="h-3 w-14 bg-white/10 animate-pulse rounded shrink-0" />
+                </div>
+              ))}
+            </>
+          ) : error ? (
+            <div className="px-5 py-6 text-center">
+              <p className="text-sm text-white/50">{error}</p>
+              <button
+                type="button"
+                onClick={() => { impact('light'); refetchReferrals() }}
+                className="mt-3 text-[11px] font-bold text-primary uppercase tracking-wider"
+              >
+                {t('common.retry')}
+              </button>
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="px-5 py-6 text-center">
+              <p className="text-sm text-white/50">{t('frens.invitedHere')}</p>
+            </div>
+          ) : (
+            entries.map((entry, i) => (
+              <div
+                key={entry.referred_id ? `ref-${entry.referred_id}` : `ref-i-${i}`}
+                className="flex items-center gap-4 p-5 border-b border-white/5 last:border-0"
+              >
+                <div className="w-11 h-11 rounded-full overflow-hidden border border-white/10 shrink-0">
+                  <UserAvatar src={entry.avatar_url ?? undefined} name={entry.display_name} size={44} className="rounded-none" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-sm text-white text-premium truncate">{entry.display_name || ''}</h4>
+                  <p className="text-[11px] text-white/40 mt-0.5 font-medium">
+                    {t('frens.joined', { time: formatRelativeTime(entry.joined_at, t, i18n.language) })}
+                  </p>
+                </div>
+                <div className="text-neon-green font-bold text-sm tracking-tight shrink-0">
+                  +${entry.earned_from.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
   )
-}
+})

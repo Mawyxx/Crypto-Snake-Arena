@@ -1,5 +1,7 @@
 package domain
 
+import "math"
+
 // CellSize — размер ячейки сетки.
 // Должен быть чуть больше максимального шага змейки за 1 тик,
 // чтобы не пропустить столкновение на границе.
@@ -39,9 +41,13 @@ func (g *SpatialGrid) getCellID(p Point) int {
 	return row*colsCount + col
 }
 
-// InBounds — проверка, не ушла ли голова за границы карты.
+// InBounds — проверка, не ушла ли голова за границы круглой арены.
+// Арена: центр (Width/2, Height/2), радиус min(Width,Height)/2.
 func (g *SpatialGrid) InBounds(p Point) bool {
-	return p.X >= 0 && p.X <= g.Width && p.Y >= 0 && p.Y <= g.Height
+	cx, cy := g.Width/2, g.Height/2
+	r := math.Min(g.Width, g.Height) / 2
+	dx, dy := p.X-cx, p.Y-cy
+	return dx*dx+dy*dy <= r*r
 }
 
 // AddSnake добавляет сегменты змейки в сетку.

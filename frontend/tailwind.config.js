@@ -3,19 +3,32 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: 'var(--primary)',
+        'neon-green': 'var(--color-success)',
+        success: 'var(--color-success)',
+        error: 'var(--color-error)',
+        anthracite: 'var(--anthracite)',
+        'neon-blue': '#00F0FF',
         bg: {
-          main: '#000000', // Pure black background
-          surface: '#111111', // Dark grey surfaces
-          surfaceAlt: '#1C1C1E', // iOS-style card surface
+          main: 'var(--bg-main)',
+          surface: 'var(--anthracite)',
+          surfaceAlt: 'var(--bg-surface-alt)',
         },
         accent: {
-          mint: '#26D07C', // Primary mint accent
-          blue: '#007AFF', // System blue
+          mint: 'var(--accent-mint)',
+          blue: 'var(--primary)',
         },
         text: {
-          primary: '#FFFFFF',
-          secondary: '#8E8E93',
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
         },
+      },
+      fontFamily: {
+        display: ['Space Grotesk', 'sans-serif'],
+      },
+      borderRadius: {
+        card: 'var(--radius-card)',
+        pill: 'var(--radius-pill)',
       },
     },
   },

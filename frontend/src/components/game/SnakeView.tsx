@@ -1,3 +1,4 @@
+import React from 'react'
 import { PixiComponent } from '@pixi/react'
 import { Graphics as PixiGraphics } from '@pixi/graphics'
 import type { InterpolatedSnake } from '@/hooks/useGameEngine'
@@ -7,7 +8,9 @@ const SNAKE_COLORS = [
   0xc080ff, 0x9099ff, 0x80d0d0, 0x80ff80, 0xeeee70, 0xffa060, 0xff9090, 0xff4040, 0xe030e0,
 ]
 
-function getSnakeColor(snakeId: unknown): number {
+type SnakeId = number | { toNumber: () => number } | string | null | undefined
+
+function getSnakeColor(snakeId: SnakeId): number {
   if (snakeId == null) return 0x00ffff
   const id = typeof snakeId === 'object' && snakeId !== null && 'toNumber' in snakeId
     ? (snakeId as { toNumber: () => number }).toNumber()
@@ -105,6 +108,23 @@ const SnakeGraphics = PixiComponent<SnakeViewProps, PixiGraphics>('SnakeGraphics
   },
 })
 
-export const SnakeView = ({ snake, isLocalPlayer }: SnakeViewProps) => (
-  <SnakeGraphics snake={snake} isLocalPlayer={isLocalPlayer} />
+function areSnakePropsEqual(prev: SnakeViewProps, next: SnakeViewProps): boolean {
+  if (prev.isLocalPlayer !== next.isLocalPlayer) return false
+  const a = prev.snake
+  const b = next.snake
+  if (Number(a?.id) !== Number(b?.id)) return false
+  const ah = a?.head
+  const bh = b?.head
+  if (Math.round(ah?.x ?? 0) !== Math.round(bh?.x ?? 0)) return false
+  if (Math.round(ah?.y ?? 0) !== Math.round(bh?.y ?? 0)) return false
+  if (Math.round((a?.angle ?? 0) * 100) !== Math.round((b?.angle ?? 0) * 100)) return false
+  if (Math.round((a?.score ?? 0) * 100) !== Math.round((b?.score ?? 0) * 100)) return false
+  const ab = a?.body ?? []
+  const bb = b?.body ?? []
+  return ab.length === bb.length
+}
+
+export const SnakeView = React.memo(
+  ({ snake, isLocalPlayer }: SnakeViewProps) => <SnakeGraphics snake={snake} isLocalPlayer={isLocalPlayer} />,
+  areSnakePropsEqual
 )

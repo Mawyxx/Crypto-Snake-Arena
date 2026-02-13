@@ -6,7 +6,9 @@ import (
 	"github.com/crypto-snake-arena/server/internal/domain"
 )
 
-// CryptoBotService реализует domain.PaymentService (Crypto Bot API).
+// CryptoBotService реализует domain.PaymentService (Crypto Pay / @CryptoBot).
+// Документация: https://help.crypt.bot/crypto-pay-api
+// При реализации: createInvoice, webhook для подтверждения, идемпотентность через external_id (см. tx_manager.ProcessDeposit).
 type CryptoBotService struct {
 	// apiKey string
 }

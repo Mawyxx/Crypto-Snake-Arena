@@ -1,0 +1,19 @@
+[Unit]
+Description=Crypto Snake Arena Backend
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/crypto-snake-arena/backend
+ExecStart=/opt/crypto-snake-arena/backend/server
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/crypto-snake-arena/backend/.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=crypto-snake-arena
+
+[Install]
+WantedBy=multi-user.target

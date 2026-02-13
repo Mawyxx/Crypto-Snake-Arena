@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"math"
+	"math/rand"
 	"strconv"
 	"sync"
 	"time"
@@ -38,8 +39,9 @@ type Room struct {
 	Grid   *domain.SpatialGrid
 
 	// Finance
-	RewardCreditor RewardCreditor
-	DeathHandler   DeathHandler
+	RewardCreditor    RewardCreditor
+	DeathHandler      DeathHandler
+	ResultRecorder    GameResultRecorder
 
 	// Communication
 	Register   chan *Player
@@ -50,8 +52,10 @@ type Room struct {
 	subscribersMu sync.RWMutex
 	subscribers   []*subscriber
 
-	stopChan chan struct{}
-	stopping bool // при Stop — не слать в broadcast, затем закрыть каналы
+	stopChan     chan struct{}
+	stopping     bool   // при Stop — не слать в broadcast, затем закрыть каналы
+	onStopped    func(roomID string) // вызывается в конце Stop() с ID комнаты, nil допустим
+	onSlotFreed  func(*Room)         // вызывается при Unregister (слот освобождён), nil допустим
 }
 
 type subscriber struct {
@@ -61,10 +65,13 @@ type subscriber struct {
 
 func (s *subscriber) close() { s.once.Do(func() { close(s.ch) }) }
 
-func NewRoom(rewardCreditor RewardCreditor, deathHandler DeathHandler) *Room {
+func NewRoom(rewardCreditor RewardCreditor, deathHandler DeathHandler, resultRecorder GameResultRecorder, onStopped func(roomID string), onSlotFreed func(*Room)) *Room {
 	return &Room{
 		RewardCreditor: rewardCreditor,
 		DeathHandler:   deathHandler,
+		ResultRecorder: resultRecorder,
+		onStopped:      onStopped,
+		onSlotFreed:    onSlotFreed,
 		ID:             uuid.New().String(),
 		Snakes:         make(map[uint64]*domain.Snake),
 		Coins:          make(map[string]*domain.Coin),
@@ -74,6 +81,56 @@ func NewRoom(rewardCreditor RewardCreditor, deathHandler DeathHandler) *Room {
 		Inputs:         make(chan *PlayerInput, 100), // Буфер на 100 команд
 		stopChan:       make(chan struct{}),
 	}
+}
+
+const spawnTries = 15   // число попыток выбора точки спавна
+const spawnMargin = 50  // отступ от края арены (не спавнить у смертельной границы)
+
+// pickSpawnPosition выбирает позицию внутри круглой арены, предпочтительно подальше от других змеек.
+func pickSpawnPosition(grid *domain.SpatialGrid, snakes map[uint64]*domain.Snake) (float64, float64) {
+	cx, cy := grid.Width/2, grid.Height/2
+	arenaRadius := math.Min(grid.Width, grid.Height) / 2
+	maxR := arenaRadius - float64(spawnMargin)
+	if maxR <= 0 {
+		return cx, cy
+	}
+	minR := float64(spawnMargin)
+	if minR >= maxR {
+		minR = 0
+	}
+
+	heads := make([]domain.Point, 0, len(snakes))
+	for _, s := range snakes {
+		heads = append(heads, s.Head())
+	}
+
+	bestX, bestY := cx, cy
+	bestMinDist := -1.0
+
+	for i := 0; i < spawnTries; i++ {
+		angle := rand.Float64() * 2 * math.Pi
+		r := minR + rand.Float64()*(maxR-minR)
+		x := cx + math.Cos(angle)*r
+		y := cy + math.Sin(angle)*r
+
+		minDist := 1e9
+		if len(heads) == 0 {
+			minDist = maxR
+		} else {
+			for _, h := range heads {
+				dx, dy := x-h.X, y-h.Y
+				d := math.Sqrt(dx*dx + dy*dy)
+				if d < minDist {
+					minDist = d
+				}
+			}
+		}
+		if minDist > bestMinDist {
+			bestMinDist = minDist
+			bestX, bestY = x, y
+		}
+	}
+	return bestX, bestY
 }
 
 // Run - главный игровой цикл. Запускается в отдельной горутине.
@@ -89,23 +146,47 @@ func (r *Room) Run() {
 		// 1. Обработка входящих игроков (TgID = snake ID в Protobuf)
 		case player := <-r.Register:
 			r.Mu.Lock()
-			snake := domain.NewSnake(player.TgID)
+			x, y := pickSpawnPosition(r.Grid, r.Snakes)
+			snake := domain.NewSnakeAt(player.TgID, x, y)
 			snake.SetEntryFee(player.EntryFee)
 			snake.UserID = int64(player.UserID)
+			snake.JoinedTick = r.CurrentTick
 			r.Snakes[player.TgID] = snake
 			r.Mu.Unlock()
 
 		// 2. Обработка выходов (Cash Out только если живой или явный CASH_OUT; мёртвая змейка — без награды)
 		case player := <-r.Unregister:
 			r.Mu.Lock()
-			if snake, ok := r.Snakes[player.TgID]; ok && snake.Score > 0 && !snake.Dead && r.RewardCreditor != nil {
-				refID := r.ID + ":unreg:" + strconv.FormatUint(uint64(player.UserID), 10)
-				if err := r.RewardCreditor.AddGameReward(context.Background(), player.UserID, snake.Score, refID); err != nil {
-					log.Printf("[Room] AddGameReward failed on Unregister: userID=%d score=%.2f err=%v", player.UserID, snake.Score, err)
+			if snake, ok := r.Snakes[player.TgID]; ok {
+				if snake.Score > 0 && !snake.Dead && r.RewardCreditor != nil {
+					refID := r.ID + ":unreg:" + strconv.FormatUint(uint64(player.UserID), 10)
+					if err := r.RewardCreditor.AddGameReward(context.Background(), player.UserID, snake.Score, refID); err != nil {
+						log.Printf("[Room] AddGameReward failed on Unregister: userID=%d score=%.2f err=%v", player.UserID, snake.Score, err)
+					}
+				}
+				if r.ResultRecorder != nil {
+					loot := snake.Score
+					if snake.Dead {
+						loot = 0
+					}
+					status := "loss"
+					if loot > 0 && !snake.Dead {
+						status = "win"
+					}
+					durationSec := int((r.CurrentTick - snake.JoinedTick) * 50 / 1000)
+					if durationSec < 0 {
+						durationSec = 0
+					}
+					if err := r.ResultRecorder.RecordGameResult(context.Background(), player.UserID, player.EntryFee, loot, r.ID, status, durationSec); err != nil {
+						log.Printf("[Room] RecordGameResult failed on Unregister: userID=%d stake=%.2f loot=%.2f err=%v", player.UserID, player.EntryFee, loot, err)
+					}
 				}
 			}
 			delete(r.Snakes, player.TgID)
 			r.Mu.Unlock()
+			if r.onSlotFreed != nil {
+				r.onSlotFreed(r)
+			}
 
 		// 3. Обработка ввода (Управление) с серверной валидацией
 		case input := <-r.Inputs:
@@ -254,6 +335,17 @@ func (r *Room) killSnake(victim *domain.Snake, toDelete *[]uint64) {
 			}
 		}()
 	}
+	if r.ResultRecorder != nil && victim.UserID > 0 {
+		durationSec := int((r.CurrentTick - victim.JoinedTick) * 50 / 1000)
+		if durationSec < 0 {
+			durationSec = 0
+		}
+		go func() {
+			if err := r.ResultRecorder.RecordGameResult(context.Background(), uint(victim.UserID), victim.EntryFee, 0, r.ID, "loss", durationSec); err != nil {
+				log.Printf("[Room] RecordGameResult failed on killSnake: victimUserID=%d stake=%.2f err=%v", victim.UserID, victim.EntryFee, err)
+			}
+		}()
+	}
 	*toDelete = append(*toDelete, victim.ID) // victim.ID = TgID (snake ID)
 }
 
@@ -350,6 +442,9 @@ func (r *Room) Stop() {
 	}
 	r.subscribers = nil
 	r.subscribersMu.Unlock()
+	if r.onStopped != nil {
+		r.onStopped(r.ID)
+	}
 }
 
 // PlayerCount возвращает текущее количество игроков в комнате.
@@ -362,6 +457,21 @@ func (r *Room) PlayerCount() int {
 // CanJoin проверяет, есть ли место в комнате.
 func (r *Room) CanJoin() bool {
 	return r.PlayerCount() < MaxPlayers
+}
+
+// AverageStake — среднее арифметическое актуальных ставок (CurrentScore) всех игроков в комнате.
+// Пустая комната возвращает 0.
+func (r *Room) AverageStake() float64 {
+	r.Mu.RLock()
+	defer r.Mu.RUnlock()
+	if len(r.Snakes) == 0 {
+		return 0
+	}
+	var sum float64
+	for _, s := range r.Snakes {
+		sum += s.CurrentScore()
+	}
+	return sum / float64(len(r.Snakes))
 }
 
 // normalizeAngle приводит разницу углов к интервалу (-pi, pi].

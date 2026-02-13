@@ -1,0 +1,61 @@
+# Автодеплой на Ubuntu сервер при push в main
+# Настрой: repository secrets → DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Ручной запуск
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build backend
+        run: |
+          cd backend
+          go build -o server ./cmd/server
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+        env:
+          # API/WS будут с того же домена — relative URLs
+          VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME || 'GorillaCaseBot' }}
+
+      - name: Deploy to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: 'backend/server,frontend/dist,deploy/run-deploy.sh'
+          target: '/opt/crypto-snake-arena/incoming'
+
+      - name: Run deploy script on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            chmod +x /opt/crypto-snake-arena/incoming/deploy/run-deploy.sh
+            /opt/crypto-snake-arena/incoming/deploy/run-deploy.sh

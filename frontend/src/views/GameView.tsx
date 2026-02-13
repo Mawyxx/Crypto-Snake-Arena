@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Arena, GameOverOverlay, VictoryOverlay, type GameResult } from '@/components/game'
 import { useGameStore } from '@/store'
-import { getUserIdFromInitData } from '@/lib/telegramInit'
-import { useHaptic } from '@/hooks/useHaptic'
-import { useBalance } from '@/hooks/useBalance'
-import { useMemo } from 'react'
+import { getUserIdFromInitData } from '@/shared/lib'
+import { useHaptic } from '@/features/haptic'
+import { useBalance } from '@/entities/balance'
 
 const HOLD_EXIT_MS = 4000
 
@@ -12,10 +12,12 @@ function HoldToExitOverlay({
   onHoldStart,
   onHoldEnd,
   holdMs,
+  t,
 }: {
   onHoldStart: () => void
   onHoldEnd: () => void
   holdMs: number
+  t: (key: string) => string
 }) {
   const [progress, setProgress] = useState(0)
   const startTimeRef = useRef<number | null>(null)
@@ -61,17 +63,17 @@ function HoldToExitOverlay({
     >
       <button
         type="button"
-        className="relative w-[60px] h-[60px] rounded-[20px] bg-[#111111] border border-white/10 flex flex-col items-center justify-center active:bg-[#1C1C1E] transition-colors overflow-hidden"
+        className="relative w-[60px] h-[60px] rounded-[20px] bg-anthracite border border-white/10 flex flex-col items-center justify-center active:bg-[var(--bg-surface-alt)] transition-colors overflow-hidden"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onPointerCancel={handlePointerUp}
       >
-        <span className="relative z-10 text-[10px] text-white font-medium">Выйти</span>
-        <span className="relative z-10 text-[8px] text-[#8E8E93]">удерж. 4с</span>
+        <span className="relative z-10 text-[10px] text-white font-medium">{t('game.exit')}</span>
+        <span className="relative z-10 text-[8px] text-[var(--text-secondary)]">{t('game.hold4s')}</span>
         {progress > 0 && (
           <div
-            className="absolute inset-x-0 bottom-0 bg-[#26D07C]/70 transition-none"
+            className="absolute inset-x-0 bottom-0 bg-neon-green/70 transition-none"
             style={{ height: `${progress * 100}%` }}
           />
         )}
@@ -91,11 +93,13 @@ function getWsBaseUrl(): string {
   return 'ws://localhost:8080'
 }
 
-export function GameView() {
+export const GameView = React.memo(function GameView() {
+  const { t } = useTranslation()
   const { bet, setScreen, setInGame, setBalance, balance, userId } = useGameStore()
   const { notify } = useHaptic()
   const { refetch: refetchBalance } = useBalance({ refetchOnMount: false })
   const [gameResult, setGameResult] = useState<GameResult | null>(null)
+  const [liveScore, setLiveScore] = useState(0)
   const [cashOutRequested, setCashOutRequested] = useState(false)
   const blockInputRef = useRef(false)
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -119,13 +123,19 @@ export function GameView() {
   }, [])
 
   useEffect(() => {
-    if (gameResult) refetchBalance()
+    if (!gameResult) return
+    // При победе бэкенд зачисляет на баланс с задержкой — даём 600ms, чтобы избежать race condition
+    const delayMs = gameResult.status === 'win' ? 600 : 0
+    const t = setTimeout(refetchBalance, delayMs)
+    return () => clearTimeout(t)
   }, [gameResult, refetchBalance])
 
-  const localSnakeId = useMemo(
-    () => getUserIdFromInitData() ?? userId,
-    [userId]
-  )
+  const localSnakeId = useMemo((): number | null => {
+    const fromTg = getUserIdFromInitData()
+    if (fromTg != null && Number.isFinite(fromTg)) return fromTg
+    if (userId != null && Number.isFinite(userId)) return userId
+    return null
+  }, [userId])
 
   const handleGameEnd = useCallback(
     (result: GameResult) => {
@@ -133,8 +143,9 @@ export function GameView() {
       setInGame(false)
       if (result.status === 'win') {
         notify('success')
-        const currentBalance = useGameStore.getState().balance
-        setBalance(currentBalance + result.reward)
+        const currentBalance = Number(useGameStore.getState().balance) || 0
+        const reward = Number(result.reward) || 0
+        setBalance(currentBalance + reward)
       } else {
         notify('error')
       }
@@ -149,6 +160,7 @@ export function GameView() {
 
   const handleRetry = () => {
     setGameResult(null)
+    setLiveScore(0)
     setCashOutRequested(false)
     setInGame(true)
     setScreen('game')
@@ -173,7 +185,7 @@ export function GameView() {
   }, [])
 
   return (
-    <div className="h-full flex flex-col touch-none pt-[env(safe-area-inset-top)] bg-[#0A0A0B]">
+    <div className="h-full flex flex-col touch-none pt-[env(safe-area-inset-top)] bg-[var(--bg-main)]">
       <div className="flex-1 min-h-0 pb-[env(safe-area-inset-bottom)] relative">
         {!gameResult && (
           <>
@@ -186,29 +198,40 @@ export function GameView() {
               onConnectionFailed={handleExit}
               cashOutRequested={cashOutRequested}
               blockInputRef={blockInputRef}
+              onScoreUpdate={setLiveScore}
             />
             {/* Top overlay with stake summary */}
             <div className="absolute top-3 left-3 right-3 z-20 pointer-events-none">
-              <div className="flex items-center justify-between gap-3 pointer-events-auto rounded-[28px] bg-[#161618]/95 px-4 py-3">
+              <div className="flex items-center justify-between gap-3 pointer-events-auto rounded-[28px] bg-[var(--bg-card)]/95 px-4 py-3">
                 <div className="flex flex-col">
                   <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">
-                    Раунд
+                    {t('game.round')}
                   </span>
                   <span className="text-sm font-semibold text-white">
-                    Боевой режим
+                    {t('game.battleMode')}
                   </span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[11px] text-white/40">
-                    Ставка
-                  </span>
-                  <span className="text-sm font-semibold text-white tabular-nums">
-                    {Math.max(0.3, bet / 100).toLocaleString('ru-RU', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    <span className="text-[11px] text-white/40">USDT</span>
-                  </span>
+                <div className="flex items-end gap-4">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[11px] text-white/40">
+                      {t('game.score')}
+                    </span>
+                    <span className="text-sm font-semibold text-white tabular-nums">
+                      {liveScore}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[11px] text-white/40">
+                      {t('game.stake')}
+                    </span>
+                    <span className="text-sm font-semibold text-white tabular-nums">
+                      {Math.max(0.3, bet / 100).toLocaleString('ru-RU', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      <span className="text-[11px] text-white/40">USDT</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -219,15 +242,16 @@ export function GameView() {
               <button
                 type="button"
                 onClick={handleCashOut}
-                className="px-3 py-1.5 rounded-[20px] bg-[#161618] border border-white/10 text-[11px] font-semibold text-white active:scale-95 transition-transform"
+                className="px-3 py-1.5 rounded-[20px] bg-[var(--bg-card)] border border-white/10 text-[11px] font-semibold text-white active:scale-95 transition-transform"
               >
-                Забрать
+                {t('game.cashOut')}
               </button>
             </div>
             <HoldToExitOverlay
               onHoldStart={handleHoldStart}
               onHoldEnd={handleHoldEnd}
               holdMs={HOLD_EXIT_MS}
+              t={t}
             />
           </>
         )}
@@ -244,9 +268,9 @@ export function GameView() {
       <VictoryOverlay
         visible={gameResult?.status === 'win'}
         reward={gameResult?.reward ?? 0}
-        newBalance={balance + (gameResult?.reward ?? 0)}
+        newBalance={Number(balance) + Number(gameResult?.reward ?? 0)}
         onCollect={handleCollectAndExit}
       />
     </div>
   )
-}
+})

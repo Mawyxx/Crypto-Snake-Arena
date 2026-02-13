@@ -1,25 +1,19 @@
 package usecase
 
-import (
-	"context"
-
-	"github.com/crypto-snake-arena/server/internal/domain"
-)
+import "context"
 
 // GameManager — управление сессиями: создание комнат, старт/стоп.
-type GameManager struct {
-	userRepo domain.UserRepository
-	roomRepo domain.RoomRepository
+// Логика входа в игру реализована в delivery/ws (PlaceBet + Room.Register).
+// TODO: рефакторинг — перенести логику сюда при смене архитектуры.
+type GameManager struct{}
+
+// NewGameManager создаёт GameManager.
+func NewGameManager() *GameManager {
+	return &GameManager{}
 }
 
-// NewGameManager создаёт GameManager с инжектированными зависимостями.
-func NewGameManager(userRepo domain.UserRepository, roomRepo domain.RoomRepository) *GameManager {
-	return &GameManager{userRepo: userRepo, roomRepo: roomRepo}
-}
-
-// JoinRoom — игрок входит в комнату (списание ставки, создание змейки).
+// JoinRoom — заглушка. Реальная логика в ws.Handler.UpgradeAndHandle.
 func (gm *GameManager) JoinRoom(ctx context.Context, userID int64, roomID string, stake float64) error {
-	// TODO: проверить баланс, списать, создать змейку
 	_ = userID
 	_ = roomID
 	_ = stake

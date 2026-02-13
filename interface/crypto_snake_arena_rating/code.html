@@ -1,0 +1,256 @@
+<html class="dark" lang="ru"><head><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background-dark">```html
+
+
+
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Рейтинг Crypto Snake Arena Компактный</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#007AFF",
+                        "background-dark": "#000000",
+                        "anthracite": "#111111",
+                        "neon-blue": "#00F0FF",
+                        "neon-green": "#22C55E",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                -webkit-tap-highlight-color: transparent;
+                overscroll-behavior-y: none;
+                @apply bg-background-dark font-display text-white selection:bg-primary/30;
+            }
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .safe-area-bottom {
+            padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+        }
+        .safe-area-top {
+            padding-top: env(safe-area-inset-top);
+        }
+        .nav-capsule {
+            background: rgba(16, 16, 16, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(24px);
+        }
+        .profile-btn-container {
+            background: rgba(16, 16, 16, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(24px);
+        }
+        .profile-ring {
+            border: 2px solid #007AFF;
+            box-shadow: 0 0 12px rgba(0, 122, 255, 0.5);
+        }
+        .user-row-highlight {
+            background: rgba(0, 122, 255, 0.12);
+            border: 1px solid rgba(0, 122, 255, 0.3);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            color: #007AFF;
+        }
+        .active-label {
+            color: #007AFF;
+            font-weight: 600;
+        }
+        .banner-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .glass-medal {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+        .medal-glow-effect {
+            position: relative;
+        }
+        .medal-glow-effect::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            background: white;
+            filter: blur(15px);
+            opacity: 0.3;
+            border-radius: 16px;
+            z-index: -1;
+        }
+        body {
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+
+
+<main class="safe-area-top flex-1 flex flex-col px-5 pb-32 overflow-hidden justify-center">
+<div class="relative mt-4 bg-gradient-to-br from-[#007AFF] via-[#0060FF] to-[#004BDD] p-5 rounded-[28px] shadow-[0_15px_45px_rgba(0,122,255,0.4)] mb-4 overflow-hidden flex-shrink-0">
+<div class="absolute inset-0 banner-pattern opacity-10"></div>
+<div class="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10"></div>
+<div class="relative z-10 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<div class="space-y-0.5">
+<p class="text-[9px] font-black tracking-[0.2em] text-white/70 uppercase">ВАШ РЕЙТИНГ</p>
+<h2 class="text-5xl font-bold tracking-tighter text-white">#5</h2>
+</div>
+<div class="medal-glow-effect">
+<div class="w-14 h-14 glass-medal rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1, 'wght' 300;">military_tech</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-3 border-t border-white/10">
+<div class="flex items-center gap-2">
+<div class="flex flex-col">
+<p class="text-[8px] font-bold tracking-[0.1em] text-white/60 uppercase">АКТИВНЫЕ ИГРОКИ</p>
+<div class="flex items-center gap-2">
+<span class="text-lg font-bold tracking-tight">12,405</span>
+<span class="text-[8px] font-bold text-white bg-white/20 px-1.5 py-0.5 rounded-full">LIVE</span>
+</div>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[9px] font-bold text-white/70 tracking-widest uppercase bg-black/10 px-2 py-1 rounded-lg">TOP 0.04%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-1 flex flex-col overflow-hidden gap-3">
+<div class="bg-anthracite p-5 rounded-[28px] border border-white/10 flex justify-between items-center relative overflow-hidden flex-shrink-0">
+<div class="space-y-1 relative z-10">
+<p class="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">ОБЩИЙ ПРОФИТ</p>
+<div class="flex items-center gap-2">
+<span class="text-3xl font-bold text-neon-green">+284.50</span>
+<span class="text-sm font-bold text-neon-green/60 uppercase">USDT</span>
+</div>
+</div>
+<button class="relative z-10 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-white/70 text-xl">share</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-3 flex-shrink-0">
+<div class="bg-anthracite p-5 rounded-[28px] border border-white/10 space-y-1">
+<p class="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">ВСЕГО ПОБЕД</p>
+<p class="text-2xl font-bold text-white tracking-tight">142</p>
+</div>
+<div class="bg-anthracite p-5 rounded-[28px] border border-white/10 space-y-1">
+<p class="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">ЛУЧШИЙ ПРОФИТ</p>
+<p class="text-2xl font-bold text-neon-green tracking-tight">500.00</p>
+</div>
+</div>
+<div class="flex-1 flex flex-col min-h-0">
+<div class="flex items-center justify-between px-2 mb-3">
+<h3 class="text-[11px] font-bold text-white/30 tracking-[0.2em] uppercase">ТОП ИГРОКОВ</h3>
+<span class="text-[10px] font-bold text-[#007AFF]/80 uppercase">ОБНОВЛЕНО 2М НАЗАД</span>
+</div>
+<div class="space-y-2 overflow-y-auto hide-scrollbar flex-1 pb-4">
+<div class="flex items-center bg-anthracite/50 rounded-[28px] p-3 border border-white/10">
+<span class="w-8 text-sm font-bold text-yellow-500/80">#1</span>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/10 mr-4 border border-white/10 flex-shrink-0">
+<img alt="Player" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBKLOLffuRuH14eJtTN8WyJElhsxhgXw0Gd4309VT-Xlis3eD36jrU0bPT0Z9szidS8GMFiahdqNs_k6QJH6DyUNbaaouSHxyCteexroQr1evOm1qs_9liHhtHSISCxlBPcqja44J0_IbNjA8zDTbdMVZR1Lxz2S2m8earB84glV_X2hDWobrNaCHKe3g75eM7oH7lKEC2LsPLuxrOmmmXKcQsl5-mXJ2bJqPo4IW7oloudavZp1BdqbPAf2jRELtxdB1dmYxiCJoU"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold truncate text-white">CryptoSnake</p>
+<p class="text-[10px] text-white/30">Профессионал</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-neon-green">48,200</p>
+<p class="text-[8px] text-white/30 uppercase">USDT</p>
+</div>
+</div>
+<div class="flex items-center user-row-highlight rounded-[28px] p-3 border border-[#007AFF]/30">
+<span class="w-8 text-sm font-bold text-[#007AFF]">#5</span>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/10 mr-4 border-2 border-[#007AFF]/60 p-0.5 flex-shrink-0">
+<img alt="Me" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdt5lTSZ5KNeXj-7ot6CvuGXXPcRyH9s5aRNSsNBRPPZyP247qdGpX0TC0K7YCVoHNcwj_N9PIO_i9tx9amEx6qEx1l8U5HFxAyYhWZss8fWgMB9FLZn7knBX_T5bSFvZ9cT3_sNBSmqmG53P1u-wjQ8bI0zkuGEfwEf1v9h1zFBioNQ7S5NqWr8ko0CeLl3Zx9M3yDX0J5iYfMJMKRMHb8egzyL-hf40djCZn3WiI6C3FF8gR2EbuZYzXtXnuSOtf8laJ8KoAGRJW"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-1.5">
+<p class="text-sm font-bold truncate text-white">Вы (Me)</p>
+<span class="text-[8px] bg-[#007AFF]/20 text-[#007AFF] border border-[#007AFF]/30 px-1.5 py-0.5 rounded-sm uppercase font-black">YOU</span>
+</div>
+<p class="text-[10px] text-[#007AFF]/70">Новичок</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-neon-green">7,240</p>
+<p class="text-[8px] text-white/30 uppercase">USDT</p>
+</div>
+</div>
+<div class="flex items-center bg-anthracite/50 rounded-[28px] p-3 border border-white/10">
+<span class="w-8 text-sm font-bold text-white/40">#6</span>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-white/10 mr-4 border border-white/10 flex-shrink-0">
+<img alt="Player" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABsBKrQj9RizGMZpdsyjjt6-BU3Tj2F6FPX4v9a40EpzW_xOsFou4tdR9-6SksOSjKtJenqlgLONRzQqPCMmwcl8IBqO8N6Wjn-99t-c4mTjz_Wf1GxMMOrvoSiWRKJmQZiGPUFUirypZ1NVUVekJdvYuXz_gXSOgLx83j46VXP4r45ENMPnzIjoiwDdpjdC9TUmCX4raFc5Idr6ZzjvLSH9QzhcDWpK0ILor9LwQJNGvpD6QJ5KGPkj84mGq_7P-yHx1RgwSzWVmg"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold truncate text-white">DeFi_Hunter</p>
+<p class="text-[10px] text-white/30">Инвестор</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold text-neon-green">6,100</p>
+<p class="text-[8px] text-white/30 uppercase">USDT</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<nav class="fixed bottom-0 left-0 right-0 z-[60] safe-area-bottom">
+<div class="flex items-center justify-center gap-4 px-6 max-w-lg mx-auto">
+<div class="flex-1 h-[76px] nav-capsule rounded-full flex items-center justify-around px-2">
+<button class="flex flex-col items-center justify-center gap-1 active:scale-90 transition-transform w-full">
+<span class="material-symbols-outlined text-white/50 text-[26px]">home</span>
+<span class="text-[10px] text-white/30 font-medium">Главная</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 active:scale-90 transition-transform w-full">
+<span class="material-symbols-outlined active-icon text-[26px]">leaderboard</span>
+<span class="text-[10px] active-label">Рейтинг</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 active:scale-90 transition-transform w-full">
+<span class="material-symbols-outlined text-white/50 text-[26px]">group</span>
+<span class="text-[10px] text-white/30 font-medium">Друзья</span>
+</button>
+</div>
+<button class="w-[76px] h-[76px] profile-btn-container rounded-full flex items-center justify-center active:scale-90 transition-transform flex-shrink-0">
+<div class="w-[52px] h-[52px] rounded-full profile-ring overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMfu1fUQbqWg44jxfKVlCTCrKZBjEjTQjBcBuVw8xdUcvhIQuuKSe8LLKBESYt0HGVH4UIbVhqxjx_idoqLaxKBvPao68ujmmYP_PeHs-pDD45EqnRcdqQgV1teTvkwsxA0omNp1XkKTAg-3a5gsEt5AygjBw9_NqCtaKR7bO6r2qu8NtetdZOop2vxa20bvZWR3TDijbCjHqu9SWB8Ee6XEMSzobmHhmmg2gIpdRUcJ0Kw9eTrkPrazBa3yumJAwW-gJo-fOMLTLR"/>
+</div>
+</button>
+</div>
+</nav>
+<div class="fixed top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none -z-10 overflow-hidden">
+<div class="absolute top-[-5%] left-[-15%] w-[400px] h-[400px] bg-primary/20 blur-[130px] rounded-full"></div>
+<div class="absolute bottom-[20%] right-[-10%] w-[300px] h-[300px] bg-neon-blue/5 blur-[100px] rounded-full"></div>
+</div>
+
+</body></html>

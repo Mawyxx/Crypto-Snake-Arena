@@ -48,19 +48,44 @@ func (m *TxManager) PlaceBet(ctx context.Context, userID uint, amount float64) e
 		if user.Balance < amount {
 			return ErrInsufficientFunds
 		}
+		newBalance := user.Balance - amount
 		if err := tx.Model(&user).Update("balance", gorm.Expr("balance - ?", amount)).Error; err != nil {
 			return err
 		}
 
 		return tx.Create(&domain.Transaction{
-			ID:        uuid.New().String(),
-			UserID:    userID,
-			Amount:    -amount,
-			Type:      "game_entry",
-			Status:    "completed",
-			CreatedAt: time.Now(),
+			ID:           uuid.New().String(),
+			UserID:       userID,
+			Amount:       -amount,
+			Type:         "game_entry",
+			Status:       "completed",
+			BalanceAfter: &newBalance,
+			CreatedAt:    time.Now(),
 		}).Error
 	})
+}
+
+// RecordGameResult записывает результат игры для рейтинга. P = L − S.
+func (m *TxManager) RecordGameResult(ctx context.Context, userID uint, stake, loot float64, roomID string, status string, durationSec int) error {
+	profit := loot - stake
+	if status == "" {
+		if profit > 0 {
+			status = "win"
+		} else {
+			status = "loss"
+		}
+	}
+	ctx, cancel := context.WithTimeout(ctx, txTimeout)
+	defer cancel()
+	return m.db.WithContext(ctx).Create(&domain.GameResult{
+		UserID:   userID,
+		Stake:    stake,
+		Loot:     loot,
+		Profit:   profit,
+		Status:   status,
+		Duration: durationSec,
+		RoomID:   roomID,
+	}).Error
 }
 
 // AddGameReward начисление собранных в игре монет.
@@ -89,17 +114,19 @@ func (m *TxManager) AddGameReward(ctx context.Context, userID uint, amount float
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, userID).Error; err != nil {
 			return err
 		}
+		newBalance := user.Balance + amount
 		if err := tx.Model(&user).Update("balance", gorm.Expr("balance + ?", amount)).Error; err != nil {
 			return err
 		}
 		err := tx.Create(&domain.Transaction{
-			ID:         uuid.New().String(),
-			UserID:     userID,
-			Amount:     amount,
-			Type:       "game_reward",
-			Status:     "completed",
-			ExternalID: referenceID,
-			CreatedAt:  time.Now(),
+			ID:           uuid.New().String(),
+			UserID:       userID,
+			Amount:       amount,
+			Type:         "game_reward",
+			Status:       "completed",
+			ExternalID:   referenceID,
+			BalanceAfter: &newBalance,
+			CreatedAt:    time.Now(),
 		}).Error
 		if err != nil && isDuplicateKeyError(err) {
 			return nil // повторный вызов — считаем успешным
@@ -114,6 +141,7 @@ func (m *TxManager) AddGameReward(ctx context.Context, userID uint, amount float
 
 // ProcessDeposit вызывается Webhook-обработчиком, когда Crypto Bot подтвердил оплату.
 // Идемпотентность: проверка unique external_id до зачисления + UNIQUE индекс как защита от race.
+// ВАЖНО: пользователь должен существовать в users. Перед вызовом — GetOrCreateUser(tgID, ...) при Crypto Pay webhook.
 func (m *TxManager) ProcessDeposit(ctx context.Context, tgID int64, amount float64, externalID string) error {
 	ctx, cancel := context.WithTimeout(ctx, txTimeout)
 	defer cancel()
@@ -132,18 +160,20 @@ func (m *TxManager) ProcessDeposit(ctx context.Context, tgID int64, amount float
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("tg_id = ?", tgID).First(&user).Error; err != nil {
 			return err
 		}
+		newBalance := user.Balance + amount
 		if err := tx.Model(&user).Update("balance", gorm.Expr("balance + ?", amount)).Error; err != nil {
 			return err
 		}
 
 		return tx.Create(&domain.Transaction{
-			ID:         uuid.New().String(),
-			UserID:     user.ID,
-			Amount:     amount,
-			Type:       "deposit",
-			Status:     "completed",
-			ExternalID: externalID,
-			CreatedAt:  time.Now(),
+			ID:           uuid.New().String(),
+			UserID:       user.ID,
+			Amount:       amount,
+			Type:         "deposit",
+			Status:       "completed",
+			ExternalID:   externalID,
+			BalanceAfter: &newBalance,
+			CreatedAt:    time.Now(),
 		}).Error
 	})
 	if err != nil && (err == ErrTxAlreadyExists || isDuplicateKeyError(err)) {
@@ -210,12 +240,14 @@ func (m *TxManager) OnPlayerDeath(ctx context.Context, victimUserID uint, victim
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, ref.ReferrerID).Error; err != nil {
 			return err
 		}
+		newBalance := user.Balance + referralAmount
 		if err := tx.Model(&user).Update("balance", gorm.Expr("balance + ?", referralAmount)).Error; err != nil {
 			return err
 		}
 
 		if err := tx.Create(&domain.ReferralEarning{
 			ReferrerID: ref.ReferrerID,
+			ReferredID: ref.ReferredID,
 			Amount:     referralAmount,
 			SourceTxID: referenceID,
 		}).Error; err != nil {
@@ -223,13 +255,14 @@ func (m *TxManager) OnPlayerDeath(ctx context.Context, victimUserID uint, victim
 		}
 
 		return tx.Create(&domain.Transaction{
-			ID:         uuid.New().String(),
-			UserID:     ref.ReferrerID,
-			Amount:     referralAmount,
-			Type:       "referral_bonus",
-			Status:     "completed",
-			ExternalID: referenceID,
-			CreatedAt:  time.Now(),
+			ID:           uuid.New().String(),
+			UserID:       ref.ReferrerID,
+			Amount:       referralAmount,
+			Type:         "referral_bonus",
+			Status:       "completed",
+			ExternalID:   referenceID,
+			BalanceAfter: &newBalance,
+			CreatedAt:    time.Now(),
 		}).Error
 	})
 }

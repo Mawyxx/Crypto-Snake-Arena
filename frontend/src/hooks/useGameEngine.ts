@@ -1,14 +1,14 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
-import { decodeWorldSnapshot, encodePlayerInput } from '@/api/protoSerializer'
+import { decodeWorldSnapshot, encodePlayerInput } from '@/shared/api'
 import { interpolatePosition, interpolateAngle } from '@/engine/Interpolation'
-import type { game } from '@/api/proto/game'
+import type { game } from '@/shared/api/proto/game'
 
 const SERVER_TICK_RATE_MS = 50
 const INTERPOLATION_DELAY_MS = 100
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000]
 const MAX_RECONNECT_ATTEMPTS = 3
 
-export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'failed'
+export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'failed' | 'queued'
 
 export interface InterpolatedSnake extends game.ISnake {
   head: { x: number; y: number }
@@ -69,9 +69,47 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
     }
 
     socket.current.onmessage = (event) => {
-      const data = new Uint8Array(event.data as ArrayBuffer)
-      const snapshot = decodeWorldSnapshot(data)
+      const raw = event.data
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw) as { type?: string; position?: number; error?: string }
+          if (parsed.type === 'queue') {
+            setStatus('queued')
+            return
+          }
+          if (parsed.error) {
+            intentionalClose.current = true
+            socket.current?.close()
+            socket.current = null
+            setStatus('failed')
+            return
+          }
+        } catch {
+          // ignore non-JSON text
+        }
+        return
+      }
 
+      let data: Uint8Array
+      try {
+        if (raw instanceof ArrayBuffer) {
+          data = new Uint8Array(raw)
+        } else if (raw instanceof Uint8Array) {
+          data = raw
+        } else {
+          return
+        }
+      } catch {
+        return
+      }
+      let snapshot: game.IWorldSnapshot
+      try {
+        snapshot = decodeWorldSnapshot(data)
+      } catch {
+        return
+      }
+
+      setStatus('connected')
       prevState.current = currState.current
       currState.current = snapshot
       lastMessageTime.current = Date.now()

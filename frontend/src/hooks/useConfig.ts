@@ -4,30 +4,12 @@
  */
 import { useCallback, useEffect } from 'react'
 import { useGameStore } from '@/store'
-
-function getApiBaseUrl(): string {
-  const apiEnv = import.meta.env.VITE_API_URL as string | undefined
-  if (apiEnv) return apiEnv
-  const wsEnv = import.meta.env.VITE_WS_URL as string | undefined
-  if (wsEnv) return wsEnv.replace(/^ws/, 'http').replace(/\/ws\/?$/, '')
-  if (typeof window !== 'undefined') {
-    return window.location.origin
-  }
-  return 'http://localhost:8080'
-}
-
-interface ConfigResponse {
-  bot_username?: string
-}
+import { apiGet } from '@/shared/api'
+import type { ConfigResponse } from '@/shared/api'
 
 async function fetchBotUsername(): Promise<string | null> {
-  const base = getApiBaseUrl().replace(/\/$/, '')
   try {
-    const res = await fetch(`${base}/api/config`, {
-      headers: { 'ngrok-skip-browser-warning': '1' },
-    })
-    if (!res.ok) return null
-    const data: ConfigResponse = await res.json()
+    const data = await apiGet<ConfigResponse>('/api/config')
     return data?.bot_username || null
   } catch {
     return null

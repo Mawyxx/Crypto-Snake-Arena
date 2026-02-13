@@ -1,0 +1,50 @@
+/**
+ * Design Tokens — single source of truth for colors, spacing, radius.
+ * All components must use var(--token) instead of hardcoded hex.
+ */
+:root {
+  /* Layout */
+  --tg-viewport-height: 100dvh;
+  --app-max-width: 420px;
+  --bottom-bar-height: 80px;
+
+  /* Backgrounds */
+  --bg-main: #0a0a0b;
+  --bg-main-alt: #0a0a0a;
+  --bg-card: #161618;
+  --bg-card-elevated: #161618;
+  --bg-surface-alt: #1c1c1e;
+  --anthracite: #111111;
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #8e8e93;
+  --text-muted: #5c5c66;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.05);
+  --border-nav: rgba(255, 255, 255, 0.08);
+
+  /* Primary / Accent */
+  --primary: #007aff;
+  --primary-mid: #0060ff;
+  --primary-deep: #0056b3;
+  --primary-dark: #004bdd;
+  --primary-hero-end: #001a3d;
+
+  /* Semantic */
+  --accent-mint: #22c55e;
+  --accent-emerald: #22c55e;
+  --color-success: #22c55e;
+  --color-error: #ff3b30;
+
+  /* Radius */
+  --radius-card: 28px;
+  --radius-pill: 9999px;
+
+  /* Transitions */
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+}

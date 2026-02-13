@@ -16,6 +16,9 @@ interface GameState {
   gamesPlayed: number
   totalDeposited: number
   totalWithdrawn: number
+  totalProfit: number
+  onlineCount: number
+  activePlayers7d: number
   inGame: boolean
   bet: number
   highScore: number
@@ -29,6 +32,8 @@ interface GameState {
   setBotUsername: (username: string | null) => void
   setReferralStats: (invited: number, earned: number) => void
   setProfileStats: (games: number, deposited: number, withdrawn: number) => void
+  setTotalProfit: (profit: number) => void
+  setStats: (online: number, active7d: number) => void
   setInGame: (inGame: boolean) => void
   setBet: (bet: number) => void
   setHighScore: (score: number) => void
@@ -48,6 +53,9 @@ export const useGameStore = create<GameState>((set) => ({
   gamesPlayed: 0,
   totalDeposited: 0,
   totalWithdrawn: 0,
+  totalProfit: 0,
+  onlineCount: 0,
+  activePlayers7d: 0,
   inGame: false,
   bet: 50,
   highScore: 0,
@@ -61,6 +69,8 @@ export const useGameStore = create<GameState>((set) => ({
   setBotUsername: (botUsername) => set({ botUsername }),
   setReferralStats: (referralInvited, referralEarned) => set({ referralInvited, referralEarned }),
   setProfileStats: (gamesPlayed, totalDeposited, totalWithdrawn) => set({ gamesPlayed, totalDeposited, totalWithdrawn }),
+  setTotalProfit: (totalProfit) => set({ totalProfit }),
+  setStats: (onlineCount, activePlayers7d) => set({ onlineCount, activePlayers7d }),
   setInGame: (inGame) => set({ inGame }),
   setBet: (bet) => set({ bet }),
   setHighScore: (highScore) => set({ highScore }),

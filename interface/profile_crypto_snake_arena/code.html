@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html class="dark" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#067bf9",
+                        "background-dark": "#000000",
+                        "anthracite": "#111111",
+                        "neon-green": "#22C55E",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "1.75rem",
+                        "2xl": "28px",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-background-dark text-white font-display overflow-hidden;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                user-select: none;
+                background-color: #000000;
+            }
+        }
+        .glass-capsule {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #067bf9 0%, #001a3d 100%);
+        }
+        .avatar-glow {
+            box-shadow: 0 0 20px rgba(6, 123, 249, 0.4);
+        }
+        .card-border {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .nav-shadow {
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        .profile-ring {
+            box-shadow: 0 0 15px rgba(6, 123, 249, 0.5), inset 0 0 10px rgba(6, 123, 249, 0.3);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="h-screen flex flex-col p-4 pb-28">
+<main class="flex-1 flex flex-col justify-start gap-3 mt-2">
+<section class="hero-gradient rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center card-border">
+<div class="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-3xl"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-20 h-20 rounded-full border-4 border-white/10 p-1 avatar-glow mb-3">
+<img alt="User Avatar" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaDoqPj2pyT_dQe7pEwKoAVVth2RejGw8CZAHXlNYxfcLLhYozRK6T4nUli4brGFzDLjeXB0tPmOIleRJmj4MJvWzTGHeIbH_jwHCuPbqwDQPd_fnsLKTDqri5lVJHBBoyA9sR1bPTJjucMLSndctjboh2A8X9CuBDFdfGu9pfjPtNYG2kxRHz6NpTptJstsxYhzgH7V4GOUrtAdQLAiBMLV1L2WztW-tgW09q_j09GyLh2TVkmyvBgOFZZ59Cz3tvvvwjX8b97tAY"/>
+</div>
+<h2 class="text-lg font-bold tracking-tight">Excited | @nepokorimbananom</h2>
+<p class="text-[13px] font-medium text-white/60">@ExcitedSkam</p>
+</div>
+</section>
+<section class="bg-anthracite rounded-2xl p-6 card-border">
+<div class="flex flex-col items-center text-center mb-5">
+<span class="text-[10px] font-medium text-white/40 tracking-[0.2em] mb-1.5 uppercase">Ваш баланс</span>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-bold text-neon-green tracking-tight">1,234.50</span>
+<span class="text-base font-bold text-white/30 uppercase tracking-widest">usdt</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all">
+<span class="material-icons-round text-base">add_circle</span>
+                ПОПОЛНИТЬ
+            </button>
+<button class="flex-1 border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all">
+<span class="material-icons-round text-base">file_upload</span>
+                ВЫВЕСТИ
+            </button>
+</div>
+</section>
+<section class="grid grid-cols-2 gap-3">
+<div class="bg-anthracite rounded-2xl p-5 card-border flex flex-col items-center justify-center">
+<span class="text-[10px] font-medium text-white/40 tracking-widest mb-1 uppercase">Всего игр</span>
+<span class="text-2xl font-bold tracking-tight">1,452</span>
+</div>
+<div class="bg-anthracite rounded-2xl p-5 card-border flex flex-col items-center justify-center">
+<span class="text-[10px] font-medium text-white/40 tracking-widest mb-1 uppercase">Общий профит</span>
+<span class="text-2xl font-bold text-neon-green tracking-tight">+284.50</span>
+</div>
+</section>
+<section class="bg-anthracite rounded-2xl card-border divide-y divide-white/5 overflow-hidden">
+<div class="px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-icons-round text-primary/80 text-xl">volume_up</span>
+<span class="text-xs font-bold uppercase tracking-wider text-white/80">Звуковые эффекты</span>
+</div>
+<div class="w-11 h-6 bg-primary rounded-full relative flex items-center px-1">
+<div class="w-4 h-4 bg-white rounded-full ml-auto shadow-sm"></div>
+</div>
+</div>
+<div class="px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-icons-round text-primary/80 text-xl">vibration</span>
+<span class="text-xs font-bold uppercase tracking-wider text-white/80">Вибрация</span>
+</div>
+<div class="w-11 h-6 bg-white/10 rounded-full relative flex items-center px-1">
+<div class="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+</div>
+</div>
+<div class="px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-icons-round text-primary/80 text-xl">language</span>
+<span class="text-xs font-bold uppercase tracking-wider text-white/80">Язык</span>
+</div>
+<div class="flex items-center gap-1.5 text-white/40">
+<span class="text-[11px] font-bold">RU</span>
+<span class="material-icons-round text-lg">chevron_right</span>
+</div>
+</div>
+</section>
+</main>
+<nav class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] flex items-center gap-3 z-50">
+<div class="glass-capsule rounded-full p-1.5 flex flex-1 items-center justify-between nav-shadow">
+<button class="flex flex-col items-center justify-center flex-1 py-1.5 opacity-40">
+<span class="material-symbols-outlined text-[22px]">home</span>
+<span class="text-[8px] font-bold uppercase mt-1 tracking-tighter">Главная</span>
+</button>
+<button class="flex flex-col items-center justify-center flex-1 py-1.5 opacity-40">
+<span class="material-symbols-outlined text-[22px]">leaderboard</span>
+<span class="text-[8px] font-bold uppercase mt-1 tracking-tighter">Рейтинг</span>
+</button>
+<button class="flex flex-col items-center justify-center flex-1 py-1.5 opacity-40">
+<span class="material-symbols-outlined text-[22px]">group</span>
+<span class="text-[8px] font-bold uppercase mt-1 tracking-tighter">Друзья</span>
+</button>
+</div>
+<button class="w-14 h-14 bg-background-dark rounded-full p-0.5 border-2 border-primary profile-ring flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform">
+<div class="w-full h-full bg-primary rounded-full flex items-center justify-center shadow-inner overflow-hidden">
+<img alt="Nav Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaDoqPj2pyT_dQe7pEwKoAVVth2RejGw8CZAHXlNYxfcLLhYozRK6T4nUli4brGFzDLjeXB0tPmOIleRJmj4MJvWzTGHeIbH_jwHCuPbqwDQPd_fnsLKTDqri5lVJHBBoyA9sR1bPTJjucMLSndctjboh2A8X9CuBDFdfGu9pfjPtNYG2kxRHz6NpTptJstsxYhzgH7V4GOUrtAdQLAiBMLV1L2WztW-tgW09q_j09GyLh2TVkmyvBgOFZZ59Cz3tvvvwjX8b97tAY"/>
+</div>
+</button>
+</nav>
+
+</body></html>

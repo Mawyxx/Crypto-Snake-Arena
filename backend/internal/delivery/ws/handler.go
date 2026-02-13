@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/crypto-snake-arena/server/internal/domain"
 	"github.com/crypto-snake-arena/server/internal/game"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
@@ -31,9 +33,10 @@ type GameWallet interface {
 	AddGameReward(ctx context.Context, userID uint, amount float64, referenceID string) error
 }
 
-// UserResolver — получение внутреннего userID по Telegram ID.
+// UserResolver — получение/создание пользователя по Telegram ID (для новых игроков и рефералов).
 type UserResolver interface {
 	GetUserIDByTgID(ctx context.Context, tgID int64) (uint, error)
+	GetOrCreateUser(ctx context.Context, tgID int64, username, displayName, startParam string) (*domain.User, error)
 }
 
 // Conn — WebSocket соединение (ReadMessage, WriteMessage, Close, Heartbeat).
@@ -68,16 +71,16 @@ func NewHandler(wallet GameWallet, validator *auth.Validator, userResolver UserR
 	}
 }
 
-// RoomProvider возвращает комнату для подключения (свободную или новую).
+// RoomProvider возвращает комнату для подключения (с учётом ставки и очереди).
 type RoomProvider interface {
-	GetOrCreateRoom() *game.Room
+	GetOrCreateRoom(stake float64) (room *game.Room, queued bool)
+	AddToQueue(p *game.QueuedPlayer)
+	RemoveFromQueue(id string)
 }
 
-// UpgradeAndHandle обрабатывает HTTP Upgrade: Auth First, PlaceBet, затем открывает сокет.
-// roomManager выдаёт свободную комнату (или создаёт новую); каждая комната в своей горутине с своим Ticker.
+// UpgradeAndHandle: Auth → Upgrade → GetOrCreateRoom. Если очередь — PlaceBet только при получении комнаты.
 func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomManager RoomProvider) {
-	// 1. Auth First — извлекаем и валидируем ДО upgrade (не открываем сокет при ошибке)
-	initData := extractInitData(r)
+	initData := auth.ExtractInitData(r)
 	if initData == "" {
 		http.Error(w, "missing initData", http.StatusUnauthorized)
 		return
@@ -89,12 +92,18 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 		return
 	}
 
-	userID, err := h.userResolver.GetUserIDByTgID(r.Context(), userInfo.ID)
+	disp := strings.TrimSpace(userInfo.FirstName + " " + userInfo.LastName)
+	if disp == "" {
+		disp = strings.TrimPrefix(userInfo.Username, "@")
+	}
+	user, err := h.userResolver.GetOrCreateUser(r.Context(), userInfo.ID,
+		strings.TrimPrefix(userInfo.Username, "@"), disp, userInfo.StartParam)
 	if err != nil {
-		log.Printf("[WS] user not found: tgID=%d", userInfo.ID)
-		http.Error(w, "user not found", http.StatusUnauthorized)
+		log.Printf("[WS] GetOrCreateUser error: tgID=%d err=%v", userInfo.ID, err)
+		http.Error(w, "failed to get user", http.StatusInternalServerError)
 		return
 	}
+	userID := user.ID
 
 	stake, err := parseStake(r.URL.Query().Get("stake"))
 	if err != nil || stake < minStake {
@@ -102,29 +111,9 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 		return
 	}
 
-	// 2. Поиск свободной комнаты (PlayerCount < 20) или создание новой
-	room := roomManager.GetOrCreateRoom()
-	if !room.CanJoin() {
-		http.Error(w, "room is full", http.StatusTooManyRequests)
-		return
-	}
-
-	// 3. Place Bet — до upgrade, при ошибке не открываем сокет
-	if err := h.wallet.PlaceBet(r.Context(), userID, stake); err != nil {
-		if err == payment.ErrInsufficientFunds {
-			log.Printf("[WS] insufficient funds: user=%d stake=%.2f", userID, stake)
-			http.Error(w, "insufficient funds", http.StatusPaymentRequired)
-			return
-		}
-		log.Printf("[WS] PlaceBet error: %v", err)
-		http.Error(w, "failed to place bet", http.StatusInternalServerError)
-		return
-	}
-
-	// 4. Upgrade — сокет открывается только после успешной авторизации и PlaceBet
+	// Upgrade до PlaceBet — ставка списывается только при входе в комнату
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		_ = h.wallet.AddGameReward(r.Context(), userID, stake, "") // возврат при ошибке upgrade
 		log.Printf("[WS] upgrade failed: %v", err)
 		return
 	}
@@ -134,7 +123,79 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 	wsConn := &wsConnAdapter{conn: conn}
 	stopHeartbeat := setupHeartbeat(wsConn)
 	defer stopHeartbeat()
-	h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
+
+	room, queued := roomManager.GetOrCreateRoom(stake)
+	if room != nil {
+		if !room.CanJoin() {
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"room is full"}`))
+			return
+		}
+		if err := h.wallet.PlaceBet(r.Context(), userID, stake); err != nil {
+			if err == payment.ErrInsufficientFunds {
+				log.Printf("[WS] insufficient funds: user=%d stake=%.2f", userID, stake)
+				_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
+				return
+			}
+			log.Printf("[WS] PlaceBet error: %v", err)
+			return
+		}
+		h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
+		return
+	}
+
+	if !queued {
+		return
+	}
+
+	// Очередь: AddToQueue, ждём Ready или Done
+	p := &game.QueuedPlayer{
+		UserID: userID,
+		TgID:   userInfo.ID,
+		Stake:  stake,
+		Ready:  make(chan *game.Room, 1),
+		Done:   make(chan struct{}),
+	}
+	roomManager.AddToQueue(p)
+
+	stopTicker := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopTicker:
+				return
+			case <-p.Done:
+				return
+			case <-ticker.C:
+				msg, _ := json.Marshal(map[string]interface{}{"type": "queue", "position": 1})
+				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+					roomManager.RemoveFromQueue(p.ID)
+					return
+				}
+			}
+		}
+	}()
+
+	select {
+	case room := <-p.Ready:
+		close(stopTicker)
+		if room == nil || !room.CanJoin() {
+			return
+		}
+		if err := h.wallet.PlaceBet(r.Context(), userID, stake); err != nil {
+			if err == payment.ErrInsufficientFunds {
+				_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
+				return
+			}
+			log.Printf("[WS] PlaceBet error (from queue): %v", err)
+			return
+		}
+		h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
+	case <-p.Done:
+		close(stopTicker)
+		return
+	}
 }
 
 // HandleConnection обрабатывает уже открытое WebSocket соединение.
@@ -312,13 +373,6 @@ func checkOrigin(r *http.Request) bool {
 		strings.HasPrefix(origin, "http://127.0.0.1") ||
 		strings.HasPrefix(origin, "https://127.0.0.1") ||
 		strings.HasPrefix(origin, "https://web.telegram.org")
-}
-
-func extractInitData(r *http.Request) string {
-	if s := strings.TrimPrefix(r.Header.Get("Authorization"), "tma "); s != r.Header.Get("Authorization") {
-		return strings.TrimSpace(s)
-	}
-	return r.URL.Query().Get("initData")
 }
 
 func parseStake(s string) (float64, error) {

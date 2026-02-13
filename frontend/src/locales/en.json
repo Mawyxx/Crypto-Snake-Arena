@@ -1,0 +1,107 @@
+{
+  "nav": {
+    "home": "Home",
+    "leaderboard": "Leaderboard",
+    "frens": "Friends",
+    "profile": "Profile"
+  },
+  "common": {
+    "deposit": "Deposit coming soon",
+    "withdraw": "Withdraw coming soon",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "loading": "Loading...",
+    "play": "Play",
+    "showAll": "SHOW ALL",
+    "toMainMenu": "To main menu",
+    "reload": "Reload",
+    "loadError": "Load error"
+  },
+  "home": {
+    "globalRank": "Global Rank #{{rank}}",
+    "online": "{{count}} Online",
+    "selectBet": "SELECT STAKE",
+    "maxBet": "Max 100 USDT",
+    "playButton": "PLAY",
+    "myGames": "MY GAMES",
+    "totalProfit": "TOTAL PROFIT",
+    "recentGames": "RECENT GAMES",
+    "playFirst": "Play your first game to appear here",
+    "enterArena": "ENTER",
+    "arena": "ARENA",
+    "theUltimateDuel": "THE ULTIMATE DUEL",
+    "win": "WIN",
+    "lose": "LOSE"
+  },
+  "profile": {
+    "balance": "Your balance",
+    "deposit": "DEPOSIT",
+    "withdraw": "WITHDRAW",
+    "gamesPlayed": "Games played",
+    "totalProfit": "Total profit",
+    "soundEffects": "Sound effects",
+    "vibration": "Vibration",
+    "language": "Language",
+    "rank": "Rank #{{rank}}"
+  },
+  "frens": {
+    "earn30": "Earn",
+    "fromCommissions": "From every fee your friends generate in the game",
+    "shareLinkHint": "Share your link to earn",
+    "inviteFriends": "Invite friends",
+    "totalFriends": "Total friends",
+    "earned": "Earned",
+    "yourNetwork": "Your network",
+    "invitedHere": "Invited friends will appear here",
+    "joined": "Joined {{time}}",
+    "shareText": "Play Crypto Snake Arena! Invite friends — earn 30% of our profit"
+  },
+  "leaderboard": {
+    "yourRank": "YOUR RANK",
+    "activePlayers": "ACTIVE PLAYERS",
+    "in7Days": "IN 7 DAYS",
+    "totalProfit": "TOTAL PROFIT",
+    "totalWins": "TOTAL WINS",
+    "bestProfit": "BEST PROFIT",
+    "topPlayers": "TOP PLAYERS",
+    "playFirstRank": "Play your first game to appear on the leaderboard",
+    "shareText": "Try to beat my rank in Crypto Snake Arena!"
+  },
+  "game": {
+    "round": "Round",
+    "battleMode": "Battle mode",
+    "stake": "Stake",
+    "score": "Score",
+    "cashOut": "Cash out",
+    "exit": "Exit",
+    "hold4s": "hold 4s",
+    "connecting": "Connecting...",
+    "reconnecting": "Reconnecting...",
+    "noConnection": "No connection",
+    "checkInternet": "Check your internet and try again",
+    "queueWaiting": "Waiting...",
+    "queueHint": "You are in queue. Joining game soon."
+  },
+  "gameOver": {
+    "title": "GG, ELIMINATED!",
+    "coinsCollected": "Coins collected",
+    "lostStake": "Lost stake",
+    "tryAgain": "Try again",
+    "shareRecord": "Share record",
+    "shareText": "I scored {{score}} in Crypto Snake! Try to beat my record!"
+  },
+  "victory": {
+    "title": "SUCCESSFUL CASH OUT!",
+    "netProfit": "Net profit",
+    "finalBalance": "Final balance",
+    "collectAndExit": "Collect and exit"
+  },
+  "time": {
+    "justNow": "just now",
+    "minAgo": "{{count}} min ago",
+    "hourAgo": "1 hour ago",
+    "hoursAgo": "{{count}} hrs ago",
+    "yesterday": "yesterday",
+    "daysAgo": "{{count}} days ago"
+  }
+}

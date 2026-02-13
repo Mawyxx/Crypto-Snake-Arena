@@ -2,10 +2,20 @@ package auth
 
 import (
 	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
+
+// ExtractInitData извлекает initData из Authorization: "tma <initData>" или query ?initData=.
+func ExtractInitData(r *http.Request) string {
+	if s := strings.TrimPrefix(r.Header.Get("Authorization"), "tma "); s != r.Header.Get("Authorization") {
+		return strings.TrimSpace(s)
+	}
+	return r.URL.Query().Get("initData")
+}
 
 // UserInfo — данные игрока из initData (после валидации).
 type UserInfo struct {

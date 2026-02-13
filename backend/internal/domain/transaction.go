@@ -8,13 +8,14 @@ import (
 
 // Transaction — запись о транзакции (Postgres).
 type Transaction struct {
-	ID         string    `gorm:"primaryKey;type:uuid"`
-	UserID     uint      `gorm:"not null"`
-	Amount     float64   `gorm:"type:decimal(18,8);not null"`
-	Type       string    `gorm:"size:20;not null"` // deposit, withdraw, game_entry, game_reward
-	Status     string    `gorm:"size:20;not null"`
-	ExternalID string    `gorm:"size:255;index"` // Crypto Bot ID. UNIQUE — migrations/001 (partial, для deposit)
-	CreatedAt  time.Time `gorm:"autoCreateTime"`
+	ID           string    `gorm:"primaryKey;type:uuid"`
+	UserID       uint      `gorm:"not null"`
+	Amount       float64   `gorm:"type:decimal(18,8);not null"`
+	Type         string    `gorm:"size:20;not null"` // deposit, withdraw, game_entry, game_reward
+	Status       string    `gorm:"size:20;not null"`
+	ExternalID   string    `gorm:"size:255;index"`   // Crypto Bot ID. UNIQUE — migrations/001 (partial, для deposit)
+	BalanceAfter *float64  `gorm:"type:decimal(18,8)"` // balance after tx, for audit
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
 }
 
 // TableName для GORM.

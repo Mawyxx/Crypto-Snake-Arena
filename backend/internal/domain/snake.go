@@ -4,9 +4,10 @@ import "math"
 
 // Snake — модель змейки. Чистая логика без зависимостей.
 type Snake struct {
-	ID       uint64
-	UserID   int64
-	HeadX    float64
+	ID         uint64
+	UserID     int64
+	JoinedTick uint64 // tick when snake joined, for duration calculation
+	HeadX      float64
 	HeadY    float64
 	Angle    float64
 	Score    float64   // Собранные монеты
@@ -26,19 +27,24 @@ const (
 	InitialLength = 3
 )
 
-// NewSnake создаёт змейку с начальной длиной.
+// NewSnake создаёт змейку с начальной длиной в центре арены (500, 500).
 func NewSnake(id uint64) *Snake {
+	return NewSnakeAt(id, 500, 500)
+}
+
+// NewSnakeAt создаёт змейку с начальной длиной в заданной позиции.
+func NewSnakeAt(id uint64, headX, headY float64) *Snake {
 	s := &Snake{
 		ID:         id,
-		HeadX:      500, // TODO: спавн из конфига
-		HeadY:      500,
+		HeadX:      headX,
+		HeadY:      headY,
 		Angle:      0,
 		Score:      0,
 		EntryFee:   0,
 		speed:      BaseSpeed,
 		segmentLen: SegmentLen,
 	}
-	// Начальный хвост (3 сегмента назад)
+	// Начальный хвост (3 сегмента назад по X)
 	for i := 0; i < InitialLength; i++ {
 		s.Tail = append(s.Tail, s.HeadX-float64(i+1)*SegmentLen, s.HeadY)
 	}

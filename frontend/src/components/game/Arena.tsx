@@ -1,13 +1,15 @@
-import { Stage, Container, useTick, useApp, TilingSprite, Text } from '@pixi/react'
+import { Stage, Container, useTick, useApp, TilingSprite, Text, Graphics } from '@pixi/react'
 import { TextStyle } from 'pixi.js'
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useGameEngine, type InterpolatedWorldSnapshot } from '@/hooks/useGameEngine'
 import { useInputHandler } from '@/hooks/useInputHandler'
-import { useTelegram } from '@/hooks/useTelegram'
+import { useTelegram } from '@/features/auth'
 import { SnakeView } from './SnakeView'
 import { CoinView } from './CoinView'
 
 const WORLD_SIZE = 1000
+const ARENA_RADIUS = 500 // круговая арена, смерть за границей
 // Slither.io: показываем больше арены (зум камеры ~0.8 = видно больше поля)
 const CAMERA_ZOOM = 0.8
 
@@ -25,6 +27,7 @@ interface ArenaProps {
   onConnectionFailed?: () => void
   cashOutRequested?: boolean
   blockInputRef?: React.RefObject<boolean>
+  onScoreUpdate?: (score: number) => void
 }
 
 /**
@@ -38,7 +41,9 @@ export const Arena = ({
   onConnectionFailed,
   cashOutRequested = false,
   blockInputRef,
+  onScoreUpdate,
 }: ArenaProps) => {
+  const { t } = useTranslation()
   const { initData } = useTelegram()
   const containerRef = useRef<HTMLDivElement>(null)
   const snakeHeadRef = useRef<{ x: number; y: number } | null>(null)
@@ -89,6 +94,22 @@ export const Arena = ({
   const sendInputStable = useCallback(sendInput, [])
   useInputHandler(sendInputStable, { containerRef, blockInputRef })
 
+  const lastScoreRef = useRef(-1)
+  useEffect(() => {
+    if (!onScoreUpdate) return
+    let id = 0
+    const tick = () => {
+      const s = getLocalSnakeScore()
+      if (s !== lastScoreRef.current) {
+        lastScoreRef.current = s
+        onScoreUpdate(s)
+      }
+      id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [getLocalSnakeScore, onScoreUpdate])
+
   // Slither.io body background: #161c22
   const bgColor = 0x161c22
 
@@ -107,20 +128,26 @@ export const Arena = ({
       {(status === 'reconnecting' || status === 'connecting') && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <span className="text-white font-medium">
-            {status === 'reconnecting' ? 'Переподключение...' : 'Подключение...'}
+            {status === 'reconnecting' ? t('game.reconnecting') : t('game.connecting')}
           </span>
+        </div>
+      )}
+      {status === 'queued' && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-sm">
+          <span className="text-white font-medium">{t('game.queueWaiting')}</span>
+          <span className="text-white/70 text-sm">{t('game.queueHint')}</span>
         </div>
       )}
       {status === 'failed' && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/70 backdrop-blur-sm p-4">
-          <span className="text-white font-medium text-center">Нет соединения</span>
-          <span className="text-white/70 text-sm text-center">Проверь интернет и попробуй снова</span>
+          <span className="text-white font-medium text-center">{t('game.noConnection')}</span>
+          <span className="text-white/70 text-sm text-center">{t('game.checkInternet')}</span>
           <button
             type="button"
             onClick={onConnectionFailed}
-            className="px-6 py-3 rounded-xl bg-white/20 text-white font-medium text-sm"
+            className="px-6 py-3 rounded-2xl bg-primary text-white font-semibold text-sm active:scale-95 transition-transform hover:brightness-110"
           >
-            В главное меню
+            {t('common.toMainMenu')}
           </button>
         </div>
       )}
@@ -254,6 +281,18 @@ function ArenaBackground() {
   )
 }
 
+/** Круговая граница арены — смерть при пересечении */
+function ArenaBoundary() {
+  const draw = React.useCallback((g: import('pixi.js').Graphics) => {
+    g.clear()
+    const cx = WORLD_SIZE / 2
+    const cy = WORLD_SIZE / 2
+    g.lineStyle(3, 0xffffff, 0.6)
+    g.drawCircle(cx, cy, ARENA_RADIUS)
+  }, [])
+  return <Graphics draw={draw} />
+}
+
 function GameContent({
   state,
   localSnakeId,
@@ -271,6 +310,7 @@ function GameContent({
   return (
     <Container position={[viewportX, viewportY]} scale={viewportScale}>
       <ArenaBackground />
+      <ArenaBoundary />
       {state.snakes?.map((snake) => (
         <SnakeView
           key={String(snake.id)}
@@ -278,8 +318,8 @@ function GameContent({
           isLocalPlayer={localSnakeId != null && Number(snake.id) === Number(localSnakeId)}
         />
       ))}
-      {state.coins?.map((coin) => (
-        <CoinView key={coin.id ?? ''} coin={coin} />
+      {state.coins?.map((coin, i) => (
+        <CoinView key={coin.id != null && coin.id !== '' ? String(coin.id) : `coin-${i}`} coin={coin} />
       ))}
       {/* Slither.io: счёт под змейкой — белый с тенью для читаемости */}
       {localSnake?.head && (
