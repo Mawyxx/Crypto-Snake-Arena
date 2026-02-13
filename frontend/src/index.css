@@ -72,7 +72,6 @@ body::-webkit-scrollbar {
   }
   .hero-banner {
     background: var(--gradient-hero);
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-card);
   }
   .btn-secondary {
@@ -173,7 +172,6 @@ body::-webkit-scrollbar {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-main);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8);
 }
 
 @media (min-width: 421px) {
@@ -181,7 +179,7 @@ body::-webkit-scrollbar {
     min-height: 100dvh;
     height: min(100dvh, 900px);
     border-radius: 28px;
-    box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255,255,255,0.04);
+    box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.9);
   }
 }
 

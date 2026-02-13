@@ -57,7 +57,7 @@ export const ProfileView = React.memo(function ProfileView() {
 
   return (
     <main className="flex-1 flex flex-col justify-start gap-3 pt-4 px-5 pb-bottom-bar">
-      <section className="hero-banner rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center card-border">
+      <section className="hero-banner rounded-2xl p-6 relative overflow-hidden flex flex-col items-center justify-center">
         <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-3xl" />
         <div className="relative z-10 flex flex-col items-center text-center">
           <div className="w-20 h-20 rounded-full border-4 border-white/10 p-1 avatar-glow mb-3 overflow-hidden">
@@ -86,7 +86,7 @@ export const ProfileView = React.memo(function ProfileView() {
           <button
             type="button"
             onClick={handleDeposit}
-            className="flex-1 border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-white/5"
+            className="flex-1 bg-[var(--bg-menu-card)] border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-[var(--bg-elevated)]"
           >
             <IconRound name="add_circle" size={16} />
             {t('profile.deposit')}
@@ -94,7 +94,7 @@ export const ProfileView = React.memo(function ProfileView() {
           <button
             type="button"
             onClick={handleWithdraw}
-            className="flex-1 bg-[var(--bg-elevated)] border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-white/5"
+            className="flex-1 bg-[var(--bg-menu-card)] border border-white/10 text-white py-3.5 rounded-xl font-bold text-[11px] tracking-widest flex items-center justify-center gap-2 active:scale-[0.97] transition-all hover:bg-[var(--bg-elevated)]"
           >
             <IconRound name="file_upload" size={16} />
             {t('profile.withdraw')}
