@@ -105,8 +105,9 @@ body::-webkit-scrollbar {
     backdrop-filter: blur(24px);
   }
   .user-row-highlight {
-    background: rgba(0, 122, 255, 0.12);
-    border: 1px solid rgba(0, 122, 255, 0.3);
+    background: rgba(0, 122, 255, 0.15);
+    border: 1px solid rgba(0, 122, 255, 0.4);
+    box-shadow: 0 0 20px rgba(0, 122, 255, 0.15);
   }
   .banner-pattern {
     background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0);

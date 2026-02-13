@@ -98,41 +98,42 @@ export const HomeView = React.memo(function HomeView() {
               {username || ''}
             </span>
             <span className="text-[10px] font-bold text-secondary uppercase mt-1 tracking-widest leading-none">
-              {t('home.globalRank', { rank: rank || 0 })}
+              {t('home.globalRank', { rank: gamesPlayed === 0 || rank === 0 ? '???' : rank })}
             </span>
           </div>
         </div>
         <button
           type="button"
           onClick={handleAddFunds}
-          className="bg-[var(--bg-menu-card)] border border-white/15 px-4 py-2 rounded-2xl flex items-center gap-2 active:scale-95 transition-transform shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--bg-menu-card)] border border-white/12 active:scale-95 transition-transform"
         >
-          <span className="text-[14px] font-bold tracking-tight text-white tabular-nums">
+          <span className="text-[15px] font-bold tracking-tight text-white tabular-nums">
             {(Number(balance) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span className="text-[10px] font-bold text-primary">USDT</span>
+          <span className="text-[10px] font-bold text-primary uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/20">USDT</span>
         </button>
       </header>
 
       <main className="flex-grow overflow-y-auto custom-scrollbar px-5 py-6 space-y-5">
-        <div className="hero-banner p-6 relative overflow-hidden flex flex-col justify-between h-[180px] min-h-[180px]">
-          <div className="absolute -right-5 -top-5 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
+        <div className="hero-banner p-6 relative overflow-hidden flex flex-col justify-between h-[165px] min-h-[165px] rounded-[28px] shadow-[0_12px_40px_rgba(0,119,255,0.35)]">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-transparent" />
+          <div className="absolute -right-8 -top-8 w-36 h-36 bg-white/15 rounded-full blur-2xl" />
           <div className="flex justify-between items-start relative z-10">
-            <div className="bg-[var(--bg-menu-card)] backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <div className="px-3 py-1.5 rounded-full flex items-center gap-2 bg-white/15 backdrop-blur-sm">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
               <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('home.online', { count: onlineCount ?? 0 })}</span>
             </div>
-            <Icon name="info" size={20} className="text-white" />
+            <Icon name="info" size={20} className="text-white/80" />
           </div>
           <div className="flex justify-between items-end relative z-10">
-            <div className="flex flex-col">
-              <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-[0.9]">{t('home.enterArena')}<br/>{t('home.arena')}</h2>
-              <p className="text-secondary text-[11px] font-bold uppercase tracking-[0.2em] mt-3">{t('home.theUltimateDuel')}</p>
+            <div>
+              <h2 className="text-[32px] font-black text-white uppercase tracking-tighter leading-[1]">{t('home.enterArena')}<br/>{t('home.arena')}</h2>
+              <p className="text-white/70 text-[11px] font-bold uppercase tracking-[0.2em] mt-2">{t('home.theUltimateDuel')}</p>
             </div>
           </div>
         </div>
 
-        <div className="premium-card p-6 space-y-6">
+        <div className="premium-card p-6 space-y-6 shadow-sm">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.selectBet')}</span>
@@ -176,11 +177,11 @@ export const HomeView = React.memo(function HomeView() {
         <div className="grid grid-cols-2 gap-4">
           <div className="premium-card p-5">
             <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.myGames')}</span>
-            <div className="text-2xl font-bold mt-1 tracking-tight text-white tabular-nums">{gamesPlayed}</div>
+            <div className="text-2xl font-bold mt-2 tracking-tight text-white tabular-nums">{gamesPlayed}</div>
           </div>
           <div className="premium-card p-5">
             <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.totalProfit')}</span>
-            <div className={`text-2xl font-bold mt-1 tracking-tight tabular-nums ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
+            <div className={`text-2xl font-bold mt-2 tracking-tight tabular-nums ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
               {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>

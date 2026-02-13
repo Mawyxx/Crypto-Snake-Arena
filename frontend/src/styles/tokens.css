@@ -8,8 +8,8 @@
   --app-max-width: 420px;
   --bottom-bar-height: 80px;
 
-  /* Backgrounds — как в референсах interface */
-  --bg-main: #000000;
+  /* Backgrounds — как в референсах (глубокий тёмно-серый) */
+  --bg-main: #1a1a1a;
   --bg-main-alt: var(--bg-main);
 
   /* Buttons */

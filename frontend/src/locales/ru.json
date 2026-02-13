@@ -66,7 +66,9 @@
     "bestProfit": "ЛУЧШИЙ ПРОФИТ",
     "topPlayers": "ТОП ИГРОКОВ",
     "playFirstRank": "Сыграй первую игру — появишься в рейтинге",
-    "shareText": "Попробуй побить мой рейтинг в Crypto Snake Arena!"
+    "shareText": "Попробуй побить мой рейтинг в Crypto Snake Arena!",
+    "you": "Вы",
+    "player": "Игрок"
   },
   "game": {
     "round": "Раунд",

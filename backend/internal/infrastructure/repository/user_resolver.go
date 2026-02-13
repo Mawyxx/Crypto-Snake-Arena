@@ -196,10 +196,16 @@ type LeaderboardEntry struct {
 }
 
 // GetUserRank возвращает позицию пользователя по total_profit (1 = лучший).
-// Использует user.Rank если > 0 (кэш), иначе вычисляет на лету.
+// 0 = не сыграл ни разу (unranked). Использует user.Rank если > 0 (кэш), иначе вычисляет на лету.
+// Tiebreaker при одинаковом profit: user_id ASC (меньший id выше).
 func (r *UserResolverDB) GetUserRank(ctx context.Context, userID uint, cachedRank int) (int, error) {
 	if cachedRank > 0 {
 		return cachedRank, nil
+	}
+	var gamesCount int64
+	r.db.WithContext(ctx).Model(&domain.GameResult{}).Where("user_id = ?", userID).Count(&gamesCount)
+	if gamesCount == 0 {
+		return 0, nil
 	}
 	var myTotal float64
 	r.db.WithContext(ctx).Model(&domain.GameResult{}).
@@ -208,10 +214,10 @@ func (r *UserResolverDB) GetUserRank(ctx context.Context, userID uint, cachedRan
 	var betterCount int64
 	r.db.WithContext(ctx).Raw(`
 		SELECT COUNT(*) FROM (
-			SELECT user_id FROM game_results GROUP BY user_id
-			HAVING SUM(profit) > ?
+			SELECT user_id, SUM(profit) as total FROM game_results GROUP BY user_id
 		) t
-	`, myTotal).Scan(&betterCount)
+		WHERE t.total > ? OR (t.total = ? AND t.user_id < ?)
+	`, myTotal, myTotal, userID).Scan(&betterCount)
 	return int(betterCount) + 1, nil
 }
 
@@ -246,7 +252,7 @@ func (r *UserResolverDB) GetLeaderboard(ctx context.Context, limit int) ([]Leade
 		Select("game_results.user_id, COALESCE(NULLIF(users.display_name, ''), users.username, 'Игрок') as display_name, COALESCE(users.photo_url, '') as photo_url, SUM(game_results.profit) as total_profit").
 		Joins("JOIN users ON users.id = game_results.user_id").
 		Group("game_results.user_id, users.display_name, users.username, users.photo_url").
-		Order("total_profit DESC").
+		Order("total_profit DESC, game_results.user_id ASC").
 		Limit(limit).
 		Scan(&rows).Error
 	if err != nil {

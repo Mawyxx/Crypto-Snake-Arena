@@ -110,13 +110,14 @@ func main() {
 		defer ticker.Stop()
 		updateRanks := func() {
 			if err := db.Exec(`
-				WITH ranked AS (
-					SELECT user_id, ROW_NUMBER() OVER (ORDER BY total DESC)::int as r
-					FROM (SELECT user_id, SUM(profit) as total FROM game_results GROUP BY user_id) t
-				)
+				WITH t AS (SELECT user_id, SUM(profit) as total FROM game_results GROUP BY user_id),
+				ranked AS (SELECT user_id, ROW_NUMBER() OVER (ORDER BY total DESC, user_id ASC)::int as r FROM t)
 				UPDATE users u SET rank = ranked.r FROM ranked WHERE u.id = ranked.user_id
 			`).Error; err != nil {
 				log.Error("rank-updater failed", zap.Error(err))
+			}
+			if err := db.Exec(`UPDATE users u SET rank = 0 WHERE NOT EXISTS (SELECT 1 FROM game_results g WHERE g.user_id = u.id)`).Error; err != nil {
+				log.Error("rank-updater unranked failed", zap.Error(err))
 			}
 		}
 		updateRanks() // первый раз сразу после старта

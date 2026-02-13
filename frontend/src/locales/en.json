@@ -66,7 +66,9 @@
     "bestProfit": "BEST PROFIT",
     "topPlayers": "TOP PLAYERS",
     "playFirstRank": "Play your first game to appear on the leaderboard",
-    "shareText": "Try to beat my rank in Crypto Snake Arena!"
+    "shareText": "Try to beat my rank in Crypto Snake Arena!",
+    "you": "You",
+    "player": "Player"
   },
   "game": {
     "round": "Round",
