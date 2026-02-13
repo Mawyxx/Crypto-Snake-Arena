@@ -24,6 +24,14 @@ jobs:
           cd backend
           go build -o addbalance ./cmd/addbalance
 
+      - name: Prepare server directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: mkdir -p /opt/crypto-snake-arena/incoming/backend
+
       - name: Copy addbalance to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -31,7 +39,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: 'backend/addbalance'
-          target: '/opt/crypto-snake-arena/incoming/backend'
+          target: '/opt/crypto-snake-arena/incoming/backend/'
 
       - name: Run addbalance on server
         uses: appleboy/ssh-action@v1.0.3
@@ -40,8 +48,13 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cp -f /opt/crypto-snake-arena/incoming/backend/addbalance /opt/crypto-snake-arena/backend/addbalance
             chmod +x /opt/crypto-snake-arena/backend/addbalance
             cd /opt/crypto-snake-arena/backend
-            set -a && [ -f .env ] && source .env && set +a
+            if [ -f .env ]; then
+              set -a
+              source .env
+              set +a
+            fi
             ./addbalance
