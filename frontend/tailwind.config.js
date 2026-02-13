@@ -9,6 +9,7 @@ export default {
         error: 'var(--color-error)',
         anthracite: 'var(--anthracite)',
         'neon-blue': '#00F0FF',
+        card: 'var(--bg-card)',
         bg: {
           main: 'var(--bg-main)',
           surface: 'var(--anthracite)',
