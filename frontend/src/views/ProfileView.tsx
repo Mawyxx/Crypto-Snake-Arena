@@ -68,8 +68,8 @@ export const ProfileView = React.memo(function ProfileView() {
     <main className="flex-1 flex flex-col justify-start gap-3 pt-4 px-5 pb-bottom-bar">
       <section className="bg-gradient-to-br from-[#007AFF] via-[#0047a0] to-[#001a3d] rounded-2xl p-6 relative flex flex-col items-center justify-center overflow-hidden">
         <div className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-1">
-          <div className="w-24 h-24 rounded-full border-2 border-white/20 avatar-glow mb-3 overflow-hidden shrink-0">
-            <UserAvatar src={photoUrl} name={username} size={92} className="rounded-full" />
+          <div className="w-24 h-24 rounded-full border-2 border-white/20 avatar-glow mb-3 overflow-hidden shrink-0 aspect-square">
+            <UserAvatar src={photoUrl} name={username} size={92} objectPosition="55% 55%" className="rounded-full" />
           </div>
           <h2 className="text-base font-bold tracking-tight text-white break-words text-center w-full leading-snug">
             {bannerLine1 || t('leaderboard.player')}
