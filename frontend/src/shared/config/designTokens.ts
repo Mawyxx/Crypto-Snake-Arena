@@ -3,6 +3,8 @@
  * CSS uses tokens.css; this file keeps the same values for programmatic use.
  */
 export const designTokens = {
+  /** Цвет карточек главного меню — единый источник */
+  bgMenuCard: '#1c1c1f',
   bgMain: '#000000',
   bgMainAlt: '#000000',
   textPrimary: '#ffffff',

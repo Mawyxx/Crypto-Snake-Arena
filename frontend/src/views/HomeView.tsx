@@ -88,7 +88,7 @@ export const HomeView = React.memo(function HomeView() {
 
   return (
     <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)]">
-      <header className="ios-blur sticky top-0 z-50 flex justify-between items-center px-6 pt-12 pb-4 w-full border-b border-white/5 bg-[var(--bg-main)]/80">
+      <header className="ios-blur sticky top-0 z-50 flex justify-between items-center px-6 pt-4 pb-4 w-full border-b border-white/5 bg-[var(--bg-main)]/80">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
             <UserAvatar src={photoUrl} name={username} size={40} className="rounded-none" />
