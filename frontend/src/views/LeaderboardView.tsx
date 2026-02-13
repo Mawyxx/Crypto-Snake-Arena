@@ -113,7 +113,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
           <div className="bg-[#111111] p-5 rounded-[28px] border border-white/5 space-y-1">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.bestProfit')}</p>
             <p className="text-2xl font-bold text-[#22C55E] tracking-tight">
-              {totalProfit > 0 ? totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '0.00'}
+              {totalProfit > 0 ? `+${totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}` : '0.00'}
             </p>
           </div>
         </div>

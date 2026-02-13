@@ -111,7 +111,7 @@ export const HomeView = React.memo(function HomeView() {
           <span className="text-[14px] font-bold tracking-tight text-white">
             {(Number(balance) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span className="text-[10px] font-bold text-primary">USDT</span>
+          <span className="text-[10px] font-bold text-[#007AFF]">USDT</span>
         </button>
       </header>
 
@@ -151,7 +151,7 @@ export const HomeView = React.memo(function HomeView() {
                 <span className="text-xl font-bold text-white">
                   {stakeUsdt.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-[10px] font-bold text-white/30 uppercase">USDT</span>
+                <span className="text-[10px] font-bold text-[#007AFF] uppercase">USDT</span>
               </div>
               <button
                 type="button"
