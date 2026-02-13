@@ -4,7 +4,7 @@
  */
 export const designTokens = {
   /** Цвет карточек главного меню — единый источник */
-  bgMenuCard: '#1c1c1f',
+  bgMenuCard: '#161618',
   bgMain: '#000000',
   bgMainAlt: '#000000',
   textPrimary: '#ffffff',

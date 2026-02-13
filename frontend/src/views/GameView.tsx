@@ -63,7 +63,7 @@ function HoldToExitOverlay({
     >
       <button
         type="button"
-        className="relative w-[60px] h-[60px] rounded-[20px] bg-anthracite border border-white/10 flex flex-col items-center justify-center active:bg-[var(--bg-surface-alt)] transition-colors overflow-hidden"
+        className="relative w-[60px] h-[60px] rounded-[20px] bg-[var(--bg-menu-card)] border border-white/10 flex flex-col items-center justify-center active:bg-[var(--bg-surface-alt)] transition-colors overflow-hidden"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
@@ -202,7 +202,7 @@ export const GameView = React.memo(function GameView() {
             />
             {/* Top overlay with stake summary */}
             <div className="absolute top-3 left-3 right-3 z-20 pointer-events-none">
-              <div className="flex items-center justify-between gap-3 pointer-events-auto rounded-[28px] bg-[var(--bg-card)]/95 px-4 py-3">
+              <div className="flex items-center justify-between gap-3 pointer-events-auto rounded-[28px] bg-[var(--bg-menu-card)]/95 px-4 py-3">
                 <div className="flex flex-col">
                   <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">
                     {t('game.round')}
@@ -242,7 +242,7 @@ export const GameView = React.memo(function GameView() {
               <button
                 type="button"
                 onClick={handleCashOut}
-                className="px-3 py-1.5 rounded-[20px] bg-[var(--bg-card)] border border-white/10 text-[11px] font-semibold text-white active:scale-95 transition-transform"
+                className="px-3 py-1.5 rounded-[20px] bg-[var(--bg-menu-card)] border border-white/10 text-[11px] font-semibold text-white active:scale-95 transition-transform"
               >
                 {t('game.cashOut')}
               </button>

@@ -75,7 +75,7 @@ export function AdminPage() {
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-[var(--anthracite)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 h-[84px] flex flex-col justify-between">
+          <div className="bg-[var(--bg-menu-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 h-[84px] flex flex-col justify-between">
             <span className="text-[9px] text-white/40 font-bold tracking-widest uppercase">
               {t('admin.totalPlayers')}
             </span>
@@ -83,7 +83,7 @@ export function AdminPage() {
               {loading ? '—' : (data?.total_players_with_revenue ?? 0).toLocaleString()}
             </span>
           </div>
-          <div className="bg-[var(--anthracite)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 h-[84px] flex flex-col justify-between">
+          <div className="bg-[var(--bg-menu-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 h-[84px] flex flex-col justify-between">
             <span className="text-[9px] text-white/40 font-bold tracking-widest uppercase">
               {t('admin.totalGames')}
             </span>
@@ -91,7 +91,7 @@ export function AdminPage() {
               {loading ? '—' : (data?.total_games ?? 0).toLocaleString()}
             </span>
           </div>
-          <div className="bg-[var(--anthracite)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 h-[84px] flex flex-col justify-between">
+          <div className="bg-[var(--bg-menu-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 h-[84px] flex flex-col justify-between">
             <span className="text-[9px] text-white/40 font-bold tracking-widest uppercase">
               {t('admin.avgProfitPerDeath')}
             </span>
@@ -112,14 +112,14 @@ export function AdminPage() {
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
                   period === p
                     ? 'bg-[var(--primary)] text-white'
-                    : 'bg-[var(--anthracite)] text-white/60 hover:text-white border border-[var(--border-subtle)]'
+                    : 'bg-[var(--bg-menu-card)] text-white/60 hover:text-white border border-[var(--border-subtle)]'
                 }`}
               >
                 {p === 'day' ? '24h' : p === 'week' ? '7d' : '30d'}
               </button>
             ))}
           </div>
-          <div className="bg-[var(--anthracite)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-5">
+          <div className="bg-[var(--bg-menu-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-5">
             <h3 className="text-[9px] text-white/40 font-bold tracking-widest uppercase mb-4">
               {t('admin.periodStats')}
             </h3>

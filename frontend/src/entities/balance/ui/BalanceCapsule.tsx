@@ -5,7 +5,7 @@ interface BalanceCapsuleProps {
 
 export function BalanceCapsule({ balance, onAdd }: BalanceCapsuleProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[var(--bg-card)] border border-white/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.06)]">
+    <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[var(--bg-menu-card)] border border-white/[0.08] shadow-[0_0_0_1px_rgba(34,197,94,0.06)]">
       <span className="font-bold text-white tabular-nums text-sm">
         {balance.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
       </span>
