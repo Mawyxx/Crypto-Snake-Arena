@@ -73,7 +73,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
       </div>
 
       <div className="flex-1 flex flex-col gap-3">
-        <div className="bg-anthracite p-5 rounded-[28px] border border-white/10 flex justify-between items-center relative overflow-hidden flex-shrink-0">
+        <div className="bg-card p-5 rounded-[28px] border border-white/10 flex justify-between items-center relative overflow-hidden flex-shrink-0">
           <div className="space-y-1 relative z-10">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.totalProfit')}</p>
             <div className="flex items-center gap-2">
@@ -93,11 +93,11 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 flex-shrink-0">
-          <div className="bg-anthracite p-5 rounded-[28px] border border-white/10 space-y-1">
+          <div className="bg-card p-5 rounded-[28px] border border-white/10 space-y-1">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.totalWins')}</p>
             <p className="text-2xl font-bold text-white tracking-tight tabular-nums">{gamesPlayed}</p>
           </div>
-          <div className="bg-anthracite p-5 rounded-[28px] border border-white/10 space-y-1">
+          <div className="bg-card p-5 rounded-[28px] border border-white/10 space-y-1">
             <p className="text-[10px] font-bold text-white/40 tracking-[0.15em] uppercase">{t('leaderboard.bestProfit')}</p>
             <p className="text-2xl font-bold text-neon-green tracking-tight tabular-nums">
               {totalProfit > 0 ? totalProfit.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '0.00'}

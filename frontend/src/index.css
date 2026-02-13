@@ -34,9 +34,9 @@ body::-webkit-scrollbar {
 }
 
 @layer components {
-  /* Generic card — как premium-card в референсе */
+  /* Generic card — единый фон карточек/мини-баннеров */
   .card-premium {
-    background: #111111;
+    background: var(--bg-card);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 28px;
   }
@@ -66,7 +66,7 @@ body::-webkit-scrollbar {
     display: none;
   }
   .premium-card {
-    background: #111111;
+    background: var(--bg-card);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 28px;
   }

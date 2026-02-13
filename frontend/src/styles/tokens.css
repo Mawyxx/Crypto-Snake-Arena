@@ -19,9 +19,10 @@
 
   /* Hero/Banner — vibrant-banner из crypto_snake_arena_home */
   --gradient-hero: linear-gradient(135deg, #007AFF 0%, #002D62 100%);
-  --bg-card: #111111;
-  --bg-card-elevated: #111111;
-  --bg-surface-alt: #111111;
+  /* Карточки/мини-баннеры — заметный фон, не сливается с чёрным экраном */
+  --bg-card: #161618;
+  --bg-card-elevated: #161618;
+  --bg-surface-alt: #161618;
   --anthracite: #111111;
 
   /* Text */

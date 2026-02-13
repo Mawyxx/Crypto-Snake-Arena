@@ -13,6 +13,7 @@ export default {
           main: 'var(--bg-main)',
           surface: 'var(--anthracite)',
           surfaceAlt: 'var(--bg-surface-alt)',
+          card: 'var(--bg-card)',
         },
         accent: {
           mint: 'var(--accent-mint)',

@@ -78,7 +78,7 @@ export const FrensView = React.memo(function FrensView() {
       </div>
 
       <div className="px-5 py-3">
-        <div className="bg-anthracite card-border rounded-card p-5">
+        <div className="bg-card card-border rounded-card p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 bg-white/5 rounded-2xl px-5 py-4 border border-white/5 overflow-hidden">
               <span className="text-primary font-semibold text-sm tracking-tight truncate block">
@@ -111,11 +111,11 @@ export const FrensView = React.memo(function FrensView() {
       </div>
 
       <div className="px-5 py-3 grid grid-cols-2 gap-4">
-        <div className="bg-anthracite card-border rounded-card p-6 flex flex-col justify-between h-32">
+        <div className="bg-card card-border rounded-card p-6 flex flex-col justify-between h-32">
           <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.totalFriends')}</span>
           <span className="text-3xl font-bold text-white text-premium tabular-nums">{referralInvited}</span>
         </div>
-        <div className="bg-anthracite card-border rounded-card p-6 flex flex-col justify-between h-32">
+        <div className="bg-card card-border rounded-card p-6 flex flex-col justify-between h-32">
           <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.earned')}</span>
           <span className="text-3xl font-bold text-primary text-premium tabular-nums">
             ${referralEarned.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -127,7 +127,7 @@ export const FrensView = React.memo(function FrensView() {
         <div className="flex items-center justify-between mb-4 px-2">
           <h2 className="text-[11px] font-bold text-white/30 tracking-[0.2em] uppercase">{t('frens.yourNetwork')}</h2>
         </div>
-        <div className="bg-anthracite card-border rounded-card overflow-hidden">
+        <div className="bg-card card-border rounded-card overflow-hidden">
           {loading ? (
             <>
               {[1, 2, 3].map((i) => (
