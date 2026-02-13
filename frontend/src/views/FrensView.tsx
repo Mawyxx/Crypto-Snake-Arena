@@ -9,7 +9,7 @@ import { getUserIdFromInitData } from '@/shared/lib'
 import { useConfig } from '@/hooks/useConfig'
 import { formatRelativeTime } from '@/features/game-history'
 
-const FALLBACK_BOT = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'GorillaCaseBot'
+const FALLBACK_BOT = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'CryptoSnakeArena_Bot'
 
 export const FrensView = React.memo(function FrensView() {
   const { t, i18n } = useTranslation()

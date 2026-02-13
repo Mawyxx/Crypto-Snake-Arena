@@ -1,6 +1,6 @@
 import { designTokens } from '@/shared/config'
 
-const BOT = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'GorillaCaseBot'
+const BOT = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'CryptoSnakeArena_Bot'
 const BOT_LINK = `https://t.me/${BOT}`
 
 /** Проверяет, что приложение открыто из Telegram Mini App (есть initData) */

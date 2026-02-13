@@ -15,7 +15,13 @@ chmod +x "$APP_DIR/backend/server"
 rm -rf "$APP_DIR/frontend/dist"
 cp -r "$INCOMING/frontend/dist" "$APP_DIR/frontend/"
 
-# Рестарт systemd (deploy-user имеет NOPASSWD на systemctl)
+# Обновляем nginx config (если есть в incoming)
+if [ -f "$INCOMING/deploy/nginx-crypto-snake.conf" ]; then
+  cp "$INCOMING/deploy/nginx-crypto-snake.conf" /etc/nginx/sites-available/crypto-snake
+  nginx -t && systemctl reload nginx
+fi
+
+# Рестарт systemd
 sudo systemctl restart crypto-snake-arena
 
 echo "Deploy done. Service restarted."

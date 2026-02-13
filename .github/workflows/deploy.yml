@@ -39,7 +39,7 @@ jobs:
           npm run build
         env:
           # API/WS будут с того же домена — relative URLs
-          VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME || 'GorillaCaseBot' }}
+          VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME || 'CryptoSnakeArena_Bot' }}
 
       - name: Deploy to server
         uses: appleboy/scp-action@v0.1.7
@@ -47,7 +47,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: 'backend/server,frontend/dist,deploy/run-deploy.sh'
+          source: 'backend/server,frontend/dist,deploy/run-deploy.sh,deploy/nginx-crypto-snake.conf'
           target: '/opt/crypto-snake-arena/incoming'
 
       - name: Run deploy script on server
