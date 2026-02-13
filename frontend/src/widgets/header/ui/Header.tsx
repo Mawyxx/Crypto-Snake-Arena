@@ -13,7 +13,7 @@ export function Header() {
   const { photoUrl } = useTelegram()
 
   return (
-    <header className="header-compact flex items-center justify-between shrink-0 p-4 pb-3 border-b border-white/5 bg-[var(--bg-main-alt)]">
+    <header className="header-compact flex items-center justify-between shrink-0 p-4 pb-3 border-b border-white/5 bg-[var(--bg-main)]">
       <div className="flex items-center gap-3">
         <UserAvatar src={photoUrl} name={username} size={40} className="ring-2 ring-white/5" />
         <div>

@@ -5,7 +5,7 @@ import { useTelegram } from '@/features/auth'
 import { UserAvatar } from '@/entities/user'
 import { Icon } from '@/shared/ui'
 
-const tabs: { id: Screen; labelKey: string; iconName: 'home' | 'leaderboard' | 'group' }[] = [
+const baseTabs: { id: Screen; labelKey: string; iconName: 'home' | 'leaderboard' | 'group' | 'admin_panel_settings' }[] = [
   { id: 'home', labelKey: 'nav.home', iconName: 'home' },
   { id: 'leaderboard', labelKey: 'nav.leaderboard', iconName: 'leaderboard' },
   { id: 'frens', labelKey: 'nav.frens', iconName: 'group' },
@@ -16,8 +16,13 @@ export function BottomBar() {
   const screen = useGameStore((s) => s.screen)
   const setScreen = useGameStore((s) => s.setScreen)
   const username = useGameStore((s) => s.username)
+  const isAdmin = useGameStore((s) => s.isAdmin)
   const { impact } = useHaptic()
   const { photoUrl } = useTelegram()
+
+  const tabs = isAdmin
+    ? [...baseTabs, { id: 'admin' as Screen, labelKey: 'nav.admin', iconName: 'admin_panel_settings' as const }]
+    : baseTabs
 
   const handleTab = (s: Screen) => {
     impact('light')
@@ -33,6 +38,7 @@ export function BottomBar() {
         <nav className="flex-grow flex items-center justify-around nav-pill rounded-[2.5rem] py-3.5 px-6">
           {tabs.map((tab) => {
             const isActive = screen === tab.id
+            const iconName = tab.iconName === 'admin_panel_settings' ? 'admin_panel_settings' : tab.iconName
             return (
               <button
                 key={tab.id}
@@ -42,7 +48,7 @@ export function BottomBar() {
                   isActive ? 'text-primary' : 'opacity-40 text-white'
                 }`}
               >
-                <Icon name={tab.iconName} size={28} filled={isActive} className={isActive ? 'text-primary' : ''} />
+                <Icon name={iconName} size={28} filled={isActive} className={isActive ? 'text-primary' : ''} />
                 <span className={`text-[10px] ${isActive ? 'font-bold text-primary' : 'font-medium text-white'}`}>
                   {t(tab.labelKey)}
                 </span>

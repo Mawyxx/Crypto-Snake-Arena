@@ -17,6 +17,7 @@ export interface ProfileResponse {
   total_withdrawn?: number
   total_profit?: number
   rank?: number
+  is_admin?: boolean
 }
 
 export interface ConfigResponse {

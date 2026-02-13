@@ -3,7 +3,7 @@
  */
 import { create } from 'zustand'
 
-export type Screen = 'home' | 'leaderboard' | 'frens' | 'profile' | 'game'
+export type Screen = 'home' | 'leaderboard' | 'frens' | 'profile' | 'admin' | 'game'
 
 interface GameState {
   screen: Screen
@@ -23,10 +23,12 @@ interface GameState {
   bet: number
   highScore: number
   rank: number
+  isAdmin: boolean
   soundEnabled: boolean
   vibrationEnabled: boolean
 
   setScreen: (screen: Screen) => void
+  setAdmin: (isAdmin: boolean) => void
   setBalance: (balance: number) => void
   setProfile: (username: string, userId: number) => void
   setBotUsername: (username: string | null) => void
@@ -60,10 +62,12 @@ export const useGameStore = create<GameState>((set) => ({
   bet: 50,
   highScore: 0,
   rank: 0,
+  isAdmin: false,
   soundEnabled: true,
   vibrationEnabled: true,
 
   setScreen: (screen) => set({ screen }),
+  setAdmin: (isAdmin) => set({ isAdmin }),
   setBalance: (balance) => set({ balance }),
   setProfile: (username, userId) => set({ username, userId }),
   setBotUsername: (botUsername) => set({ botUsername }),

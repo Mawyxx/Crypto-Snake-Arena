@@ -19,6 +19,7 @@ export type MaterialSymbolName =
   | 'language'
   | 'chevron_right'
   | 'card_giftcard'
+  | 'admin_panel_settings'
 
 interface IconProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'children'> {
   name: MaterialSymbolName

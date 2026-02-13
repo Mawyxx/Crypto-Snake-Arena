@@ -3,7 +3,6 @@ package ws
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,6 +16,7 @@ import (
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
 	gamepb "github.com/crypto-snake-arena/server/proto"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,6 +25,9 @@ const (
 	minStake               = 0.3
 	readDeadline           = 60 * time.Second
 	pingInterval           = 30 * time.Second
+	// Rate limit: max сообщений в окне. При превышении — CloseConnection.
+	wsRateLimitCount  = 50  // игровых пакетов (PlayerInput)
+	wsRateLimitWindow = 1   // секунда
 )
 
 // GameWallet — списание ставки и возврат при ошибке входа.
@@ -87,7 +90,7 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 	}
 	userInfo, err := h.validator.Validate(initData)
 	if err != nil {
-		log.Printf("[WS] auth failed: %v", err)
+		zap.L().Warn("ws auth failed", zap.Error(err))
 		http.Error(w, "invalid or expired init data", http.StatusUnauthorized)
 		return
 	}
@@ -99,7 +102,7 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 	user, err := h.userResolver.GetOrCreateUser(r.Context(), userInfo.ID,
 		strings.TrimPrefix(userInfo.Username, "@"), disp, userInfo.StartParam)
 	if err != nil {
-		log.Printf("[WS] GetOrCreateUser error: tgID=%d err=%v", userInfo.ID, err)
+		zap.L().Error("ws GetOrCreateUser failed", zap.Int64("tgID", userInfo.ID), zap.Error(err))
 		http.Error(w, "failed to get user", http.StatusInternalServerError)
 		return
 	}
@@ -114,10 +117,10 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 	// Upgrade до PlaceBet — ставка списывается только при входе в комнату
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[WS] upgrade failed: %v", err)
+		zap.L().Warn("ws upgrade failed", zap.Error(err))
 		return
 	}
-	log.Printf("New WebSocket connection from: %s", r.RemoteAddr)
+	zap.L().Info("ws connected", zap.String("remote", r.RemoteAddr), zap.Uint("userID", userID), zap.Int64("tgID", userInfo.ID))
 	defer conn.Close()
 
 	wsConn := &wsConnAdapter{conn: conn}
@@ -132,11 +135,11 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 		}
 		if err := h.wallet.PlaceBet(r.Context(), userID, stake); err != nil {
 			if err == payment.ErrInsufficientFunds {
-				log.Printf("[WS] insufficient funds: user=%d stake=%.2f", userID, stake)
+				zap.L().Info("ws insufficient funds", zap.Uint("userID", userID), zap.Float64("stake", stake))
 				_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
 				return
 			}
-			log.Printf("[WS] PlaceBet error: %v", err)
+			zap.L().Error("ws PlaceBet failed", zap.Error(err))
 			return
 		}
 		h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
@@ -188,7 +191,7 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 				_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
 				return
 			}
-			log.Printf("[WS] PlaceBet error (from queue): %v", err)
+			zap.L().Error("ws PlaceBet failed from queue", zap.Error(err))
 			return
 		}
 		h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
@@ -209,14 +212,24 @@ func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake flo
 	default:
 		_ = h.wallet.AddGameReward(context.Background(), userID, stake, "") // refund: комната полна
 		_ = conn.Close()
+		zap.L().Warn("ws room full, refunded", zap.Uint("userID", userID), zap.String("roomID", room.ID))
 		return
 	}
 
 	broadcastCh, closeCh := room.Subscribe()
 	closeFn := sync.OnceFunc(closeCh)
+	var disconnectReason string
 
 	// Cleanup: closeFn (Unsubscribe+close), Unregister, Close. stopHeartbeat — в defer UpgradeAndHandle.
 	defer func() {
+		if disconnectReason == "" {
+			disconnectReason = "closed"
+		}
+		zap.L().Info("ws disconnected",
+			zap.Uint("userID", userID),
+			zap.Int64("tgID", tgID),
+			zap.String("roomID", room.ID),
+			zap.String("reason", disconnectReason))
 		closeFn()
 		select {
 		case room.Unregister <- player:
@@ -226,8 +239,8 @@ func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake flo
 		_ = conn.Close()
 	}()
 
-	// Reader: PlayerID = TgID (snake ID в игре)
-	go h.runReader(conn, player.TgID, room, closeFn)
+	// Reader: PlayerID = TgID (snake ID в игре), с rate limit
+	go h.runReader(conn, player.TgID, room, closeFn, &disconnectReason, newRateLimiter(wsRateLimitCount, wsRateLimitWindow))
 
 	// Writer: читает из room.Broadcast (через broadcastCh) и отправляет в сокет
 	h.runWriter(conn, broadcastCh)
@@ -245,25 +258,65 @@ func isCashOutMessage(messageType int, data []byte) bool {
 	return s == "CASH_OUT" || strings.Contains(s, `"CASH_OUT"`)
 }
 
-// runReader читает сообщения: текст CASH_OUT — закрытие с наградой (если живой); бинар — PlayerInput.
-// SetReadDeadline(60s) — закрывает «мёртвые» сокеты. При ошибке — closeFn(), чтобы runWriter вышел.
-func (h *Handler) runReader(conn Conn, playerID uint64, room *game.Room, closeFn func()) {
+// rateLimiter — sliding window: N сообщений за W секунд.
+type rateLimiter struct {
+	counts []time.Time
+	max    int
+	window time.Duration
+	mu     sync.Mutex
+}
+
+func newRateLimiter(max int, windowSec int) *rateLimiter {
+	return &rateLimiter{max: max, window: time.Duration(windowSec) * time.Second}
+}
+
+func (r *rateLimiter) allow() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	cutoff := now.Add(-r.window)
+	var valid []time.Time
+	for _, t := range r.counts {
+		if t.After(cutoff) {
+			valid = append(valid, t)
+		}
+	}
+	if len(valid) >= r.max {
+		return false
+	}
+	r.counts = append(valid, now)
+	return true
+}
+
+// runReader читает сообщения: текст CASH_OUT — закрытие; бинар — PlayerInput. Rate limit на спам.
+func (h *Handler) runReader(conn Conn, playerID uint64, room *game.Room, closeFn func(), reason *string, limiter *rateLimiter) {
 	for {
 		messageType, data, err := conn.ReadMessage()
 		if err != nil {
-			closeFn() // закрывает broadcastCh, runWriter выходит
+			if *reason == "" {
+				*reason = "read_error"
+			}
+			zap.L().Debug("ws read error", zap.Uint64("playerID", playerID), zap.Error(err))
+			closeFn()
 			_ = conn.Close()
 			return
 		}
 		_ = conn.SetReadDeadline(time.Now().Add(readDeadline))
 		if isCashOutMessage(messageType, data) {
-			// Явный Cash Out: закрываем соединение → Unregister → награда только если змейка жива
+			*reason = "cash_out"
 			closeFn()
 			_ = conn.Close()
 			return
 		}
 		if messageType != websocketBinaryMessage {
 			continue
+		}
+		if !limiter.allow() {
+			*reason = "rate_limit"
+			zap.L().Warn("ws rate limit exceeded", zap.Uint64("playerID", playerID))
+			closeFn()
+			_ = conn.Close()
+			return
 		}
 		var input gamepb.PlayerInput
 		if err := proto.Unmarshal(data, &input); err != nil {

@@ -60,6 +60,22 @@ psql "$DATABASE_URL" -f migrations/008_transactions_balance_after.sql
 
 # 009 — referrals, referral_earnings (если не созданы через GORM)
 psql "$DATABASE_URL" -f migrations/009_referrals_tables.sql
+
+# 010 — revenue_logs (аналитика комиссий)
+psql "$DATABASE_URL" -f migrations/010_revenue_logs.sql
+
+# 011 — revenue_logs: reference_id (идемпотентность death_rake)
+psql "$DATABASE_URL" -f migrations/011_revenue_logs_reference_id.sql
 ```
+
+## Безопасность и надёжность
+
+- **Decimal в финансах**: расчёт rake (20%) и referral (30%) через `shopspring/decimal`, без float64.
+- **Атомарность**: при смерти игрока одна транзакция: revenue_log + referral bonus. Откат при любой ошибке.
+- **Идемпотентность**: проверка `reference_id` в revenue_logs — повторный OnPlayerDeath с тем же refID не создаёт дубли.
+- **Rate limit WS**: 50 игровых пакетов/сек. При превышении — CloseConnection (reason: rate_limit).
+- **Ping/Pong**: 30s interval, read deadline 60s — очистка «мёртвых» сессий.
+- **Graceful shutdown**: при Stop() комнаты — drain Unregister, сохранение балансов живых игроков в PG перед выходом.
+- **Валидация скорости**: дистанция за тик ≤ MaxMoveDistance (анти-чит).
 
 См. также [../context.md](../context.md) для полного Quick Start.

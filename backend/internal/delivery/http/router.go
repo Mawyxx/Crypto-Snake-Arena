@@ -9,11 +9,18 @@ func (h *Handler) SetupRouter(mux *http.ServeMux) {
 	mux.Handle("/api/bot/webhook", methodPostOnly(http.HandlerFunc(h.BotWebhook)))
 
 	requireAuth := RequireAuth(h.validator, h.userProvider)
+	requireAdmin := RequireAdmin(h.adminTgID, requireAuth)
 
 	mux.Handle("/api/user/profile", RequireAuthWithUserAllowPatch(h.validator, h.userProvider)(http.HandlerFunc(h.Profile)))
 	mux.Handle("/api/user/recent-games", requireAuth(http.HandlerFunc(h.RecentGames)))
 	mux.Handle("/api/user/referrals", requireAuth(http.HandlerFunc(h.Referrals)))
 	mux.Handle("/api/stats", requireAuth(http.HandlerFunc(h.Stats)))
+	mux.Handle("/api/platform-stats", methodGetOnly(requireAuth(http.HandlerFunc(h.PlatformStats))))
+
+	mux.Handle("/api/admin/dashboard", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminDashboard))))
+	mux.Handle("/api/admin/ledger", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminLedger))))
+	mux.Handle("/api/admin/stats", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminStats))))
+	mux.Handle("/api/admin/export", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminExport))))
 }
 
 // methodGetOnly возвращает 405 для не-GET запросов.

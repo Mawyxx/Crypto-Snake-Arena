@@ -14,7 +14,7 @@ export function BalanceCapsule({ balance, onAdd }: BalanceCapsuleProps) {
         <button
           type="button"
           onClick={onAdd}
-          className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center text-lg leading-none font-bold active:scale-95 transition-all hover:bg-white/15"
+          className="w-9 h-9 rounded-xl bg-[var(--btn-secondary-bg)] border border-[var(--btn-secondary-border)] text-white flex items-center justify-center text-lg leading-none font-bold active:scale-95 transition-all hover:bg-white/[0.08]"
         >
           +
         </button>

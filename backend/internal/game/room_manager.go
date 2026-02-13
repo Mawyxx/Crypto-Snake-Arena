@@ -1,11 +1,11 @@
 package game
 
 import (
-	"log"
 	"math"
 	"sync"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // QueuedPlayer — игрок в очереди ожидания.
@@ -25,20 +25,22 @@ type RoomManager struct {
 	rooms            map[string]*Room
 	queue            []*QueuedPlayer
 	queueByID        map[string]*QueuedPlayer // для RemoveFromQueue
-	rewardCreditor   RewardCreditor
-	deathHandler     DeathHandler
-	resultRecorder   GameResultRecorder
+	rewardCreditor      RewardCreditor
+	deathHandler        DeathHandler
+	expiredCoinsHandler ExpiredCoinsHandler
+	resultRecorder      GameResultRecorder
 }
 
 // NewRoomManager создаёт менеджер комнат.
-func NewRoomManager(rewardCreditor RewardCreditor, deathHandler DeathHandler, resultRecorder GameResultRecorder) *RoomManager {
+func NewRoomManager(rewardCreditor RewardCreditor, deathHandler DeathHandler, expiredCoinsHandler ExpiredCoinsHandler, resultRecorder GameResultRecorder) *RoomManager {
 	return &RoomManager{
-		rooms:          make(map[string]*Room),
-		queue:          nil,
-		queueByID:      make(map[string]*QueuedPlayer),
-		rewardCreditor: rewardCreditor,
-		deathHandler:   deathHandler,
-		resultRecorder: resultRecorder,
+		rooms:               make(map[string]*Room),
+		queue:               nil,
+		queueByID:           make(map[string]*QueuedPlayer),
+		rewardCreditor:      rewardCreditor,
+		deathHandler:        deathHandler,
+		expiredCoinsHandler: expiredCoinsHandler,
+		resultRecorder:      resultRecorder,
 	}
 }
 
@@ -80,7 +82,7 @@ func (m *RoomManager) GetOrCreateRoom(stake float64) (room *Room, queued bool) {
 	if len(m.rooms) == 0 {
 		room = m.createRoom(nil)
 		go room.Run()
-		log.Printf("[RoomManager] new room %s created (first), total: %d", room.ID, len(m.rooms))
+		zap.L().Info("room created", zap.String("roomID", room.ID), zap.Int("total", len(m.rooms)))
 		return room, false
 	}
 
@@ -93,11 +95,11 @@ func (m *RoomManager) createRoom(onSlotFreed func(*Room)) *Room {
 	if onSlotFreed == nil {
 		onSlotFreed = m.onSlotFreed
 	}
-	room := NewRoom(m.rewardCreditor, m.deathHandler, m.resultRecorder, func(roomID string) {
+	room := NewRoom(m.rewardCreditor, m.deathHandler, m.expiredCoinsHandler, m.resultRecorder, func(roomID string) {
 		m.mu.Lock()
 		delete(m.rooms, roomID)
 		m.mu.Unlock()
-		log.Printf("[RoomManager] room %s removed from map", roomID)
+		zap.L().Info("room removed", zap.String("roomID", roomID))
 	}, onSlotFreed)
 	m.rooms[room.ID] = room
 	return room
@@ -147,7 +149,7 @@ func (m *RoomManager) AddToQueue(p *QueuedPlayer) {
 		m.mu.Unlock()
 
 		go room.Run()
-		log.Printf("[RoomManager] new room %s created from queue, total: %d", room.ID, len(m.rooms))
+		zap.L().Info("room created from queue", zap.String("roomID", room.ID), zap.Int("total", len(m.rooms)))
 
 		select {
 		case p1.Ready <- room:
@@ -193,7 +195,7 @@ func (m *RoomManager) Stop() {
 	snapshot := make([]*Room, 0, len(m.rooms))
 	for id, room := range m.rooms {
 		snapshot = append(snapshot, room)
-		log.Printf("[RoomManager] stop requested for room %s", id)
+		zap.L().Info("room stop requested", zap.String("roomID", id))
 	}
 	m.mu.Unlock()
 	for _, room := range snapshot {

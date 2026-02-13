@@ -63,18 +63,15 @@ html, body {
     border-radius: var(--radius-card);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 4px 12px rgba(0, 0, 0, 0.2);
   }
-  .vibrant-banner {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  .hero-banner {
+    background: var(--gradient-hero);
     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-card);
   }
-  .glass-btn {
-    background: rgba(0, 122, 255, 0.1);
+  .btn-secondary {
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--btn-secondary-border);
     backdrop-filter: blur(12px);
-    border: 1px solid var(--border-light);
-  }
-  .banner-gradient {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
   }
   .nav-glow {
     box-shadow: 0 0 15px rgba(0, 122, 255, 0.5);
@@ -86,9 +83,6 @@ html, body {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  .hero-gradient {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hero-end) 100%);
   }
   .avatar-glow {
     box-shadow: 0 0 20px rgba(0, 122, 255, 0.4);

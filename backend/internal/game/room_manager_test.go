@@ -12,7 +12,7 @@ func TestRoomManager_GetOrCreateRoom(t *testing.T) {
 	cred := noopRewardCreditor{}
 	death := noopDeathHandler{}
 	rec := noopResultRecorder{}
-	mgr := NewRoomManager(cred, death, rec)
+	mgr := NewRoomManager(cred, death, noopExpiredCoinsHandler{}, rec)
 	defer mgr.Stop()
 
 	room, _ := mgr.GetOrCreateRoom(1.0)
@@ -31,7 +31,7 @@ func TestRoomManager_ReusesRoomWithSpace(t *testing.T) {
 	cred := noopRewardCreditor{}
 	death := noopDeathHandler{}
 	rec := noopResultRecorder{}
-	mgr := NewRoomManager(cred, death, rec)
+	mgr := NewRoomManager(cred, death, noopExpiredCoinsHandler{}, rec)
 	defer mgr.Stop()
 
 	room1, _ := mgr.GetOrCreateRoom(1.0)
@@ -46,7 +46,7 @@ func TestRoomManager_StopStopsRooms(t *testing.T) {
 	cred := noopRewardCreditor{}
 	death := noopDeathHandler{}
 	rec := noopResultRecorder{}
-	mgr := NewRoomManager(cred, death, rec)
+	mgr := NewRoomManager(cred, death, noopExpiredCoinsHandler{}, rec)
 
 	room, _ := mgr.GetOrCreateRoom(1.0)
 	roomID := room.ID
@@ -65,7 +65,7 @@ func TestRoomManager_QueuedWhenAllFull(t *testing.T) {
 	cred := noopRewardCreditor{}
 	death := noopDeathHandler{}
 	rec := noopResultRecorder{}
-	mgr := NewRoomManager(cred, death, rec)
+	mgr := NewRoomManager(cred, death, noopExpiredCoinsHandler{}, rec)
 	defer mgr.Stop()
 
 	room, queued := mgr.GetOrCreateRoom(1.0)
@@ -103,8 +103,8 @@ func TestRoomManager_QueuedWhenAllFull(t *testing.T) {
 // Room A (avg 0.5) и Room B (avg 2.0); при stake=1.0 должна выбираться A (|0.5-1| < |2-1|).
 func TestRoomManager_MatchmakingDistance(t *testing.T) {
 	stopped := make(chan string, 1)
-	roomA := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) { stopped <- id }, nil)
-	roomB := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) { stopped <- id }, nil)
+	roomA := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) { stopped <- id }, nil)
+	roomB := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) { stopped <- id }, nil)
 
 	// Вручную добавляем змейки (без Run, чтобы избежать коллизий)
 	snakeA := domain.NewSnake(1)
@@ -137,7 +137,7 @@ func TestRoomManager_QueueFIFO_OnSlotFreed(t *testing.T) {
 	cred := noopRewardCreditor{}
 	death := noopDeathHandler{}
 	rec := noopResultRecorder{}
-	mgr := NewRoomManager(cred, death, rec)
+	mgr := NewRoomManager(cred, death, noopExpiredCoinsHandler{}, rec)
 	defer mgr.Stop()
 
 	room, _ := mgr.GetOrCreateRoom(0.5)
@@ -190,7 +190,7 @@ func TestRoomManager_QueueFIFO_TwoCreatesRoom(t *testing.T) {
 	cred := noopRewardCreditor{}
 	death := noopDeathHandler{}
 	rec := noopResultRecorder{}
-	mgr := NewRoomManager(cred, death, rec)
+	mgr := NewRoomManager(cred, death, noopExpiredCoinsHandler{}, rec)
 	defer mgr.Stop()
 
 	room, _ := mgr.GetOrCreateRoom(0.5)

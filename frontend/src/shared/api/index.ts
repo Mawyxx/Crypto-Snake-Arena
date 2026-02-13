@@ -10,3 +10,4 @@ export type {
   ReferralEntry,
   RecentGameEntry,
 } from './types'
+export type { DashboardSummary, LedgerEntry, LedgerResponse, PeriodStats } from './adminTypes'

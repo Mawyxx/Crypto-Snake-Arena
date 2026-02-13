@@ -3,7 +3,8 @@
     "home": "Главная",
     "leaderboard": "Рейтинг",
     "frens": "Друзья",
-    "profile": "Профиль"
+    "profile": "Профиль",
+    "admin": "Админ"
   },
   "common": {
     "deposit": "Пополнение скоро",
@@ -95,6 +96,20 @@
     "netProfit": "Чистый профит",
     "finalBalance": "Итоговый баланс",
     "collectAndExit": "Забрать и выйти"
+  },
+  "admin": {
+    "totalNetProfit": "Чистая прибыль",
+    "totalPlayers": "Всего игроков",
+    "totalGames": "Всего игр",
+    "avgProfitPerDeath": "Ср. профит/смерть",
+    "periodStats": "За период",
+    "deathCount": "Смертей",
+    "expiredCount": "Истекших монет",
+    "withdrawCount": "Выводов",
+    "exportCsv": "Экспорт CSV",
+    "loading": "Загрузка...",
+    "error": "Ошибка загрузки",
+    "refetch": "Обновить"
   },
   "time": {
     "justNow": "только что",

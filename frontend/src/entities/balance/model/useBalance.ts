@@ -13,7 +13,7 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
     typeof window !== 'undefined'
       ? getInitData() || (window as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp?.initData || ''
       : ''
-  const { setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank } = useGameStore()
+  const { setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank, setAdmin } = useGameStore()
   const refetchOnMount = options?.refetchOnMount ?? true
 
   const refetch = useCallback(async () => {
@@ -44,6 +44,7 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
       )
       setTotalProfit(data.total_profit ?? 0)
       setRank(data.rank ?? 0)
+      setAdmin(data.is_admin ?? false)
       try {
         if (tgId) localStorage.setItem(`crypto_snake_dn_${tgId}`, displayName)
       } catch (_) {
@@ -60,7 +61,7 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
       }
       console.warn('[useBalance]', e)
     }
-  }, [initData, setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank])
+  }, [initData, setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank, setAdmin])
 
   useEffect(() => {
     if (refetchOnMount && initData) {

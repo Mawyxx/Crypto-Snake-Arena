@@ -43,7 +43,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
 
   return (
     <main className="pt-[env(safe-area-inset-top)] flex-1 flex flex-col px-5 pb-32 overflow-y-auto hide-scrollbar">
-      <div className="relative mt-4 bg-gradient-to-br from-primary via-[var(--primary-mid)] to-[var(--primary-dark)] p-5 rounded-[28px] shadow-[0_15px_45px_rgba(0,122,255,0.4)] mb-4 overflow-hidden flex-shrink-0">
+      <div className="hero-banner relative mt-4 p-5 rounded-[28px] shadow-[0_15px_45px_rgba(0,122,255,0.4)] mb-4 overflow-hidden flex-shrink-0">
         <div className="absolute inset-0 banner-pattern opacity-10" />
         <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10" />
         <div className="relative z-10 flex flex-col gap-4">

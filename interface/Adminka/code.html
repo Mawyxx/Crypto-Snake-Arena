@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html class="dark" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Админ-панель Crypto Snake Arena Clean Start</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#007AFF",
+                        "background-dark": "#000000",
+                        "anthracite": "#0A0A0A",
+                        "neon-green": "#22C55E",
+                        "warning": "#F59E0B",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "card": "28px",
+                        "pill": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .banner-gradient {
+                background: linear-gradient(135deg, #007AFF 0%, #001A33 100%);
+            }
+            .card-border {
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            .pulse-dot {
+                box-shadow: 0 0 8px rgba(0, 122, 255, 0.8);
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.3; }
+            }
+            .chart-glow {
+                filter: drop-shadow(0 0 4px rgba(0, 122, 255, 0.5));
+            }
+        }
+        body {
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+            background-color: #000000;
+            min-height: max(840px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark text-white font-display selection:bg-primary/30 h-screen overflow-hidden flex flex-col">
+<div class="flex-1 flex flex-col max-w-md mx-auto w-full relative h-full pt-5">
+<div class="px-5 mb-3">
+<div class="banner-gradient rounded-card px-6 relative overflow-hidden shadow-2xl shadow-primary/5 h-48 flex flex-col">
+<div class="relative z-10 flex-[1.1] flex flex-col justify-center pt-2">
+<p class="text-[10px] font-bold text-white/60 tracking-widest uppercase ml-0.5">Общий оборот</p>
+<div class="flex items-baseline gap-3 mt-1">
+<h2 class="text-4xl font-bold tracking-tight">$142,500</h2>
+<span class="text-[9px] font-bold text-white bg-white/15 backdrop-blur-sm px-2 py-0.5 rounded-full">+5.2% 24ч</span>
+</div>
+</div>
+<div class="relative z-10 border-t border-white/15 w-full"></div>
+<div class="relative z-10 flex-[0.9] flex flex-col justify-center">
+<p class="text-[10px] font-bold text-white/60 tracking-widest uppercase ml-0.5">Чистая прибыль</p>
+<p class="text-2xl font-bold tracking-tight mt-1">$12,400</p>
+<div class="absolute -right-8 -bottom-6 opacity-10 transform -rotate-12 pointer-events-none">
+<span class="material-symbols-outlined text-[120px] text-white">payments</span>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 grid grid-cols-2 gap-3 mb-3">
+<div class="bg-anthracite card-border rounded-card p-4 h-[84px] flex flex-col justify-between">
+<span class="text-[9px] text-white/40 font-bold tracking-widest uppercase">Всего игроков</span>
+<span class="text-xl font-bold tracking-tight">42,850</span>
+</div>
+<div class="bg-anthracite card-border rounded-card p-4 h-[84px] flex flex-col justify-between">
+<span class="text-[9px] text-white/40 font-bold tracking-widest uppercase">DAU</span>
+<div class="flex items-center gap-2">
+<span class="text-xl font-bold tracking-tight">1,204</span>
+<span class="text-[9px] text-neon-green font-bold">↑ 4%</span>
+</div>
+</div>
+<div class="bg-anthracite card-border rounded-card p-4 h-[84px] flex flex-col justify-between">
+<span class="text-[9px] text-white/40 font-bold tracking-widest uppercase">Игр запущено</span>
+<span class="text-xl font-bold tracking-tight">8,421</span>
+</div>
+<div class="bg-anthracite card-border rounded-card p-4 h-[84px] flex flex-col justify-between">
+<span class="text-[9px] text-white/40 font-bold tracking-widest uppercase">Ср. ставка</span>
+<span class="text-xl font-bold tracking-tight">$14.20</span>
+</div>
+</div>
+<div class="px-5 grid grid-cols-2 gap-3 mb-3">
+<div class="bg-anthracite card-border rounded-card p-4 h-20 flex flex-col justify-between relative overflow-hidden">
+<span class="text-[9px] text-neon-green font-bold tracking-widest uppercase relative z-10">Депозиты (24ч)</span>
+<span class="text-xl font-bold text-neon-green relative z-10 tracking-tight">$18,200</span>
+<div class="absolute right-4 bottom-3 opacity-20">
+<span class="material-symbols-outlined text-2xl text-neon-green">add</span>
+</div>
+</div>
+<div class="bg-anthracite card-border rounded-card p-4 h-20 flex flex-col justify-between relative overflow-hidden">
+<span class="text-[9px] text-warning font-bold tracking-widest uppercase relative z-10">Выплаты (ожидание)</span>
+<span class="text-xl font-bold text-warning relative z-10 tracking-tight">$4,200</span>
+<div class="absolute right-4 bottom-3 opacity-20">
+<span class="material-symbols-outlined text-2xl text-warning">schedule</span>
+</div>
+</div>
+</div>
+<div class="px-5 mb-3">
+<div class="bg-anthracite card-border rounded-card p-5 h-32 relative overflow-hidden">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[9px] text-white/40 font-bold tracking-widest uppercase">Активность (24ч)</span>
+<div class="flex gap-2">
+<span class="text-[9px] text-primary font-bold">PEAK: 1.8K</span>
+<span class="text-[9px] text-white/20 font-bold">AVG: 940</span>
+</div>
+</div>
+<div class="relative h-14 mt-1">
+<div class="absolute left-[60%] top-0 w-[1px] h-full bg-primary/20 flex items-start justify-center">
+<div class="w-1.5 h-1.5 rounded-full bg-primary ring-4 ring-primary/10"></div>
+</div>
+<svg class="w-full h-full chart-glow" preserveAspectRatio="none" viewBox="0 0 100 40">
+<path d="M0 35 Q 10 32, 20 25 T 40 28 T 60 15 T 80 18 T 100 5" fill="none" stroke="#007AFF" stroke-width="2.5"></path>
+<path d="M0 35 Q 10 32, 20 25 T 40 28 T 60 15 T 80 18 T 100 5 V 40 H 0 Z" fill="url(#gradient-chart)" opacity="0.1"></path>
+<defs>
+<linearGradient id="gradient-chart" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#007AFF"></stop>
+<stop offset="100%" stop-color="transparent"></stop>
+</linearGradient>
+</defs>
+</svg>
+</div>
+</div>
+</div>
+<div class="px-5 mb-24">
+<div class="bg-anthracite card-border rounded-card p-5">
+<h3 class="text-[9px] text-white/30 font-bold tracking-[0.2em] uppercase mb-4 px-1">Тех. состояние</h3>
+<div class="space-y-4">
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold">
+<span class="text-white/60">CPU LOAD</span>
+<span class="text-neon-green">24%</span>
+</div>
+<div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-neon-green rounded-full" style="width: 24%"></div>
+</div>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold">
+<span class="text-white/60">MEM USE</span>
+<span class="text-primary">68%</span>
+</div>
+<div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 68%"></div>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-white/60">LATENCY</span>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-neon-green">14ms</span>
+<div class="flex gap-0.5">
+<div class="w-1 h-2 bg-neon-green rounded-full"></div>
+<div class="w-1 h-3 bg-neon-green rounded-full"></div>
+<div class="w-1 h-2.5 bg-neon-green rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="fixed bottom-8 left-0 right-0 z-50 px-6 max-w-md mx-auto">
+<div class="flex items-center justify-between gap-3 h-16">
+<div class="flex-1 h-full bg-anthracite/90 backdrop-blur-2xl border border-white/10 rounded-full flex items-center justify-around px-4 shadow-2xl">
+<button class="flex flex-col items-center justify-center text-white/40 transition-all hover:text-white/70 active:scale-90">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="text-[9px] mt-0.5 font-bold uppercase tracking-widest">Главная</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary transition-all active:scale-90">
+<span class="material-symbols-outlined text-[24px] fill-1">admin_panel_settings</span>
+<span class="text-[9px] mt-0.5 font-extrabold uppercase tracking-widest">Админ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-white/40 transition-all hover:text-white/70 active:scale-90">
+<span class="material-symbols-outlined text-[24px]">group</span>
+<span class="text-[9px] mt-0.5 font-bold uppercase tracking-widest">Друзья</span>
+</button>
+</div>
+<button class="w-16 h-16 rounded-full bg-anthracite/90 backdrop-blur-2xl border border-white/10 flex items-center justify-center relative active:scale-95 transition-transform shadow-2xl shrink-0">
+<div class="w-11 h-11 rounded-full p-[1.5px] border-2 border-primary overflow-hidden">
+<img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeYdQ0nn_mPZ9Azws76k5vHi8-gq5kUfdLlGUHoz9-lKnI5WtZ0c8tQgufOVOVFBn1hIwY0HTvvRYnTvSZrCbmk2VWlusVTY4lGKxjVJ8LZeQNQAXBbi1uOT7ZaSWd_IfHEdqPXgAoIWZyFY2J4-zVluQH9uvs--A8tpdB7nU02wyvOcDCdPQGCakVAdWIhZKGCK-BruPT1TX6iL50sgYR5mwXpnygza0E2JXhIypbhO7d6_kJs1eWsjT-07iqLGuOY-8ePmukNL5q"/>
+</div>
+</button>
+</div>
+</div>
+</div>
+
+</body></html>

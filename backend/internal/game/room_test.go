@@ -17,16 +17,22 @@ type noopResultRecorder struct{}
 func (noopRewardCreditor) AddGameReward(ctx context.Context, userID uint, amount float64, referenceID string) error {
 	return nil
 }
-func (noopDeathHandler) OnPlayerDeath(ctx context.Context, victimUserID uint, victimScore float64, referenceID string) error {
+func (noopDeathHandler) OnPlayerDeath(ctx context.Context, victimUserID uint, victimScore, entryFee float64, referenceID, roomID string) error {
 	return nil
 }
 func (noopResultRecorder) RecordGameResult(ctx context.Context, userID uint, stake, loot float64, roomID string, status string, durationSec int) error {
 	return nil
 }
 
+type noopExpiredCoinsHandler struct{}
+
+func (noopExpiredCoinsHandler) OnExpiredCoins(ctx context.Context, roomID string, totalValue float64) error {
+	return nil
+}
+
 func TestRoom_RegisterUnregister(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()
@@ -56,7 +62,7 @@ func waitForPlayers(t *testing.T, room *Room, want int, timeout time.Duration) {
 
 func TestRoom_InputProcessed(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()
@@ -73,7 +79,7 @@ func TestRoom_InputProcessed(t *testing.T) {
 
 func TestRoom_AverageStake(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()
@@ -97,7 +103,7 @@ func TestRoom_AverageStake(t *testing.T) {
 
 func TestRoom_PlayerCountAndCanJoin(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()
@@ -119,7 +125,7 @@ func TestRoom_PlayerCountAndCanJoin(t *testing.T) {
 
 func TestRoom_SubscribeReceivesSnapshot(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()
@@ -147,7 +153,7 @@ func TestRoom_SubscribeReceivesSnapshot(t *testing.T) {
 
 func TestRoom_UnregisterDecreasesCount(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()
@@ -171,7 +177,7 @@ func TestRoom_UnregisterDecreasesCount(t *testing.T) {
 func TestRoom_StopRemovesFromManager(t *testing.T) {
 	var wg sync.WaitGroup
 	var removedID string
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		removedID = id
 		wg.Done()
 	}, nil)
@@ -266,7 +272,7 @@ func TestPickSpawnPosition_SmallArena_ReturnsCenter(t *testing.T) {
 
 func TestRoom_SnakeSpawnsAtRandomPosition(t *testing.T) {
 	stopped := make(chan string, 1)
-	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopResultRecorder{}, func(id string) {
+	room := NewRoom(noopRewardCreditor{}, noopDeathHandler{}, noopExpiredCoinsHandler{}, noopResultRecorder{}, func(id string) {
 		stopped <- id
 	}, nil)
 	go room.Run()

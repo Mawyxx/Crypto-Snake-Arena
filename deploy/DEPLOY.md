@@ -1,6 +1,23 @@
 # Деплой Crypto Snake Arena на Ubuntu
 
-## Быстрый старт
+## Bootstrap: полностью пустой сервер (одна команда)
+
+Если сервер пустой и ты подключаешься по SSH как **root**:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Mawyxx/Crypto-Snake-Arena/main/deploy/bootstrap.sh | bash
+```
+
+С токеном бота и паролем БД сразу:
+```bash
+TELEGRAM_BOT_TOKEN=твой_токен DB_PASSWORD=arenavoid bash -s < <(curl -sSL https://raw.githubusercontent.com/Mawyxx/Crypto-Snake-Arena/main/deploy/bootstrap.sh)
+```
+
+Скрипт установит PostgreSQL, Redis, Nginx, клонирует репо, создаст БД и всё настроит. После этого добавь SSH-ключ в `~/.ssh/authorized_keys` для GitHub Actions и сделай push в `main` — приложение задеплоится.
+
+---
+
+## Быстрый старт (если deploy уже есть)
 
 ### 1. Однократная настройка сервера
 

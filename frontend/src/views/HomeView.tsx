@@ -87,8 +87,8 @@ export const HomeView = React.memo(function HomeView() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full max-w-md relative bg-black [font-family:Inter,sans-serif]">
-      <header className="ios-blur sticky top-0 z-50 flex justify-between items-center px-6 pt-12 pb-4 w-full border-b border-white/5 bg-black/80">
+    <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)] [font-family:Inter,sans-serif]">
+      <header className="ios-blur sticky top-0 z-50 flex justify-between items-center px-6 pt-12 pb-4 w-full border-b border-white/5 bg-[var(--bg-main)]/80">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
             <UserAvatar src={photoUrl} name={username} size={40} className="rounded-none" />
@@ -115,7 +115,7 @@ export const HomeView = React.memo(function HomeView() {
       </header>
 
       <main className="flex-grow overflow-y-auto custom-scrollbar px-5 py-6 space-y-5">
-        <div className="vibrant-banner p-6 relative overflow-hidden flex flex-col justify-between h-[180px] min-h-[180px]">
+        <div className="hero-banner p-6 relative overflow-hidden flex flex-col justify-between h-[180px] min-h-[180px]">
           <div className="absolute -right-5 -top-5 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
           <div className="flex justify-between items-start relative z-10">
             <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2">

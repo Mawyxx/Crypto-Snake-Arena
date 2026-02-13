@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("db: %v", err)
 	}
 
-	txManager := payment.NewTxManager(db)
+	txManager := payment.NewTxManager(db, nil)
 	userResolver := repository.NewUserResolverDB(db)
 
 	tgID := int64(7175104609)

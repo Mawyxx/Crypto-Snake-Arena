@@ -27,6 +27,9 @@ const (
 	InitialLength = 3
 )
 
+// MaxMoveDistance — максимальная дистанция за тик (анти-чит: при превышении — подозрение на читерство).
+const MaxMoveDistance = BoostSpeed + 0.5 // 5.5 с запасом на float
+
 // NewSnake создаёт змейку с начальной длиной в центре арены (500, 500).
 func NewSnake(id uint64) *Snake {
 	return NewSnakeAt(id, 500, 500)

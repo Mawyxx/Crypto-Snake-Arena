@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"log"
 	"math"
 	"math/rand"
 	"strconv"
@@ -12,12 +11,13 @@ import (
 	"github.com/crypto-snake-arena/server/internal/domain"
 	gamepb "github.com/crypto-snake-arena/server/proto"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
 const (
 	TickRate     = 50 * time.Millisecond // 20 обновлений в секунду
-	DropLifeTime = 3000 * time.Millisecond
+	DropLifeTime = 5000 * time.Millisecond
 )
 
 const MaxPlayers = 20
@@ -39,9 +39,10 @@ type Room struct {
 	Grid   *domain.SpatialGrid
 
 	// Finance
-	RewardCreditor    RewardCreditor
-	DeathHandler      DeathHandler
-	ResultRecorder    GameResultRecorder
+	RewardCreditor       RewardCreditor
+	DeathHandler         DeathHandler
+	ExpiredCoinsHandler  ExpiredCoinsHandler
+	ResultRecorder       GameResultRecorder
 
 	// Communication
 	Register   chan *Player
@@ -65,13 +66,14 @@ type subscriber struct {
 
 func (s *subscriber) close() { s.once.Do(func() { close(s.ch) }) }
 
-func NewRoom(rewardCreditor RewardCreditor, deathHandler DeathHandler, resultRecorder GameResultRecorder, onStopped func(roomID string), onSlotFreed func(*Room)) *Room {
+func NewRoom(rewardCreditor RewardCreditor, deathHandler DeathHandler, expiredCoinsHandler ExpiredCoinsHandler, resultRecorder GameResultRecorder, onStopped func(roomID string), onSlotFreed func(*Room)) *Room {
 	return &Room{
-		RewardCreditor: rewardCreditor,
-		DeathHandler:   deathHandler,
-		ResultRecorder: resultRecorder,
-		onStopped:      onStopped,
-		onSlotFreed:    onSlotFreed,
+		RewardCreditor:      rewardCreditor,
+		DeathHandler:        deathHandler,
+		ExpiredCoinsHandler: expiredCoinsHandler,
+		ResultRecorder:      resultRecorder,
+		onStopped:           onStopped,
+		onSlotFreed:         onSlotFreed,
 		ID:             uuid.New().String(),
 		Snakes:         make(map[uint64]*domain.Snake),
 		Coins:          make(map[string]*domain.Coin),
@@ -133,6 +135,10 @@ func pickSpawnPosition(grid *domain.SpatialGrid, snakes map[uint64]*domain.Snake
 	return bestX, bestY
 }
 
+// Server-Authoritative: Вся физика и коллизии считаются ТОЛЬКО на сервере.
+// Клиент отправляет только PlayerInput (angle, boost). Сервер никогда не доверяет
+// сообщениям вроде «я съел монету» — монеты съедаются при Intersects() в updateGameState.
+
 // Run - главный игровой цикл. Запускается в отдельной горутине.
 func (r *Room) Run() {
 	ticker := time.NewTicker(TickRate)
@@ -161,7 +167,7 @@ func (r *Room) Run() {
 				if snake.Score > 0 && !snake.Dead && r.RewardCreditor != nil {
 					refID := r.ID + ":unreg:" + strconv.FormatUint(uint64(player.UserID), 10)
 					if err := r.RewardCreditor.AddGameReward(context.Background(), player.UserID, snake.Score, refID); err != nil {
-						log.Printf("[Room] AddGameReward failed on Unregister: userID=%d score=%.2f err=%v", player.UserID, snake.Score, err)
+						zap.L().Error("room AddGameReward failed on Unregister", zap.Uint("userID", player.UserID), zap.Float64("score", snake.Score), zap.Error(err))
 					}
 				}
 				if r.ResultRecorder != nil {
@@ -178,7 +184,7 @@ func (r *Room) Run() {
 						durationSec = 0
 					}
 					if err := r.ResultRecorder.RecordGameResult(context.Background(), player.UserID, player.EntryFee, loot, r.ID, status, durationSec); err != nil {
-						log.Printf("[Room] RecordGameResult failed on Unregister: userID=%d stake=%.2f loot=%.2f err=%v", player.UserID, player.EntryFee, loot, err)
+						zap.L().Error("room RecordGameResult failed on Unregister", zap.Uint("userID", player.UserID), zap.Float64("stake", player.EntryFee), zap.Float64("loot", loot), zap.Error(err))
 					}
 				}
 			}
@@ -188,20 +194,32 @@ func (r *Room) Run() {
 				r.onSlotFreed(r)
 			}
 
-		// 3. Обработка ввода (Управление) с серверной валидацией
+		// 3. Обработка ввода (Управление) с серверной валидацией (Anti-cheat)
 		case input := <-r.Inputs:
 			r.Mu.Lock()
 			if snake, ok := r.Snakes[input.PlayerID]; ok {
-				// Ограничение угла: дельта не больше MaxTurnSpeed за тик
+				// Reject NaN/Inf — клиент не должен отправлять некорректные числа
+				if math.IsNaN(input.Angle) || math.IsInf(input.Angle, 0) {
+					r.Mu.Unlock()
+					zap.L().Warn("room invalid input angle rejected", zap.Uint64("playerID", input.PlayerID), zap.Float64("angle", input.Angle))
+					continue
+				}
+				// Ограничение угла: дельта не больше MaxTurnSpeed за тик (анти-чит: невозможные повороты)
 				delta := normalizeAngle(input.Angle - snake.Angle)
+				clamped := false
 				if delta > MaxTurnSpeed {
 					delta = MaxTurnSpeed
+					clamped = true
 				}
 				if delta < -MaxTurnSpeed {
 					delta = -MaxTurnSpeed
+					clamped = true
+				}
+				if clamped {
+					zap.L().Debug("room turn speed clamped", zap.Uint64("playerID", input.PlayerID))
 				}
 				snake.SetDirection(snake.Angle + delta)
-				// Boost только при достаточной массе (Score)
+				// Boost только при достаточной массе (Score) — анти-чит: нельзя бустить без монет
 				boost := input.Boost && snake.Score >= MinScoreForBoost
 				snake.SetBoost(boost)
 			}
@@ -232,9 +250,16 @@ func (r *Room) updateGameState() {
 		r.Grid.AddCoin(c)
 	}
 
-	// Шаг 1: Движение и заполнение сетки
+	// Шаг 1: Движение и заполнение сетки (с валидацией скорости — анти-чит)
 	for _, snake := range r.Snakes {
+		prevHead := snake.Head()
 		snake.Move()
+		// Валидация: дистанция за тик не должна превышать max_speed (клиент не шлёт координаты, но на случай бага)
+		if prevHead.Distance(snake.Head()) > domain.MaxMoveDistance {
+			zap.L().Warn("room speed violation", zap.Uint64("snakeID", snake.ID))
+			r.killSnake(snake, &toDeleteSnakes)
+			continue
+		}
 		if !r.Grid.InBounds(snake.Head()) {
 			r.killSnake(snake, &toDeleteSnakes)
 			continue
@@ -299,10 +324,12 @@ func (r *Room) updateGameState() {
 
 	// Шаг 3: Собираем просроченные монеты (TTL)
 	now := time.Now()
+	var expiredTotal float64
 	for id, coin := range r.Coins {
 		if now.After(coin.ExpiresAt) {
 			toDeleteCoins = append(toDeleteCoins, id)
 			consumedInTick[id] = true
+			expiredTotal += coin.Value
 		}
 	}
 
@@ -312,6 +339,17 @@ func (r *Room) updateGameState() {
 	}
 	for _, id := range toDeleteCoins {
 		delete(r.Coins, id)
+	}
+
+	// Просроченные монеты — прибыль платформы (асинхронно, не блокировать тик)
+	if expiredTotal > 0 && r.ExpiredCoinsHandler != nil {
+		roomID := r.ID
+		total := expiredTotal
+		go func() {
+			if err := r.ExpiredCoinsHandler.OnExpiredCoins(context.Background(), roomID, total); err != nil {
+				zap.L().Error("room OnExpiredCoins failed", zap.String("roomID", roomID), zap.Float64("totalValue", total), zap.Error(err))
+			}
+		}()
 	}
 }
 
@@ -329,9 +367,11 @@ func (r *Room) killSnake(victim *domain.Snake, toDelete *[]uint64) {
 	}
 	if r.DeathHandler != nil && victim.UserID > 0 && victimScore > 0 {
 		refID := r.ID + ":death:" + strconv.FormatUint(victim.ID, 10)
+		roomID := r.ID
+		entryFee := victim.EntryFee
 		go func() {
-			if err := r.DeathHandler.OnPlayerDeath(context.Background(), uint(victim.UserID), victimScore, refID); err != nil {
-				log.Printf("[Room] OnPlayerDeath failed: victimUserID=%d score=%.2f err=%v", victim.UserID, victimScore, err)
+			if err := r.DeathHandler.OnPlayerDeath(context.Background(), uint(victim.UserID), victimScore, entryFee, refID, roomID); err != nil {
+				zap.L().Error("room OnPlayerDeath failed", zap.Int64("victimUserID", victim.UserID), zap.Float64("score", victimScore), zap.Error(err))
 			}
 		}()
 	}
@@ -342,7 +382,7 @@ func (r *Room) killSnake(victim *domain.Snake, toDelete *[]uint64) {
 		}
 		go func() {
 			if err := r.ResultRecorder.RecordGameResult(context.Background(), uint(victim.UserID), victim.EntryFee, 0, r.ID, "loss", durationSec); err != nil {
-				log.Printf("[Room] RecordGameResult failed on killSnake: victimUserID=%d stake=%.2f err=%v", victim.UserID, victim.EntryFee, err)
+				zap.L().Error("room RecordGameResult failed on killSnake", zap.Int64("victimUserID", victim.UserID), zap.Float64("stake", victim.EntryFee), zap.Error(err))
 			}
 		}()
 	}
@@ -428,20 +468,76 @@ func (r *Room) Unsubscribe(s *subscriber) {
 	r.subscribersMu.Unlock()
 }
 
-// Stop — мягкая остановка комнаты. Закрывает все broadcast-каналы, чтобы runWriter могли выйти.
+// Stop — мягкая остановка: закрывает broadcast, дренажит Unregister (сохраняет балансы в PG), затем выход.
 func (r *Room) Stop() {
 	r.subscribersMu.Lock()
 	r.stopping = true
-	r.subscribersMu.Unlock()
-	close(r.stopChan)
-	// Даём in-flight broadcastSnapshot завершиться (они проверяют stopping)
-	time.Sleep(2 * TickRate)
-	r.subscribersMu.Lock()
 	for _, s := range r.subscribers {
 		s.close()
 	}
 	r.subscribers = nil
 	r.subscribersMu.Unlock()
+
+	close(r.stopChan)
+	time.Sleep(2 * TickRate) // даём broadcastSnapshot завершиться
+
+	// Drain: обрабатываем Unregister от всех клиентов (runWriter вышел, defer отправил Unregister)
+	drainDeadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(drainDeadline) {
+		r.Mu.Lock()
+		remaining := len(r.Snakes)
+		r.Mu.Unlock()
+		if remaining == 0 {
+			break
+		}
+		select {
+		case player := <-r.Unregister:
+			r.Mu.Lock()
+			if snake, ok := r.Snakes[player.TgID]; ok {
+				if snake.Score > 0 && !snake.Dead && r.RewardCreditor != nil {
+					refID := r.ID + ":unreg:" + strconv.FormatUint(uint64(player.UserID), 10)
+					if err := r.RewardCreditor.AddGameReward(context.Background(), player.UserID, snake.Score, refID); err != nil {
+						zap.L().Error("room AddGameReward failed on drain", zap.Uint("userID", player.UserID), zap.Error(err))
+					}
+				}
+				if r.ResultRecorder != nil {
+					loot := snake.Score
+					if snake.Dead {
+						loot = 0
+					}
+					status := "win"
+					if snake.Dead || loot <= 0 {
+						status = "loss"
+					}
+					durationSec := int((r.CurrentTick - snake.JoinedTick) * 50 / 1000)
+					if durationSec < 0 {
+						durationSec = 0
+					}
+					_ = r.ResultRecorder.RecordGameResult(context.Background(), player.UserID, player.EntryFee, loot, r.ID, status, durationSec)
+				}
+			}
+			delete(r.Snakes, player.TgID)
+			r.Mu.Unlock()
+			if r.onSlotFreed != nil {
+				r.onSlotFreed(r)
+			}
+		case <-time.After(100 * time.Millisecond):
+			// check again
+		}
+	}
+
+	// Оставшиеся змейки (disconnect до Unregister) — сохраняем балансы
+	r.Mu.Lock()
+	for _, snake := range r.Snakes {
+		if snake.Score > 0 && !snake.Dead && r.RewardCreditor != nil && snake.UserID > 0 {
+			refID := r.ID + ":shutdown:" + strconv.FormatUint(snake.ID, 10)
+			if err := r.RewardCreditor.AddGameReward(context.Background(), uint(snake.UserID), snake.Score, refID); err != nil {
+				zap.L().Error("room AddGameReward failed on shutdown", zap.Int64("userID", snake.UserID), zap.Error(err))
+			}
+		}
+	}
+	r.Mu.Unlock()
+
 	if r.onStopped != nil {
 		r.onStopped(r.ID)
 	}

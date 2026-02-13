@@ -62,7 +62,7 @@ export const FrensView = React.memo(function FrensView() {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pb-bottom-bar">
       <div className="px-5 pt-6 pb-2">
-        <div className="banner-gradient rounded-card p-7 relative overflow-hidden shadow-2xl shadow-primary/10">
+        <div className="hero-banner rounded-card p-7 relative overflow-hidden shadow-2xl shadow-primary/10">
           <div className="absolute -right-6 -bottom-6 opacity-30 -rotate-12 pointer-events-none">
             <Icon name="card_giftcard" size={140} className="text-white leading-none" />
           </div>
@@ -103,7 +103,7 @@ export const FrensView = React.memo(function FrensView() {
         <button
           type="button"
           onClick={handleInvite}
-          className="glass-btn w-full h-16 rounded-card flex items-center justify-center gap-3 active:scale-95 transition-all"
+          className="btn-secondary w-full h-16 rounded-card flex items-center justify-center gap-3 active:scale-95 transition-all"
         >
           <Icon name="share" size={20} className="text-primary" />
           <span className="font-bold text-white text-base tracking-tight uppercase">{t('frens.inviteFriends')}</span>

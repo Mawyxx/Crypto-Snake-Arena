@@ -8,6 +8,7 @@
 
 # Go
 vendor/
+backend/server
 *.test
 *.out
 go.work

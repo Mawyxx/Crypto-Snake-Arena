@@ -38,7 +38,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold shadow-lg shadow-blue-500/20"
+            className="px-6 py-3 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/25"
           >
             Обновить
           </button>

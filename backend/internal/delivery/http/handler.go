@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/crypto-snake-arena/server/internal/domain"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
@@ -38,21 +39,40 @@ type PresenceStore interface {
 	Count() int
 }
 
-// Handler — REST API: баланс, профиль, история, конфиг.
+// PlatformStatsProvider — оборот и прибыль платформы.
+type PlatformStatsProvider interface {
+	GetPlatformStats(ctx context.Context) (*repository.PlatformStats, error)
+}
+
+// AdminProvider — админ-панель: дашборд, лог, экспорт.
+type AdminProvider interface {
+	GetDashboardSummary(ctx context.Context) (*repository.DashboardSummary, error)
+	GetLedger(ctx context.Context, from, to time.Time, limit, offset int) ([]repository.LedgerEntry, int, error)
+	GetStatsByPeriod(ctx context.Context, period string) (*repository.PeriodStats, error)
+	ExportLedgerCSV(ctx context.Context, from, to time.Time) ([]byte, error)
+}
+
+// Handler — REST API: баланс, профиль, история, конфиг, админка.
 type Handler struct {
-	validator           *auth.Validator
-	userProvider        UserProvider
-	presenceStore       PresenceStore
-	botToken            string
-	webhookSecretToken  string // X-Telegram-Bot-Api-Secret-Token (опционально)
+	validator          *auth.Validator
+	userProvider       UserProvider
+	presenceStore      PresenceStore
+	platformStats      PlatformStatsProvider
+	adminProvider      AdminProvider
+	adminTgID          int64 // ADMIN_TG_ID — только этот пользователь видит is_admin и /api/admin/*
+	botToken           string
+	webhookSecretToken string // X-Telegram-Bot-Api-Secret-Token (опционально)
 }
 
 // NewHandler создаёт HTTP handler.
-func NewHandler(validator *auth.Validator, userProvider UserProvider, presenceStore PresenceStore, botToken, webhookSecretToken string) *Handler {
+func NewHandler(validator *auth.Validator, userProvider UserProvider, presenceStore PresenceStore, platformStats PlatformStatsProvider, adminProvider AdminProvider, adminTgID int64, botToken, webhookSecretToken string) *Handler {
 	return &Handler{
 		validator:          validator,
 		userProvider:       userProvider,
 		presenceStore:      presenceStore,
+		platformStats:      platformStats,
+		adminProvider:      adminProvider,
+		adminTgID:          adminTgID,
 		botToken:           botToken,
 		webhookSecretToken: webhookSecretToken,
 	}
@@ -74,6 +94,7 @@ type ProfileResponse struct {
 	TotalWithdrawn  float64 `json:"total_withdrawn"`
 	TotalProfit     float64 `json:"total_profit"`
 	Rank            int     `json:"rank"`
+	IsAdmin         bool    `json:"is_admin"`
 }
 
 // displayNameFromUserInfo: first_name + last_name, иначе username без @, иначе "Игрок".
@@ -159,6 +180,7 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 	games, deposited, withdrawn, totalProfit, _ := h.userProvider.GetUserStats(r.Context(), user.ID)
 	rank, _ := h.userProvider.GetUserRank(r.Context(), user.ID, user.Rank)
 
+	isAdmin := h.adminTgID != 0 && user.TgID == h.adminTgID
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ProfileResponse{
 		UserID:          user.ID,
@@ -175,6 +197,7 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 		TotalWithdrawn:  withdrawn,
 		TotalProfit:     totalProfit,
 		Rank:            rank,
+		IsAdmin:         isAdmin,
 	}); err != nil {
 		log.Printf("[HTTP] json encode failed: %v", err)
 	}
@@ -283,6 +306,130 @@ func (h *Handler) Referrals(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(entries); err != nil {
 		log.Printf("[HTTP] json encode failed: %v", err)
 	}
+}
+
+// PlatformStats возвращает оборот (депозиты) и прибыль платформы. Требует RequireAuth. GET /api/platform-stats
+func (h *Handler) PlatformStats(w http.ResponseWriter, r *http.Request) {
+	if h.platformStats == nil {
+		http.Error(w, "platform stats not configured", http.StatusNotImplemented)
+		return
+	}
+	stats, err := h.platformStats.GetPlatformStats(r.Context())
+	if err != nil {
+		log.Printf("[HTTP] GetPlatformStats error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		log.Printf("[HTTP] json encode failed: %v", err)
+	}
+}
+
+// AdminDashboard — дашборд из VIEW. Требует RequireAdmin. GET /api/admin/dashboard
+func (h *Handler) AdminDashboard(w http.ResponseWriter, r *http.Request) {
+	if h.adminProvider == nil {
+		http.Error(w, "admin not configured", http.StatusNotImplemented)
+		return
+	}
+	s, err := h.adminProvider.GetDashboardSummary(r.Context())
+	if err != nil {
+		log.Printf("[HTTP] GetDashboardSummary error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(s)
+}
+
+// AdminLedger — лог с пагинацией. GET /api/admin/ledger?from=&to=&limit=&offset=
+func (h *Handler) AdminLedger(w http.ResponseWriter, r *http.Request) {
+	if h.adminProvider == nil {
+		http.Error(w, "admin not configured", http.StatusNotImplemented)
+		return
+	}
+	from, to := parseAdminDateRange(r)
+	limit, offset := parseIntOrDefault(r.URL.Query().Get("limit"), 50), parseIntOrDefault(r.URL.Query().Get("offset"), 0)
+	if limit > 100 {
+		limit = 100
+	}
+	entries, total, err := h.adminProvider.GetLedger(r.Context(), from, to, limit, offset)
+	if err != nil {
+		log.Printf("[HTTP] GetLedger error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"entries": entries,
+		"total":   total,
+	})
+}
+
+// AdminStats — агрегаты за период. GET /api/admin/stats?period=day|week|month
+func (h *Handler) AdminStats(w http.ResponseWriter, r *http.Request) {
+	if h.adminProvider == nil {
+		http.Error(w, "admin not configured", http.StatusNotImplemented)
+		return
+	}
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "day"
+	}
+	s, err := h.adminProvider.GetStatsByPeriod(r.Context(), period)
+	if err != nil {
+		log.Printf("[HTTP] GetStatsByPeriod error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(s)
+}
+
+// AdminExport — CSV экспорт. GET /api/admin/export?from=&to=
+func (h *Handler) AdminExport(w http.ResponseWriter, r *http.Request) {
+	if h.adminProvider == nil {
+		http.Error(w, "admin not configured", http.StatusNotImplemented)
+		return
+	}
+	from, to := parseAdminDateRange(r)
+	data, err := h.adminProvider.ExportLedgerCSV(r.Context(), from, to)
+	if err != nil {
+		log.Printf("[HTTP] ExportLedgerCSV error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=revenue_ledger.csv")
+	_, _ = w.Write(data)
+}
+
+func parseAdminDateRange(r *http.Request) (from, to time.Time) {
+	now := time.Now()
+	from = now.AddDate(0, -1, 0)
+	to = now
+	if s := r.URL.Query().Get("from"); s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			from = t
+		}
+	}
+	if s := r.URL.Query().Get("to"); s != "" {
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			to = t
+		}
+	}
+	return from, to
+}
+
+func parseIntOrDefault(s string, def int) int {
+	if s == "" {
+		return def
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return def
+	}
+	return n
 }
 
 // Leaderboard возвращает топ игроков по total_profit. Без auth. GET /api/leaderboard?limit=50

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Coin — логика монеты. Выпадение, TTL 3 сек.
+// Coin — логика монеты. Выпадение, TTL 5 сек.
 type Coin struct {
 	ID        string
 	X         float64
@@ -45,7 +45,7 @@ func SpawnCoins(body []Point, dropAmount float64) []*Coin {
 			X:         p.X,
 			Y:         p.Y,
 			Value:     valuePerCoin,
-			ExpiresAt: time.Now().Add(3 * time.Second),
+			ExpiresAt: time.Now().Add(5 * time.Second),
 		})
 	}
 	return coins

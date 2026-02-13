@@ -3,7 +3,8 @@
     "home": "Home",
     "leaderboard": "Leaderboard",
     "frens": "Friends",
-    "profile": "Profile"
+    "profile": "Profile",
+    "admin": "Admin"
   },
   "common": {
     "deposit": "Deposit coming soon",
@@ -95,6 +96,20 @@
     "netProfit": "Net profit",
     "finalBalance": "Final balance",
     "collectAndExit": "Collect and exit"
+  },
+  "admin": {
+    "totalNetProfit": "Net profit",
+    "totalPlayers": "Total players",
+    "totalGames": "Total games",
+    "avgProfitPerDeath": "Avg profit/death",
+    "periodStats": "Period stats",
+    "deathCount": "Deaths",
+    "expiredCount": "Expired coins",
+    "withdrawCount": "Withdrawals",
+    "exportCsv": "Export CSV",
+    "loading": "Loading...",
+    "error": "Load error",
+    "refetch": "Refresh"
   },
   "time": {
     "justNow": "just now",

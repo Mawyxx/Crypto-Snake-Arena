@@ -82,6 +82,25 @@ func RequireAuth(validator AuthValidator, userProvider AuthUserProvider) func(ht
 	}
 }
 
+// RequireAdmin — оборачивает requireAuth и проверяет, что userInfo.ID (TgID) == adminTgID. Иначе 403.
+// Если adminTgID == 0, админские роуты отключены (403).
+func RequireAdmin(adminTgID int64, requireAuth func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if adminTgID == 0 {
+				http.Error(w, "admin disabled", http.StatusForbidden)
+				return
+			}
+			userInfo := UserInfoFromContext(r.Context())
+			if userInfo == nil || userInfo.ID != adminTgID {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}))
+	}
+}
+
 // RequireAuthWithUser — middleware: как RequireAuth + GetOrCreateUser, кладёт user в контекст.
 // Нужен для Profile, где нужны полные данные пользователя.
 func RequireAuthWithUser(validator AuthValidator, userProvider AuthUserProvider) func(http.Handler) http.Handler {

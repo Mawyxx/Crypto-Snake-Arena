@@ -14,8 +14,15 @@ type RewardCreditor interface {
 }
 
 // DeathHandler — обработчик смерти игрока. Вызывается при killSnake.
-// 20% от victimScore — rake платформы. Реферер получает 30% от этого rake.
+// Атомарно: revenue_log (20% rake) + referrer (30% от rake).
 // referenceID — идемпотентность (roomID:death:snakeID).
+// entryFee — ставка жертвы при входе в игру (для admin_revenue_ledger).
 type DeathHandler interface {
-	OnPlayerDeath(ctx context.Context, victimUserID uint, victimScore float64, referenceID string) error
+	OnPlayerDeath(ctx context.Context, victimUserID uint, victimScore, entryFee float64, referenceID, roomID string) error
+}
+
+// ExpiredCoinsHandler — обработчик просроченных монет. Вызывается при удалении монет по TTL.
+// totalValue — сумма Value всех просроченных монет; зачисляется как прибыль платформы (revenue_log expired_coin).
+type ExpiredCoinsHandler interface {
+	OnExpiredCoins(ctx context.Context, roomID string, totalValue float64) error
 }

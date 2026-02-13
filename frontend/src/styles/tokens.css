@@ -10,7 +10,15 @@
 
   /* Backgrounds */
   --bg-main: #0a0a0b;
-  --bg-main-alt: #0a0a0a;
+  --bg-main-alt: var(--bg-main);
+
+  /* Buttons */
+  --btn-primary-bg: var(--primary);
+  --btn-secondary-bg: rgba(255, 255, 255, 0.05);
+  --btn-secondary-border: rgba(255, 255, 255, 0.1);
+
+  /* Hero/Banner gradient (primary -> primary-deep, like Frens) */
+  --gradient-hero: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
   --bg-card: #161618;
   --bg-card-elevated: #161618;
   --bg-surface-alt: #1c1c1e;

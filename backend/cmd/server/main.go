@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -19,17 +19,21 @@ import (
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/presence"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/repository"
+	"github.com/crypto-snake-arena/server/internal/logger"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("no .env file found, using env vars")
+		// ignore: using env vars
 	}
+	logger.Init()
+	log := zap.L()
 
 	// Postgres
 	dsn := os.Getenv("DATABASE_URL")
@@ -38,33 +42,39 @@ func main() {
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to postgres: %v", err)
+		log.Fatal("failed to connect to postgres", zap.Error(err))
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("failed to get sql.DB: %v", err)
+		log.Fatal("failed to get sql.DB", zap.Error(err))
 	}
 	sqlDB.SetMaxOpenConns(50) // лимит при наплыве игроков
 	sqlDB.SetMaxIdleConns(10) // пул простаивающих соединений
-	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}); err != nil {
-		log.Fatalf("failed to migrate: %v", err)
+	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}, &domain.RevenueLog{}); err != nil {
+		log.Fatal("failed to migrate", zap.Error(err))
 	}
-	log.Println("postgres connected, migrations applied")
+	// Миграция 012: admin_revenue_ledger + VIEW (idempotent)
+	if err := runAdminLedgerMigration(db); err != nil {
+		log.Warn("admin_revenue_ledger migration failed (table may exist)", zap.Error(err))
+	}
+	log.Info("postgres connected, migrations applied")
 
 	// Auth
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if botToken == "" {
-		log.Println("warning: TELEGRAM_BOT_TOKEN not set, auth will fail")
+		log.Warn("TELEGRAM_BOT_TOKEN not set, auth will fail")
 	}
 	validator := auth.NewValidator(botToken)
 
+	// AdminRepository для admin_revenue_ledger (миграция 012)
+	adminRepo := repository.NewAdminRepository(db)
 	// TxManager (PlaceBet, AddGameReward) — реализует GameWallet и RewardCreditor
-	txManager := payment.NewTxManager(db)
+	txManager := payment.NewTxManager(db, adminRepo)
 	userResolver := repository.NewUserResolverDB(db)
 
 	// Менеджер комнат: хранит map комнат, выдаёт свободную или создаёт новую; каждая комната — своя горутина и Ticker
-	roomManager := game.NewRoomManager(txManager, txManager, txManager)
-	log.Println("room manager started")
+	roomManager := game.NewRoomManager(txManager, txManager, txManager, txManager)
+	log.Info("room manager started")
 
 	// WebSocket handler
 	wsHandler := ws.NewHandler(txManager, validator, userResolver)
@@ -78,7 +88,7 @@ func main() {
 	if strings.HasPrefix(redisURL, "redis://") || strings.HasPrefix(redisURL, "rediss://") {
 		opt, err := redis.ParseURL(redisURL)
 		if err != nil {
-			log.Fatalf("redis parse URL failed: %v", err)
+			log.Fatal("redis parse URL failed", zap.Error(err))
 		}
 		rdb = redis.NewClient(opt)
 	} else {
@@ -86,11 +96,11 @@ func main() {
 	}
 	rdbCtx, rdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	if err := rdb.Ping(rdbCtx).Err(); err != nil {
-		log.Fatalf("redis connect failed: %v", err)
+		log.Fatal("redis connect failed", zap.Error(err))
 	}
 	rdbCancel()
 	defer rdb.Close()
-	log.Println("redis connected")
+	log.Info("redis connected")
 
 	presenceStore := presence.NewRedisStore(rdb)
 
@@ -106,7 +116,7 @@ func main() {
 				)
 				UPDATE users u SET rank = ranked.r FROM ranked WHERE u.id = ranked.user_id
 			`).Error; err != nil {
-				log.Printf("[rank-updater] %v", err)
+				log.Error("rank-updater failed", zap.Error(err))
 			}
 		}
 		updateRanks() // первый раз сразу после старта
@@ -117,12 +127,19 @@ func main() {
 
 	// HTTP handler (REST API)
 	webhookSecret := os.Getenv("WEBHOOK_SECRET_TOKEN")
-	httpHandler := httphandler.NewHandler(validator, userResolver, presenceStore, botToken, webhookSecret)
+	platformStats := repository.NewPlatformStatsDB(db)
+	adminTgID := int64(0)
+	if s := os.Getenv("ADMIN_TG_ID"); s != "" {
+		if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+			adminTgID = n
+		}
+	}
+	httpHandler := httphandler.NewHandler(validator, userResolver, presenceStore, platformStats, adminRepo, adminTgID, botToken, webhookSecret)
 
 	// Router
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("health check from %s", r.RemoteAddr)
+		log.Debug("health check", zap.String("remote", r.RemoteAddr))
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -158,9 +175,9 @@ func main() {
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			fs.ServeHTTP(w, r)
 		}))
-		log.Println("serving static from", staticDir)
+		log.Info("serving static", zap.String("dir", staticDir))
 	} else {
-		log.Println("STATIC_DIR not found, API only mode")
+		log.Info("STATIC_DIR not found, API only mode")
 	}
 
 	// CORS: ALLOWED_ORIGINS или * для dev
@@ -204,25 +221,39 @@ func main() {
 
 	// Graceful Shutdown
 	go func() {
-		log.Printf("server listening on %s", srv.Addr)
+		log.Info("server listening", zap.String("addr", srv.Addr))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
+			log.Fatal("server error", zap.Error(err))
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("shutting down...")
+	log.Info("shutting down...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	roomManager.Stop()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("server shutdown error: %v", err)
+		log.Error("server shutdown error", zap.Error(err))
 	}
-	log.Println("server stopped")
+	log.Info("server stopped")
+}
+
+func runAdminLedgerMigration(db *gorm.DB) error {
+	for _, dir := range []string{"migrations", "../migrations", "../../migrations", "backend/migrations"} {
+		path := filepath.Join(dir, "012_admin_revenue_ledger.sql")
+		if _, err := os.Stat(path); err == nil {
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return db.Exec(string(raw)).Error
+		}
+	}
+	return os.ErrNotExist
 }
 
 func stringList(s string) []string {

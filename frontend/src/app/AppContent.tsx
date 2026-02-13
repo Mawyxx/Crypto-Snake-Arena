@@ -11,12 +11,14 @@ import { LeaderboardPage } from '@/pages/leaderboard'
 import { FrensPage } from '@/pages/frens'
 import { ProfilePage } from '@/pages/profile'
 import { GamePage } from '@/pages/game'
+import { AdminPage } from '@/pages/admin'
 
 const screenComponents: Record<Screen, React.ComponentType> = {
   home: HomePage,
   leaderboard: LeaderboardPage,
   frens: FrensPage,
   profile: ProfilePage,
+  admin: AdminPage,
   game: GamePage,
 }
 

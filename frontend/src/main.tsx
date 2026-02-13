@@ -15,7 +15,7 @@ function showError(msg: string) {
     '<pre style="max-width:100%;overflow:auto;font-size:11px;margin-bottom:16px;white-space:pre-wrap;word-break:break-all">' +
     String(msg).replace(/</g, '&lt;') +
     '</pre>' +
-    `<button onclick="location.reload()" style="padding:12px 24px;background:${designTokens.buttonSecondary};color:${designTokens.textPrimary};border:none;border-radius:8px;font-weight:bold;cursor:pointer">${i18n.t('common.reload')}</button>` +
+    `<button onclick="location.reload()" style="padding:12px 24px;background:${designTokens.primary};color:${designTokens.textPrimary};border:none;border-radius:8px;font-weight:bold;cursor:pointer">${i18n.t('common.reload')}</button>` +
     '</div>'
 }
 
