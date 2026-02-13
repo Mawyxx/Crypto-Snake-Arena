@@ -113,27 +113,26 @@ export function AppContent() {
   }
 
   return (
-    <div className="app app-content-wrap relative flex flex-col h-full min-h-0 w-full max-w-[420px] mx-auto bg-[var(--bg-main)] touch-none overflow-hidden pt-[env(safe-area-inset-top)]">
-      <main className="flex-1 min-h-0 overflow-hidden relative flex flex-col pb-bottom-bar">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={screen}
-            className="h-full absolute inset-0"
-          >
+    <div className="app app-content-wrap relative flex flex-col h-full min-h-0 w-full max-w-[420px] mx-auto bg-[var(--bg-main)] overflow-hidden pt-[env(safe-area-inset-top)]">
+      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-auto bg-[var(--bg-main)]"
+          style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+        >
+          <AnimatePresence mode="wait">
             <motion.div
+              key={screen}
               variants={contentVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               transition={contentTransition}
-              className="h-full min-h-full overflow-y-auto overscroll-contain touch-auto bg-[var(--bg-main)]"
+              className="min-h-full"
             >
               <Component />
             </motion.div>
-            <motion.div
-              variants={overlayVariants}
-              transition={overlayExitTransition}
-              className="absolute inset-0 bg-black pointer-events-none"
-            />
-          </motion.div>
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </main>
       <BottomBar />
     </div>
