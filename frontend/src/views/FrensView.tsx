@@ -62,15 +62,15 @@ export const FrensView = React.memo(function FrensView() {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pb-bottom-bar">
       <div className="px-5 pt-6 pb-2">
-        <div className="bg-[var(--bg-menu-card)] border border-white/12 rounded-[28px] p-7 relative overflow-hidden">
-          <div className="absolute -right-6 -bottom-6 opacity-20 -rotate-12 pointer-events-none">
-            <Icon name="card_giftcard" size={120} className="text-primary leading-none" />
+        <div className="bg-gradient-to-br from-[#007AFF] to-[#0056B3] rounded-[28px] p-7 relative overflow-hidden shadow-2xl shadow-primary/10">
+          <div className="absolute -right-6 -bottom-6 opacity-30 -rotate-12 pointer-events-none">
+            <Icon name="card_giftcard" size={140} className="text-white leading-none" />
           </div>
           <div className="relative z-10">
-            <h1 className="text-2xl font-bold leading-tight tracking-tight text-white">
-              {t('frens.earn30')} <span className="text-primary">30%</span>
+            <h1 className="text-3xl font-bold leading-tight tracking-tight text-white text-premium">
+              {t('frens.earn30')} 30%
             </h1>
-            <p className="text-secondary text-[13px] mt-1.5 max-w-[220px] font-medium leading-relaxed">
+            <p className="text-white/80 text-sm mt-1.5 max-w-[220px] font-medium leading-relaxed">
               {t('frens.fromCommissions')}
             </p>
           </div>
@@ -78,9 +78,9 @@ export const FrensView = React.memo(function FrensView() {
       </div>
 
       <div className="px-5 py-3">
-        <div className="bg-[var(--bg-menu-card)] border border-white/12 rounded-[28px] p-5">
+        <div className="bg-[#0A0A0A] border border-white/5 rounded-[28px] p-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 bg-[var(--bg-input)] rounded-2xl px-5 py-4 border border-white/5 overflow-hidden">
+            <div className="flex-1 bg-white/5 rounded-2xl px-5 py-4 border border-white/5 overflow-hidden">
               <span className="text-primary font-semibold text-sm tracking-tight truncate block">
                 {referralLink ? `${referralLink.slice(0, 24)}...` : '—'}
               </span>
@@ -93,7 +93,7 @@ export const FrensView = React.memo(function FrensView() {
               <Icon name="content_copy" size={24} className={copied ? 'text-neon-green' : 'text-white'} />
             </button>
           </div>
-          <p className="text-[10px] text-secondary mt-4 uppercase tracking-[0.15em] text-center font-bold">
+          <p className="text-[10px] text-white/30 mt-4 uppercase tracking-[0.15em] text-center font-bold">
             {t('frens.shareLinkHint')}
           </p>
         </div>
@@ -103,21 +103,21 @@ export const FrensView = React.memo(function FrensView() {
         <button
           type="button"
           onClick={handleInvite}
-          className="w-full h-14 rounded-[28px] flex items-center justify-center gap-3 active:scale-95 transition-all border-2 border-primary bg-transparent hover:bg-primary/10"
+          className="w-full h-16 rounded-[28px] flex items-center justify-center gap-3 active:scale-95 transition-all bg-[rgba(0,122,255,0.1)] border border-white/5 backdrop-blur-sm"
         >
-          <Icon name="share" size={20} className="text-primary" />
-          <span className="font-bold text-primary text-base tracking-tight uppercase">{t('frens.inviteFriends')}</span>
+          <Icon name="share" size={20} className="text-[#007AFF] font-bold" />
+          <span className="font-bold text-white text-base tracking-tight uppercase">{t('frens.inviteFriends')}</span>
         </button>
       </div>
 
       <div className="px-5 py-3 grid grid-cols-2 gap-4">
-        <div className="bg-[var(--bg-menu-card)] border border-white/12 rounded-[28px] p-6 flex flex-col justify-between h-32">
-          <span className="text-[10px] text-secondary font-bold tracking-[0.1em] uppercase">{t('frens.totalFriends')}</span>
-          <span className="text-3xl font-bold text-white text-premium tabular-nums">{referralInvited}</span>
+        <div className="bg-[#0A0A0A] border border-white/5 rounded-[28px] p-6 flex flex-col justify-between h-32">
+          <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.totalFriends')}</span>
+          <span className="text-3xl font-bold text-premium text-white">{referralInvited}</span>
         </div>
-        <div className="bg-[var(--bg-menu-card)] border border-white/12 rounded-[28px] p-6 flex flex-col justify-between h-32">
-          <span className="text-[10px] text-secondary font-bold tracking-[0.1em] uppercase">{t('frens.earned')}</span>
-          <span className="text-3xl font-bold text-neon-green text-premium tabular-nums">
+        <div className="bg-[#0A0A0A] border border-white/5 rounded-[28px] p-6 flex flex-col justify-between h-32">
+          <span className="text-[10px] text-white/40 font-bold tracking-[0.1em] uppercase">{t('frens.earned')}</span>
+          <span className="text-3xl font-bold text-[#007AFF] text-premium">
             ${referralEarned.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
@@ -125,9 +125,9 @@ export const FrensView = React.memo(function FrensView() {
 
       <div className="px-5 py-3">
         <div className="flex items-center justify-between mb-4 px-2">
-          <h2 className="text-[11px] font-bold text-secondary tracking-[0.2em] uppercase">{t('frens.yourNetwork')}</h2>
+          <h2 className="text-[11px] font-bold text-white/30 tracking-[0.2em] uppercase">{t('frens.yourNetwork')}</h2>
         </div>
-        <div className="bg-[var(--bg-menu-card)] border border-white/12 rounded-[28px] overflow-hidden">
+        <div className="bg-[#0A0A0A] border border-white/5 rounded-[28px] overflow-hidden">
           {loading ? (
             <>
               {[1, 2, 3].map((i) => (
@@ -143,7 +143,7 @@ export const FrensView = React.memo(function FrensView() {
             </>
           ) : error ? (
             <div className="px-5 py-6 text-center">
-              <p className="text-sm text-secondary">{error}</p>
+              <p className="text-sm text-white/40">{error}</p>
               <button
                 type="button"
                 onClick={() => { impact('light'); refetchReferrals() }}
@@ -154,7 +154,7 @@ export const FrensView = React.memo(function FrensView() {
             </div>
           ) : entries.length === 0 ? (
             <div className="px-5 py-6 text-center">
-              <p className="text-sm text-secondary">{t('frens.invitedHere')}</p>
+              <p className="text-sm text-white/40">{t('frens.invitedHere')}</p>
             </div>
           ) : (
             entries.map((entry, i) => (
@@ -171,7 +171,7 @@ export const FrensView = React.memo(function FrensView() {
                     {t('frens.joined', { time: formatRelativeTime(entry.joined_at, t, i18n.language) })}
                   </p>
                 </div>
-                <div className="text-neon-green font-bold text-sm tracking-tight shrink-0">
+                <div className="text-[#22C55E] font-bold text-sm tracking-tight shrink-0">
                   +${entry.earned_from.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>

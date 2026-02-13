@@ -36,26 +36,26 @@ body::-webkit-scrollbar {
 @layer components {
   /* Generic card — единый фон карточек/мини-баннеров */
   .card-premium {
-    background: var(--bg-menu-card);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 28px;
   }
 
-  /* Interface template styles */
+  /* interface/crypto_snake_arena_home — 1:1 */
   .recessed-field {
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.4);
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
   .play-button-glow {
     box-shadow: 0 0 25px rgba(0, 122, 255, 0.4);
   }
   .nav-pill {
-    background: var(--bg-menu-card);
-    border: 1px solid var(--border-nav);
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .neon-avatar-ring {
-    border: 2px solid var(--primary);
+    border: 2px solid #007AFF;
     box-shadow: 0 0 10px rgba(0, 122, 255, 0.4);
   }
   .ios-blur {
@@ -66,13 +66,14 @@ body::-webkit-scrollbar {
     display: none;
   }
   .premium-card {
-    background: var(--bg-menu-card);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 28px;
   }
   .hero-banner {
     background: var(--gradient-hero);
-    border-radius: var(--radius-card);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    border-radius: 28px;
   }
   .btn-secondary {
     background: var(--btn-secondary-bg);
@@ -83,12 +84,12 @@ body::-webkit-scrollbar {
     box-shadow: 0 0 15px rgba(0, 122, 255, 0.5);
   }
   .card-border {
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
   .glass-capsule {
-    background: var(--bg-menu-card);
+    background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   .avatar-glow {
     box-shadow: 0 0 20px rgba(0, 122, 255, 0.4);
@@ -100,14 +101,13 @@ body::-webkit-scrollbar {
     box-shadow: 0 0 15px rgba(0, 122, 255, 0.5), inset 0 0 10px rgba(0, 122, 255, 0.3);
   }
   .nav-capsule {
-    background: var(--bg-menu-card);
+    background: rgba(16, 16, 16, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(24px);
   }
   .user-row-highlight {
-    background: rgba(0, 122, 255, 0.15);
-    border: 1px solid rgba(0, 122, 255, 0.4);
-    box-shadow: 0 0 20px rgba(0, 122, 255, 0.15);
+    background: rgba(0, 122, 255, 0.12);
+    border: 1px solid rgba(0, 122, 255, 0.3);
   }
   .banner-pattern {
     background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0);

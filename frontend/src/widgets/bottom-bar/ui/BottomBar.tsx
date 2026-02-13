@@ -44,11 +44,11 @@ export function BottomBar() {
               type="button"
               onClick={() => handleTab(tab.id)}
               className={`tab-btn flex flex-col items-center justify-center flex-1 py-1.5 transition-all duration-200 active:scale-95 hover:opacity-70 ${
-                isActive ? 'text-primary' : 'text-secondary'
+                isActive ? 'text-[#007AFF]' : 'text-white/40 opacity-90'
               }`}
             >
-              <Icon name={iconName} size={22} filled={isActive} className={isActive ? 'text-primary' : 'text-secondary'} />
-              <span className={`text-[8px] font-bold uppercase mt-1 tracking-tighter ${isActive ? 'text-primary' : 'font-medium text-secondary'}`}>
+              <Icon name={iconName} size={22} filled={isActive} className={isActive ? 'text-[#007AFF]' : 'text-white/50'} />
+              <span className={`text-[8px] font-bold uppercase mt-1 tracking-tighter ${isActive ? 'text-[#007AFF]' : 'font-medium text-white/30'}`}>
                 {t(tab.labelKey)}
               </span>
             </button>
@@ -58,7 +58,7 @@ export function BottomBar() {
       <button
         type="button"
         onClick={() => handleTab('profile')}
-        className={`w-14 h-14 shrink-0 active:scale-95 transition-transform bg-[var(--bg-menu-card)] rounded-full flex items-center justify-center p-0.5 border-2 border-primary flex-shrink-0 ${screen === 'profile' ? 'profile-ring' : ''}`}
+        className={`w-14 h-14 shrink-0 active:scale-95 transition-transform bg-[#111111] rounded-full flex items-center justify-center p-0.5 border-2 border-[#007AFF] flex-shrink-0 ${screen === 'profile' ? 'profile-ring' : ''}`}
       >
         <div className="w-full h-full rounded-full flex items-center justify-center overflow-hidden">
           <UserAvatar src={photoUrl} name={username} size={48} className="rounded-full" />

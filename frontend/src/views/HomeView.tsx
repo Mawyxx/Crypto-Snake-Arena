@@ -97,7 +97,7 @@ export const HomeView = React.memo(function HomeView() {
             <span className="text-[17px] font-bold leading-none tracking-tight text-white truncate max-w-[140px]">
               {username || ''}
             </span>
-            <span className="text-[10px] font-bold text-secondary uppercase mt-1 tracking-widest leading-none">
+            <span className="text-[10px] font-bold text-white/30 uppercase mt-1 tracking-widest leading-none">
               {t('home.globalRank', { rank: gamesPlayed === 0 || rank === 0 ? '???' : rank })}
             </span>
           </div>
@@ -105,60 +105,59 @@ export const HomeView = React.memo(function HomeView() {
         <button
           type="button"
           onClick={handleAddFunds}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--bg-menu-card)] border border-white/12 active:scale-95 transition-transform"
+          className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 active:scale-95 transition-transform"
         >
-          <span className="text-[15px] font-bold tracking-tight text-white tabular-nums">
+          <span className="text-[14px] font-bold tracking-tight text-white">
             {(Number(balance) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <span className="text-[10px] font-bold text-primary uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/20">USDT</span>
+          <span className="text-[10px] font-bold text-primary">USDT</span>
         </button>
       </header>
 
       <main className="flex-grow overflow-y-auto custom-scrollbar px-5 py-6 space-y-5">
-        <div className="hero-banner p-6 relative overflow-hidden flex flex-col justify-between h-[165px] min-h-[165px] rounded-[28px] shadow-[0_12px_40px_rgba(0,119,255,0.35)]">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-transparent" />
-          <div className="absolute -right-8 -top-8 w-36 h-36 bg-white/15 rounded-full blur-2xl" />
+        <div className="hero-banner p-6 relative overflow-hidden flex flex-col justify-between h-[180px] min-h-[180px]">
+          <div className="absolute -right-5 -top-5 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
           <div className="flex justify-between items-start relative z-10">
-            <div className="px-3 py-1.5 rounded-full flex items-center gap-2 bg-white/15 backdrop-blur-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+            <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('home.online', { count: onlineCount ?? 0 })}</span>
             </div>
-            <Icon name="info" size={20} className="text-white/80" />
+            <Icon name="info" size={20} className="text-white/50" />
           </div>
           <div className="flex justify-between items-end relative z-10">
             <div>
-              <h2 className="text-[32px] font-black text-white uppercase tracking-tighter leading-[1]">{t('home.enterArena')}<br/>{t('home.arena')}</h2>
-              <p className="text-white/70 text-[11px] font-bold uppercase tracking-[0.2em] mt-2">{t('home.theUltimateDuel')}</p>
+              <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-[0.9]">{t('home.enterArena')}<br/>{t('home.arena')}</h2>
+              <p className="text-white/70 text-[11px] font-bold uppercase tracking-[0.2em] mt-3">{t('home.theUltimateDuel')}</p>
             </div>
           </div>
         </div>
 
-        <div className="premium-card p-6 space-y-6 shadow-sm">
+        <div className="premium-card p-6 space-y-6">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.selectBet')}</span>
+              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{t('home.selectBet')}</span>
               <span className="text-[10px] font-black text-primary uppercase tracking-widest">{t('home.maxBet')}</span>
             </div>
             <div className="flex items-center gap-4">
               <button
                 type="button"
                 onClick={() => handleBetChange(-1)}
-                className="w-12 h-12 rounded-2xl bg-[var(--bg-menu-card)] border border-white/15 flex items-center justify-center active:scale-90 transition-transform"
+                className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
               >
-                <Icon name="remove" size={20} className="text-white" />
+                <Icon name="remove" size={20} className="text-white/60" />
               </button>
               <div className="flex-grow h-14 recessed-field rounded-2xl flex items-center justify-center gap-2">
-                <span className="text-xl font-bold text-white tabular-nums">
+                <span className="text-xl font-bold text-white">
                   {stakeUsdt.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-[10px] font-bold text-secondary uppercase">USDT</span>
+                <span className="text-[10px] font-bold text-white/30 uppercase">USDT</span>
               </div>
               <button
                 type="button"
                 onClick={() => handleBetChange(1)}
-                className="w-12 h-12 rounded-2xl bg-[var(--bg-menu-card)] border border-white/15 flex items-center justify-center active:scale-90 transition-transform"
+                className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
               >
-                <Icon name="add" size={20} className="text-white" />
+                <Icon name="add" size={20} className="text-white/60" />
               </button>
             </div>
           </div>
@@ -167,7 +166,7 @@ export const HomeView = React.memo(function HomeView() {
             onClick={handlePlay}
             disabled={!canPlay}
             className={`w-full py-5 rounded-2xl text-white font-black text-lg uppercase tracking-[0.2em] active:scale-[0.98] transition-all ${
-              canPlay ? 'bg-primary play-button-glow' : 'bg-[var(--bg-elevated)] border border-white/15 cursor-not-allowed opacity-70'
+              canPlay ? 'bg-primary play-button-glow' : 'bg-white/5 border border-white/10 cursor-not-allowed opacity-70'
             }`}
           >
             {t('home.playButton')}
@@ -176,12 +175,12 @@ export const HomeView = React.memo(function HomeView() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="premium-card p-5">
-            <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.myGames')}</span>
-            <div className="text-2xl font-bold mt-2 tracking-tight text-white tabular-nums">{gamesPlayed}</div>
+            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{t('home.myGames')}</span>
+            <div className="text-2xl font-bold mt-1 tracking-tight text-white">{gamesPlayed}</div>
           </div>
           <div className="premium-card p-5">
-            <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{t('home.totalProfit')}</span>
-            <div className={`text-2xl font-bold mt-2 tracking-tight tabular-nums ${totalProfit >= 0 ? 'text-neon-green' : 'text-error'}`}>
+            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{t('home.totalProfit')}</span>
+            <div className={`text-2xl font-bold mt-1 tracking-tight ${totalProfit >= 0 ? 'text-[#22C55E]' : 'text-[#FF3B30]'}`}>
               {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
@@ -216,7 +215,7 @@ export const HomeView = React.memo(function HomeView() {
               </>
             ) : games.length === 0 ? (
               <div className="py-6 flex flex-col items-center justify-center">
-                <p className="text-sm text-secondary text-center">{t('home.playFirst')}</p>
+                <p className="text-sm text-white/40 text-center">{t('home.playFirst')}</p>
               </div>
             ) : (
               games.map((game, i) => {
@@ -243,18 +242,18 @@ export const HomeView = React.memo(function HomeView() {
                       <div className="flex flex-col">
                         <span
                           className={`text-sm font-bold tracking-tight uppercase ${
-                            isWin ? 'text-neon-green' : 'text-error'
+                            isWin ? 'text-[#22C55E]' : 'text-[#FF3B30]'
                           }`}
                         >
                           {isWin ? t('home.win') : t('home.lose')}
                         </span>
-                        <span className="text-[10px] text-secondary font-medium uppercase">
+                        <span className="text-[10px] text-white/30 font-medium uppercase">
                           {formatRelativeTime(game.created_at, t, i18n.language)}
                         </span>
                       </div>
                     </div>
                     <span
-                      className={`text-sm font-bold tabular-nums shrink-0 ${game.profit > 0 ? 'text-neon-green' : 'text-error'}`}
+                      className={`text-sm font-bold shrink-0 ${game.profit > 0 ? 'text-[#22C55E]' : 'text-[#FF3B30]'}`}
                     >
                       {game.profit > 0 ? '+' : ''}
                       {game.profit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT
