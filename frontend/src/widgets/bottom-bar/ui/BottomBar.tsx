@@ -58,7 +58,7 @@ export function BottomBar() {
       <button
         type="button"
         onClick={() => handleTab('profile')}
-        className={`w-14 h-14 shrink-0 active:scale-95 transition-transform bg-[#111111] rounded-full flex items-center justify-center p-0.5 border-2 border-[#007AFF] flex-shrink-0 ${screen === 'profile' ? 'profile-ring' : ''}`}
+        className={`w-14 h-14 shrink-0 active:scale-95 transition-transform bg-[#111111] rounded-full flex items-center justify-center p-0.5 border-2 flex-shrink-0 transition-colors ${screen === 'profile' ? 'border-[#007AFF] profile-ring' : 'border-white/10'}`}
       >
         <div className="w-full h-full rounded-full flex items-center justify-center overflow-hidden">
           <UserAvatar src={photoUrl} name={username} size={48} className="rounded-full" />
