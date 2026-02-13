@@ -8,8 +8,8 @@
   --app-max-width: 420px;
   --bottom-bar-height: 80px;
 
-  /* Backgrounds */
-  --bg-main: #0a0a0b;
+  /* Backgrounds — как в референсах interface */
+  --bg-main: #000000;
   --bg-main-alt: var(--bg-main);
 
   /* Buttons */
@@ -17,11 +17,11 @@
   --btn-secondary-bg: rgba(255, 255, 255, 0.05);
   --btn-secondary-border: rgba(255, 255, 255, 0.1);
 
-  /* Hero/Banner gradient (primary -> primary-deep, like Frens) */
-  --gradient-hero: linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%);
-  --bg-card: #161618;
-  --bg-card-elevated: #161618;
-  --bg-surface-alt: #1c1c1e;
+  /* Hero/Banner — vibrant-banner из crypto_snake_arena_home */
+  --gradient-hero: linear-gradient(135deg, #007AFF 0%, #002D62 100%);
+  --bg-card: #111111;
+  --bg-card-elevated: #111111;
+  --bg-surface-alt: #111111;
   --anthracite: #111111;
 
   /* Text */

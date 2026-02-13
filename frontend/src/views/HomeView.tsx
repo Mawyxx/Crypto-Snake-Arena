@@ -87,7 +87,7 @@ export const HomeView = React.memo(function HomeView() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)] [font-family:Inter,sans-serif]">
+    <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)]">
       <header className="ios-blur sticky top-0 z-50 flex justify-between items-center px-6 pt-12 pb-4 w-full border-b border-white/5 bg-[var(--bg-main)]/80">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
@@ -146,11 +146,11 @@ export const HomeView = React.memo(function HomeView() {
               >
                 <Icon name="remove" size={20} className="text-white/60" />
               </button>
-              <div className="flex-grow h-14 recessed-field rounded-2xl flex flex-col items-center justify-center gap-2">
+              <div className="flex-grow h-14 recessed-field rounded-2xl flex items-center justify-center gap-2">
                 <span className="text-xl font-bold text-white tabular-nums">
                   {stakeUsdt.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-[10px] font-bold text-white/30 uppercase mt-1">USDT</span>
+                <span className="text-[10px] font-bold text-white/30 uppercase">USDT</span>
               </div>
               <button
                 type="button"

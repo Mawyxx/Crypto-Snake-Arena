@@ -3,8 +3,8 @@
  * CSS uses tokens.css; this file keeps the same values for programmatic use.
  */
 export const designTokens = {
-  bgMain: '#0a0a0b',
-  bgMainAlt: '#0a0a0b',
+  bgMain: '#000000',
+  bgMainAlt: '#000000',
   textPrimary: '#ffffff',
   primary: '#007aff',
   colorSuccess: '#22c55e',

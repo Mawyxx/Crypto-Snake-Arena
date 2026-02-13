@@ -116,7 +116,7 @@ export function AppContent() {
     <div className="app app-content-wrap relative flex flex-col h-full min-h-0 w-full max-w-[420px] mx-auto bg-[var(--bg-main)] overflow-hidden pt-[env(safe-area-inset-top)]">
       <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <div
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-auto bg-[var(--bg-main)]"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-auto hide-scrollbar bg-[var(--bg-main)]"
           style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
         >
           <AnimatePresence mode="wait">

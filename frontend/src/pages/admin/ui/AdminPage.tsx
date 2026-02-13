@@ -26,14 +26,14 @@ export function AdminPage() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)] [font-family:Inter,sans-serif]">
+    <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)]">
       <header className="ios-blur sticky top-0 z-50 flex justify-between items-center px-6 pt-12 pb-4 w-full border-b border-[var(--border-subtle)] bg-[var(--bg-main)]/80">
         <h1 className="text-[17px] font-bold tracking-tight text-[var(--text-primary)]">
           {t('nav.admin')}
         </h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain pb-24 px-5">
+      <div className="flex-1 overflow-y-auto overscroll-contain hide-scrollbar pb-24 px-5">
         {/* Hero banner — gradient как Home/Frens */}
         <div className="mt-5 mb-4 rounded-[var(--radius-card)] overflow-hidden relative" style={{ background: 'var(--gradient-hero)' }}>
           <div className="relative z-10 px-6 py-6">

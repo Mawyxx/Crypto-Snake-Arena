@@ -17,7 +17,7 @@ export function TelegramGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center min-h-screen p-6 text-center"
+      className="flex flex-col items-center justify-center h-full min-h-[100dvh] p-6 text-center overflow-hidden"
       style={{
         background: designTokens.bgMainAlt,
         color: designTokens.textPrimary,
