@@ -21,6 +21,10 @@
   --gradient-hero: linear-gradient(135deg, #0077FF 0%, #002D62 100%);
   /* Цвет карточек/UI элементов — из референса (#1A1A1A) */
   --bg-menu-card: #1A1A1A;
+  /* Слегка светлее для акцентных элементов (кнопки, тумблер выкл) */
+  --bg-elevated: #252525;
+  /* Темнее для полей ввода */
+  --bg-input: #141414;
   --bg-card: var(--bg-menu-card);
   --bg-card-elevated: var(--bg-menu-card);
   --bg-surface-alt: var(--bg-menu-card);

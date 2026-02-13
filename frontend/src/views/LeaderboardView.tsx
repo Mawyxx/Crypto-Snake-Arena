@@ -86,7 +86,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
           <button
             type="button"
             onClick={handleShare}
-            className="relative z-10 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform"
+            className="relative z-10 w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-white/10 flex items-center justify-center active:scale-90 transition-transform"
           >
             <Icon name="share" size={20} className="text-white/70" />
           </button>
