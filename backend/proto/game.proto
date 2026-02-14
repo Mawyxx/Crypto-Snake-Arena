@@ -17,6 +17,7 @@ message Snake {
     repeated Point body = 3;
     float angle = 4;
     float score = 5;
+    int32 body_length = 6;  // кол-во сегментов (head + tail). Нужно при body=[] для своей змеи
 }
 
 message Coin {

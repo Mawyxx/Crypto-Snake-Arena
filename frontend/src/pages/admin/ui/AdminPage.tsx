@@ -16,12 +16,12 @@ export function AdminPage() {
   const { impact } = useHaptic()
 
   const handleExport = () => {
-    impact('medium')
+    impact?.('medium')
     exportCsv()
   }
 
   const handleRefetch = () => {
-    impact('light')
+    impact?.('light')
     refetch()
   }
 

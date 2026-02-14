@@ -12,6 +12,7 @@ import (
 
 	"github.com/crypto-snake-arena/server/internal/domain"
 	"github.com/crypto-snake-arena/server/internal/game"
+	"github.com/google/uuid"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
 	gamepb "github.com/crypto-snake-arena/server/proto"
@@ -171,7 +172,11 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 			case <-p.Done:
 				return
 			case <-ticker.C:
-				msg, _ := json.Marshal(map[string]interface{}{"type": "queue", "position": 1})
+				msg, errMarshal := json.Marshal(map[string]interface{}{"type": "queue", "position": 1})
+				if errMarshal != nil {
+					zap.L().Warn("ws queue status marshal failed", zap.Error(errMarshal))
+					return
+				}
 				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 					roomManager.RemoveFromQueue(p.ID)
 					return
@@ -210,13 +215,14 @@ func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake flo
 	case room.Register <- player:
 		// OK
 	default:
-		_ = h.wallet.AddGameReward(context.Background(), userID, stake, "") // refund: комната полна
+		refID := "refund:room_full:" + strconv.FormatUint(uint64(userID), 10) + ":" + uuid.New().String()
+		_ = h.wallet.AddGameReward(context.Background(), userID, stake, refID) // refund: комната полна
 		_ = conn.Close()
 		zap.L().Warn("ws room full, refunded", zap.Uint("userID", userID), zap.String("roomID", room.ID))
 		return
 	}
 
-	broadcastCh, closeCh := room.Subscribe()
+	broadcastCh, closeCh := room.Subscribe(player.TgID)
 	closeFn := sync.OnceFunc(closeCh)
 	var disconnectReason string
 
@@ -284,7 +290,8 @@ func (r *rateLimiter) allow() bool {
 	if len(valid) >= r.max {
 		return false
 	}
-	r.counts = append(valid, now)
+	valid = append(valid, now)
+	r.counts = valid
 	return true
 }
 

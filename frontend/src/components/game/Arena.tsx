@@ -1,8 +1,8 @@
-import { Stage, Container, useTick, useApp, TilingSprite, Text, Graphics } from '@pixi/react'
+import { Stage, Container, useTick, useApp, Text, Graphics } from '@pixi/react'
 import { TextStyle } from 'pixi.js'
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGameEngine, type InterpolatedWorldSnapshot } from '@/hooks/useGameEngine'
+import { useGameEngine, type InterpolatedWorldSnapshot, type InterpolatedSnake } from '@/hooks/useGameEngine'
 import { useInputHandler } from '@/hooks/useInputHandler'
 import { useTelegram } from '@/features/auth'
 import { SnakeView } from './SnakeView'
@@ -71,8 +71,8 @@ export const Arena = ({
     if (!el) return
 
     const update = () => {
-      const w = el.clientWidth || WORLD_SIZE
-      const h = el.clientHeight || WORLD_SIZE
+      const w = Math.max(el.clientWidth || WORLD_SIZE, 200)
+      const h = Math.max(el.clientHeight || WORLD_SIZE, 200)
       setSize({ width: w, height: h })
     }
 
@@ -118,9 +118,12 @@ export const Arena = ({
       ref={containerRef}
       className="relative"
       style={{
+        position: 'absolute',
+        inset: 0,
         width: '100%',
         height: '100%',
-        minHeight: 100,
+        minHeight: 200,
+        minWidth: 200,
         touchAction: 'none',
         cursor: 'default',
       }}
@@ -144,7 +147,7 @@ export const Arena = ({
           <span className="text-white/70 text-sm text-center">{t('game.checkInternet')}</span>
           <button
             type="button"
-            onClick={onConnectionFailed}
+            onClick={() => onConnectionFailed?.()}
             className="px-6 py-3 rounded-2xl bg-primary text-white font-semibold text-sm active:scale-95 transition-transform hover:brightness-110"
           >
             {t('common.toMainMenu')}
@@ -168,6 +171,7 @@ export const Arena = ({
           snakeHeadRef={snakeHeadRef}
           containerWidth={size.width}
           containerHeight={size.height}
+          status={status}
         />
       </Stage>
     </div>
@@ -178,18 +182,39 @@ export const Arena = ({
  * useTick — только refs, без setState.
  * Re-render через отдельную подписку на ticker (не внутри useTick).
  */
+// Mock state для проверки рендеринга при отсутствии соединения (dev)
+const MOCK_SNAKE = {
+  id: 1,
+  head: { x: 500, y: 500 },
+  body: [
+    { x: 488, y: 500 },
+    { x: 476, y: 500 },
+    { x: 464, y: 500 },
+  ],
+  angle: 0,
+  score: 0,
+  bodyLength: 3,
+} as InterpolatedSnake
+
+const MOCK_STATE: InterpolatedWorldSnapshot = {
+  snakes: [MOCK_SNAKE],
+  coins: [],
+}
+
 function GameLoop({
   getInterpolatedState,
   localSnakeId,
   snakeHeadRef,
   containerWidth,
   containerHeight,
+  status,
 }: {
   getInterpolatedState: () => InterpolatedWorldSnapshot | null
   localSnakeId: number | null | undefined
   snakeHeadRef: React.MutableRefObject<{ x: number; y: number } | null>
   containerWidth: number
   containerHeight: number
+  status: string
 }) {
   const app = useApp()
   const stateRef = useRef<InterpolatedWorldSnapshot | null>(null)
@@ -242,7 +267,11 @@ function GameLoop({
     }
   }, [app])
 
-  const state = stateRef.current
+  let state = stateRef.current
+  // Dev: показываем mock-змейку при отсутствии соединения для проверки рендеринга
+  if (!state && import.meta.env.DEV && (status === 'connecting' || status === 'failed')) {
+    state = MOCK_STATE
+  }
   const vp = viewportRef.current
 
   return (
@@ -264,21 +293,18 @@ interface GameContentProps {
   viewportScale: number
 }
 
-// Бесконечно тайлящийся гексагональный фон
+// Фон арены: Slither.io-style #161c22 (без внешней текстуры — надёжный fallback)
 const BG_PADDING = 500
 const BG_SIZE = WORLD_SIZE + BG_PADDING * 2
 
 function ArenaBackground() {
-  return (
-    <TilingSprite
-      image="/bg54.jpg"
-      x={-BG_PADDING}
-      y={-BG_PADDING}
-      width={BG_SIZE}
-      height={BG_SIZE}
-      tilePosition={{ x: 0, y: 0 }}
-    />
-  )
+  const draw = React.useCallback((g: import('pixi.js').Graphics) => {
+    g.clear()
+    g.beginFill(0x161c22, 1)
+    g.drawRect(-BG_PADDING, -BG_PADDING, BG_SIZE, BG_SIZE)
+    g.endFill()
+  }, [])
+  return <Graphics draw={draw} />
 }
 
 /** Круговая граница арены — смерть при пересечении */
@@ -300,9 +326,7 @@ function GameContent({
   viewportY,
   viewportScale,
 }: GameContentProps) {
-  if (!state) return null
-
-  const localSnake = localSnakeId != null
+  const localSnake = state && localSnakeId != null
     ? state.snakes?.find((s) => Number(s.id) === Number(localSnakeId))
     : null
   const score = localSnake?.score ?? 0
@@ -311,14 +335,14 @@ function GameContent({
     <Container position={[viewportX, viewportY]} scale={viewportScale}>
       <ArenaBackground />
       <ArenaBoundary />
-      {state.snakes?.map((snake) => (
+      {state?.snakes?.map((snake) => (
         <SnakeView
           key={String(snake.id)}
           snake={snake}
           isLocalPlayer={localSnakeId != null && Number(snake.id) === Number(localSnakeId)}
         />
       ))}
-      {state.coins?.map((coin, i) => (
+      {state?.coins?.map((coin, i) => (
         <CoinView key={coin.id != null && coin.id !== '' ? String(coin.id) : `coin-${i}`} coin={coin} />
       ))}
       {/* Slither.io: счёт под змейкой — белый с тенью для читаемости */}

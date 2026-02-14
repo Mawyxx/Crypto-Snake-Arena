@@ -24,6 +24,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
     console.error('[ErrorBoundary]', error)
   }
 
+  handleReload = (): void => {
+    window.location.reload()
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -37,7 +41,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <p className="text-lg font-medium mb-4">Ошибка загрузки</p>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={this.handleReload}
             className="px-6 py-3 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/25"
           >
             Обновить

@@ -1,7 +1,6 @@
-import React from 'react'
+import { memo, useCallback } from 'react'
 import { Graphics } from '@pixi/react'
 import type * as PIXI from 'pixi.js'
-import { useCallback } from 'react'
 import type { game } from '@/shared/api/proto/game'
 
 // Точная палитра slither.io (первые 9 цветов из per_color_imgs)
@@ -67,4 +66,4 @@ const CoinViewInner = ({ coin }: CoinViewProps) => {
   return <Graphics draw={draw} />
 }
 
-export const CoinView = React.memo(CoinViewInner, areCoinPropsEqual)
+export const CoinView = memo(CoinViewInner, areCoinPropsEqual)

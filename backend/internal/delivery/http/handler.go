@@ -158,7 +158,11 @@ func getBotUsername(token string) string {
 		return ""
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[HTTP] getMe read body: %v", err)
+		return ""
+	}
 	var result struct {
 		OK     bool `json:"ok"`
 		Result struct {
@@ -186,9 +190,18 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invited, earned, _ := h.userProvider.GetReferralStats(r.Context(), user.ID)
-	games, deposited, withdrawn, totalProfit, _ := h.userProvider.GetUserStats(r.Context(), user.ID)
-	rank, _ := h.userProvider.GetUserRank(r.Context(), user.ID, user.Rank)
+	invited, earned, errRef := h.userProvider.GetReferralStats(r.Context(), user.ID)
+	if errRef != nil {
+		log.Printf("[HTTP] GetReferralStats error: %v", errRef)
+	}
+	games, deposited, withdrawn, totalProfit, errStats := h.userProvider.GetUserStats(r.Context(), user.ID)
+	if errStats != nil {
+		log.Printf("[HTTP] GetUserStats error: %v", errStats)
+	}
+	rank, errRank := h.userProvider.GetUserRank(r.Context(), user.ID, user.Rank)
+	if errRank != nil {
+		log.Printf("[HTTP] GetUserRank error: %v", errRank)
+	}
 
 	isAdmin := h.adminTgID != 0 && user.TgID == h.adminTgID
 	w.Header().Set("Content-Type", "application/json")
@@ -411,7 +424,9 @@ func (h *Handler) AdminExport(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", "attachment; filename=revenue_ledger.csv")
-	_, _ = w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		log.Printf("[HTTP] AdminExport write failed: %v", err)
+	}
 }
 
 func parseAdminDateRange(r *http.Request) (from, to time.Time) {
@@ -534,7 +549,12 @@ func (h *Handler) BotWebhook(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	}
-	jsonBody, _ := json.Marshal(payload)
+	jsonBody, errMarshal := json.Marshal(payload)
+	if errMarshal != nil {
+		log.Printf("[BotWebhook] json.Marshal failed: %v", errMarshal)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	resp, err := http.Post("https://api.telegram.org/bot"+h.botToken+"/sendMessage", "application/json", bytes.NewReader(jsonBody))
 	if err != nil {
 		log.Printf("[BotWebhook] sendMessage failed: %v", err)

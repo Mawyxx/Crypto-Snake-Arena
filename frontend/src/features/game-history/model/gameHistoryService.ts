@@ -16,7 +16,7 @@ const DATE_LOCALES: Record<string, string> = { ru: 'ru-RU', en: 'en-US' }
 
 export function formatRelativeTime(ts: number, t: TFunction, lang?: string): string {
   const n = Number(ts)
-  if (!Number.isFinite(n)) return '—'
+  if (!Number.isFinite(n) || n <= 0) return '—'
   const now = Date.now()
   const diffMs = now - n
   const dateLocale = (lang && DATE_LOCALES[lang]) || 'ru-RU'

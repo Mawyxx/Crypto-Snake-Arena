@@ -26,14 +26,16 @@ func main() {
 		baseDSN = strings.TrimSpace(dsn) + " dbname=postgres"
 	}
 
-	db, err := gorm.Open(postgres.Open(baseDSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(baseDSN), &gorm.Config{SkipDefaultTransaction: true})
 	if err != nil {
-		log.Fatalf("connect to postgres: %v", err)
+		log.Printf("connect to postgres: %v", err)
+		return
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("db.DB: %v", err)
+		log.Printf("db.DB: %v", err)
+		return
 	}
 	defer sqlDB.Close()
 
@@ -42,12 +44,14 @@ func main() {
 
 	log.Println("Dropping database crypto_snake...")
 	if err := db.Exec("DROP DATABASE IF EXISTS crypto_snake").Error; err != nil {
-		log.Fatalf("drop: %v", err)
+		log.Printf("drop: %v", err)
+		return
 	}
 
 	log.Println("Creating database crypto_snake...")
 	if err := db.Exec("CREATE DATABASE crypto_snake").Error; err != nil {
-		log.Fatalf("create: %v", err)
+		log.Printf("create: %v", err)
+		return
 	}
 
 	log.Println("Database reset complete. Run: go run ./cmd/initdb")

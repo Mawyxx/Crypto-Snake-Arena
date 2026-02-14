@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameStore, type Screen } from '@/store'
 import { useHaptic } from '@/features/haptic'
@@ -24,10 +25,13 @@ export function BottomBar() {
     ? [...baseTabs, { id: 'admin' as Screen, labelKey: 'nav.admin', iconName: 'admin_panel_settings' as const }]
     : baseTabs
 
-  const handleTab = (s: Screen) => {
-    impact('light')
-    setScreen(s)
-  }
+  const handleTab = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    const tabId = (event.currentTarget as HTMLButtonElement & { dataset: { tab?: string } }).dataset.tab as Screen | undefined
+    if (tabId) {
+      impact?.('light')
+      setScreen(tabId)
+    }
+  }, [impact, setScreen])
 
   return (
     <nav
@@ -42,7 +46,8 @@ export function BottomBar() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => handleTab(tab.id)}
+              data-tab={tab.id}
+              onClick={handleTab}
               className={`tab-btn flex flex-col items-center justify-center flex-1 py-1.5 transition-all duration-200 active:scale-95 hover:opacity-70 ${
                 isActive ? 'text-[#007AFF]' : 'text-white/40 opacity-90'
               }`}
@@ -57,7 +62,8 @@ export function BottomBar() {
       </div>
       <button
         type="button"
-        onClick={() => handleTab('profile')}
+        data-tab="profile"
+        onClick={handleTab}
         className={`w-14 h-14 shrink-0 active:scale-95 transition-transform bg-[#111111] rounded-full flex items-center justify-center p-0.5 border-2 flex-shrink-0 transition-colors ${screen === 'profile' ? 'border-[#007AFF] profile-ring' : 'border-white/10'}`}
       >
         <div className="w-full h-full rounded-full flex items-center justify-center overflow-hidden">

@@ -137,7 +137,7 @@ func TestRoom_SubscribeReceivesSnapshot(t *testing.T) {
 	go func() { room.Register <- &Player{TgID: 1, UserID: 100, EntryFee: 0.5} }()
 	waitForPlayers(t, room, 1, 500*time.Millisecond)
 
-	ch, closeFn := room.Subscribe()
+	ch, closeFn := room.Subscribe(1)
 	defer closeFn()
 
 	time.Sleep(3 * TickRate)
@@ -197,7 +197,7 @@ func TestPickSpawnPosition_EmptyRoom(t *testing.T) {
 	grid := domain.NewSpatialGrid(1000)
 	snakes := make(map[uint64]*domain.Snake)
 
-	x, y := pickSpawnPosition(grid, snakes)
+	x, y := PickSpawnPosition(grid, snakes)
 
 	cx, cy := 500.0, 500.0
 	dx, dy := x-cx, y-cy
@@ -216,7 +216,7 @@ func TestPickSpawnPosition_AwayFromOthers(t *testing.T) {
 	s1 := domain.NewSnakeAt(1, 500, 500)
 	snakes := map[uint64]*domain.Snake{1: s1}
 
-	x, y := pickSpawnPosition(grid, snakes)
+	x, y := PickSpawnPosition(grid, snakes)
 
 	// Should not spawn on top of existing snake
 	dx, dy := x-500, y-500
@@ -243,7 +243,7 @@ func TestPickSpawnPosition_MultipleSnakes_PrefersSpread(t *testing.T) {
 
 	// Запускаем несколько раз — точка должна быть внутри и не на других змейках
 	for run := 0; run < 5; run++ {
-		x, y := pickSpawnPosition(grid, snakes)
+		x, y := PickSpawnPosition(grid, snakes)
 		cx, cy := 500.0, 500.0
 		dist := math.Sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy))
 		if dist > 500 {
@@ -262,7 +262,7 @@ func TestPickSpawnPosition_SmallArena_ReturnsCenter(t *testing.T) {
 	grid := domain.NewSpatialGrid(100) // 100x100, radius 50
 	snakes := make(map[uint64]*domain.Snake)
 
-	x, y := pickSpawnPosition(grid, snakes)
+	x, y := PickSpawnPosition(grid, snakes)
 
 	// Радиус 50, margin 50 → maxR <= 0 → return center
 	if x != 50 || y != 50 {

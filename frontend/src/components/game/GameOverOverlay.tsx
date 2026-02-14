@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui'
@@ -12,7 +13,7 @@ export interface GameOverOverlayProps {
 
 export function GameOverOverlay({ visible, score, bet, onRetry, onGoHome }: GameOverOverlayProps) {
   const { t } = useTranslation()
-  const handleShare = () => {
+  const handleShare = useCallback(() => {
     const text = encodeURIComponent(t('gameOver.shareText', { score }))
     const url = encodeURIComponent(window.location.href)
     const shareUrl = `https://t.me/share/url?url=${url}&text=${text}`
@@ -28,7 +29,7 @@ export function GameOverOverlay({ visible, score, bet, onRetry, onGoHome }: Game
     } else {
       navigator.clipboard.writeText(window.location.href)
     }
-  }
+  }, [t])
 
   return (
     <AnimatePresence>

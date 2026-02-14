@@ -28,7 +28,7 @@ export const FrensView = React.memo(function FrensView() {
   const [copied, setCopied] = useState(false)
 
   const handleInvite = () => {
-    impact('light')
+    impact?.('light')
     const openLink = window.Telegram?.WebApp?.openTelegramLink
     if (openLink && referralLink) {
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(t('frens.shareText'))}`
@@ -38,24 +38,24 @@ export const FrensView = React.memo(function FrensView() {
         title: 'Crypto Snake Arena',
         text: t('frens.shareText'),
         url: referralLink,
-      }).catch(() => {})
+      }).catch(() => { notify?.('error') })
     } else if (referralLink) {
       navigator.clipboard.writeText(referralLink).then(() => {
-        notify('success')
+        notify?.('success')
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-      }).catch(() => {})
+      }).catch(() => { notify?.('error') })
     }
   }
 
   const handleCopy = () => {
-    impact('light')
+    impact?.('light')
     if (referralLink) {
       navigator.clipboard.writeText(referralLink).then(() => {
-        notify('success')
+        notify?.('success')
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-      }).catch(() => {})
+      }).catch(() => { notify?.('error') })
     }
   }
 
@@ -148,7 +148,7 @@ export const FrensView = React.memo(function FrensView() {
               <p className="text-sm text-white/40">{error}</p>
               <button
                 type="button"
-                onClick={() => { impact('light'); refetchReferrals() }}
+                onClick={() => { impact?.('light'); refetchReferrals() }}
                 className="mt-3 text-[11px] font-bold text-primary uppercase tracking-wider"
               >
                 {t('common.retry')}

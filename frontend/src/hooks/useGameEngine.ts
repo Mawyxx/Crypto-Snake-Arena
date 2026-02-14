@@ -1,6 +1,12 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { decodeWorldSnapshot, encodePlayerInput } from '@/shared/api'
-import { interpolatePosition, interpolateAngle } from '@/engine/Interpolation'
+import { interpolatePosition, interpolateAngle, extrapolateHead } from '@/engine/Interpolation'
+import {
+  initFromServerBody,
+  updateLocalSnake,
+  getBodyForRender,
+  type LocalSnakeState,
+} from '@/engine/snakeBodyReconstruction'
 import type { game } from '@/shared/api/proto/game'
 
 const SERVER_TICK_RATE_MS = 50
@@ -41,12 +47,16 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
   const reconnectAttempt = useRef(0)
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intentionalClose = useRef(false)
+  const lastSentAngleRef = useRef<number>(0)
+  const lastSentBoostRef = useRef<boolean>(false)
+  const localSnakeBodyRef = useRef<LocalSnakeState | null>(null)
 
   const connect = useCallback(async () => {
     if (!enabled || !wsUrl) return
 
     intentionalClose.current = false
     deathFired.current = false
+    localSnakeBodyRef.current = null
     const isReconnecting = reconnectAttempt.current > 0
     setStatus(isReconnecting ? 'reconnecting' : 'connecting')
 
@@ -113,6 +123,39 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
       prevState.current = currState.current
       currState.current = snapshot
       lastMessageTime.current = Date.now()
+
+      if (localSnakeId != null) {
+        const mySnake = snapshot.snakes?.find((s) => Number(s.id) === Number(localSnakeId))
+        if (mySnake) {
+          if (!prevState.current && mySnake.angle != null) {
+            lastSentAngleRef.current = mySnake.angle
+            lastSentBoostRef.current = false
+          }
+          const body = mySnake.body ?? []
+          const bodyLength = mySnake.bodyLength ?? body.length
+          if (body.length > 0) {
+            localSnakeBodyRef.current = initFromServerBody(
+              mySnake.head as { x: number; y: number },
+              body as { x: number; y: number }[]
+            )
+          } else if (bodyLength > 0 && mySnake.head) {
+            if (!localSnakeBodyRef.current) {
+              localSnakeBodyRef.current = initFromServerBody(
+                mySnake.head as { x: number; y: number },
+                [],
+                bodyLength
+              )
+            }
+            updateLocalSnake(
+              localSnakeBodyRef.current,
+              mySnake.head as { x: number; y: number },
+              bodyLength
+            )
+          }
+        } else {
+          localSnakeBodyRef.current = null
+        }
+      }
 
       if (
         localSnakeId != null &&
@@ -183,6 +226,8 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
     const alpha = (renderTime - lastMessageTime.current + SERVER_TICK_RATE_MS) / SERVER_TICK_RATE_MS
     const alphaClamped = Math.max(0, Math.min(1, alpha))
 
+    const extrapolationSec = Math.min(INTERPOLATION_DELAY_MS / 1000, 0.1)
+
     const interpolatedSnakes: InterpolatedSnake[] = (currState.current.snakes ?? []).map((currSnake) => {
       const prevSnake = prevState.current?.snakes?.find((s) => Number(s.id) === Number(currSnake.id))
       if (!prevSnake?.head || !currSnake.head) {
@@ -190,21 +235,55 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
           ...currSnake,
           head: currSnake.head ?? { x: 0, y: 0 },
           angle: currSnake.angle ?? 0,
+          body: currSnake.body ?? [],
         } as InterpolatedSnake
+      }
+
+      const interpolatedHead = interpolatePosition(
+        prevSnake.head as { x: number; y: number },
+        currSnake.head as { x: number; y: number },
+        alphaClamped
+      )
+      const interpolatedAngle = interpolateAngle(
+        prevSnake.angle ?? 0,
+        currSnake.angle ?? 0,
+        alphaClamped
+      )
+
+      const isLocal = localSnakeId != null && Number(currSnake.id) === Number(localSnakeId)
+      const displayAngle = isLocal ? lastSentAngleRef.current : interpolatedAngle
+      const displayHead = isLocal
+        ? extrapolateHead(interpolatedHead, displayAngle, lastSentBoostRef.current, extrapolationSec)
+        : interpolatedHead
+
+      let displayBody: { x: number; y: number }[]
+      const currBody = currSnake.body ?? []
+      if (isLocal && currBody.length === 0 && localSnakeBodyRef.current) {
+        const bodyLength = currSnake.bodyLength ?? 0
+        if (bodyLength > 0) {
+          updateLocalSnake(localSnakeBodyRef.current, displayHead, bodyLength)
+          displayBody = getBodyForRender(localSnakeBodyRef.current)
+        } else {
+          displayBody = []
+        }
+      } else {
+        const prevBody = prevSnake.body ?? []
+        displayBody = currBody.map((currP, i) => {
+          const prevP = prevBody[i]
+          if (!prevP) return currP as { x: number; y: number }
+          return interpolatePosition(
+            prevP as { x: number; y: number },
+            currP as { x: number; y: number },
+            alphaClamped
+          )
+        })
       }
 
       return {
         ...currSnake,
-        head: interpolatePosition(
-          prevSnake.head as { x: number; y: number },
-          currSnake.head as { x: number; y: number },
-          alphaClamped
-        ),
-        angle: interpolateAngle(
-          prevSnake.angle ?? 0,
-          currSnake.angle ?? 0,
-          alphaClamped
-        ),
+        head: displayHead,
+        angle: displayAngle,
+        body: displayBody,
       } as InterpolatedSnake
     })
 
@@ -212,10 +291,12 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
       ...currState.current,
       snakes: interpolatedSnakes,
     } as InterpolatedWorldSnapshot
-  }, [])
+  }, [localSnakeId])
 
   const sendInput = useCallback((angle: number, boost: boolean) => {
     if (socket.current?.readyState !== WebSocket.OPEN) return
+    lastSentAngleRef.current = angle
+    lastSentBoostRef.current = boost
     const data = encodePlayerInput(angle, boost)
     socket.current.send(data)
   }, [])

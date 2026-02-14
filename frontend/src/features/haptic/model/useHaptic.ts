@@ -3,14 +3,14 @@ export function useHaptic() {
     try {
       const tg = (window as { Telegram?: { WebApp?: { HapticFeedback?: { impactOccurred: (s: string) => void } } } }).Telegram?.WebApp?.HapticFeedback
       tg?.impactOccurred?.(style)
-    } catch {}
+    } catch { /* Haptic not available */ }
   }
 
   const notify = (type: 'error' | 'success' | 'warning' = 'success') => {
     try {
       const tg = (window as { Telegram?: { WebApp?: { HapticFeedback?: { notificationOccurred: (t: string) => void } } } }).Telegram?.WebApp?.HapticFeedback
       tg?.notificationOccurred?.(type)
-    } catch {}
+    } catch { /* Haptic not available */ }
   }
 
   return { impact, notify }

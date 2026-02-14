@@ -5,6 +5,16 @@ import { designTokens } from '@/shared/config'
 
 const CONFETTI_COLORS = ['#fbbf24', designTokens.colorSuccess, '#60a5fa', '#f472b6', '#a78bfa']
 
+const CONFETTI_PIECES = CONFETTI_COLORS.flatMap((color, colorIndex) =>
+  Array.from({ length: 3 }, (_, replicaIndex) => ({
+    id: `confetti-${color}-${colorIndex}-${replicaIndex}`,
+    color,
+    left: 20 + colorIndex * 20 + replicaIndex * 10,
+    replicaIndex,
+    colorIndex,
+  }))
+)
+
 export interface VictoryOverlayProps {
   visible: boolean
   reward: number
@@ -25,29 +35,27 @@ export function VictoryOverlay({ visible, reward, newBalance, onCollect }: Victo
           style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
           {/* Конфетти */}
-          {CONFETTI_COLORS.flatMap((c, i) =>
-            Array.from({ length: 3 }, (_, j) => (
+          {CONFETTI_PIECES.map((piece) => (
               <motion.div
-                key={`${i}-${j}`}
+                key={piece.id}
                 className="absolute w-2 h-2 rounded-sm"
                 style={{
-                  left: `${20 + i * 20 + j * 10}%`,
+                  left: `${piece.left}%`,
                   top: -10,
-                  backgroundColor: c,
+                  backgroundColor: piece.color,
                 }}
                 initial={{ y: 0, opacity: 1, rotate: 0 }}
                 animate={{
                   y: '100vh',
                   opacity: 0,
-                  rotate: 360 * (j % 2 === 0 ? 1 : -1),
+                  rotate: 360 * (piece.replicaIndex % 2 === 0 ? 1 : -1),
                 }}
                 transition={{
-                  duration: 2 + j * 0.5,
-                  delay: i * 0.1 + j * 0.2,
+                  duration: 2 + piece.replicaIndex * 0.5,
+                  delay: piece.colorIndex * 0.1 + piece.replicaIndex * 0.2,
                 }}
               />
-            ))
-          )}
+          ))}
 
           <motion.div
             initial={{ y: 100, opacity: 0 }}

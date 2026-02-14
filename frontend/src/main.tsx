@@ -25,7 +25,7 @@ function bootstrap() {
 
   try {
     if (typeof window !== 'undefined' && window.location.hostname.includes('ngrok')) {
-      fetch(window.location.origin, { headers: { 'ngrok-skip-browser-warning': '1' } }).catch(() => {})
+      fetch(window.location.origin, { headers: { 'ngrok-skip-browser-warning': '1' } }).catch(() => { /* ignore */ })
     }
 
     const root = ReactDOM.createRoot(rootEl)
@@ -37,7 +37,7 @@ function bootstrap() {
       </React.StrictMode>
     )
 
-    initTelegram().catch(() => {})
+    initTelegram().catch(() => { /* ignore */ })
   } catch (e) {
     const errMsg = e instanceof Error ? e.message + '\n' + (e.stack || '') : String(e)
     showError(errMsg)

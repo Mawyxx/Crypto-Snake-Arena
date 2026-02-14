@@ -52,6 +52,13 @@ export function AppContent() {
   useBalance({ refetchOnMount: true })
   useStats()
 
+  // Dev: при ?dev=1 задаём баланс для тестирования без бэкенда
+  useEffect(() => {
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === '1') {
+      useGameStore.getState().setBalance(100)
+    }
+  }, [])
+
   useEffect(() => {
     const btn = (window as { Telegram?: { WebApp?: { BackButton?: { show: () => void; hide: () => void } } } }).Telegram?.WebApp?.BackButton
     if (!btn) return

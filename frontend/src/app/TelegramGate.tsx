@@ -10,9 +10,14 @@ export function isInTelegramMiniApp(): boolean {
   return initData.length > 0
 }
 
+/** Dev: ?dev=1 в URL — обход TelegramGate для локального тестирования */
+function isDevBypass(): boolean {
+  return import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dev') === '1'
+}
+
 export function TelegramGate({ children }: { children: React.ReactNode }) {
-  if (isInTelegramMiniApp()) {
-    return <>{children}</>
+  if (isInTelegramMiniApp() || isDevBypass()) {
+    return children
   }
 
   return (

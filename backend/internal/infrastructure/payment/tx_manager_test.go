@@ -2,12 +2,16 @@ package payment
 
 import (
 	"context"
+	"errors"
 	"math"
 	"strings"
 	"testing"
 
 	"github.com/crypto-snake-arena/server/internal/domain"
+	"github.com/crypto-snake-arena/server/internal/infrastructure/repository"
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -139,6 +143,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	name := strings.ReplaceAll(t.Name(), "/", "_")
 	db, err := gorm.Open(sqlite.Open("file:"+name+"?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
+		SkipDefaultTransaction:                   true,
 	})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -348,6 +353,24 @@ func TestOnExpiredCoins_CreatesRevenueLog(t *testing.T) {
 	if math.Abs(logs[0].Amount-2.5) > 0.0001 {
 		t.Errorf("amount = %v, want 2.5", logs[0].Amount)
 	}
+}
+
+func TestOnExpiredCoins_TransactionRollbackWhenLedgerFails(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	db := setupTestDB(t)
+	failingLedger := &repository.FailingLedgerWriter{Err: errors.New("ledger write failed")}
+	tx := NewTxManager(db, failingLedger)
+
+	err := tx.OnExpiredCoins(context.Background(), "room-rollback", 3.0)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "ledger write failed")
+
+	// RevenueLog не должен быть создан — транзакция откатилась
+	var count int64
+	db.Model(&domain.RevenueLog{}).Where("room_id = ?", "room-rollback").Count(&count)
+	assert.Equal(t, int64(0), count, "revenue_log should not exist when ledger fails (transaction rollback)")
 }
 
 func TestOnExpiredCoins_ZeroSkips(t *testing.T) {

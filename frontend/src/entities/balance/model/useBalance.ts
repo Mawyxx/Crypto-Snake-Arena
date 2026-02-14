@@ -19,8 +19,10 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
 
     try {
       const data = await apiGet<ProfileResponse>('/api/user/profile', initData)
+      if (!data || typeof data !== 'object' || (data.tg_id == null && data.user_id == null)) return
       const balanceVal = typeof data.balance === 'number' ? data.balance : Number(data.balance) || 0
       const rawTgId = data.tg_id
+      if (rawTgId == null) return
       const tgId =
         typeof rawTgId === 'number' && Number.isFinite(rawTgId)
           ? rawTgId
@@ -31,9 +33,9 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
       setBalance(balanceVal)
       const tgUser = getTelegramUserFromInitData()
       const hasNameFromClient = tgUser && (tgUser.first_name || tgUser.last_name)
-      const hasNameFromApi = !!(data.first_name || data.last_name)
-      const displayName = hasNameFromClient
-        ? getDisplayNameFromTelegramUser(tgUser!)
+      const hasNameFromApi = Boolean(data.first_name || data.last_name)
+      const displayName = hasNameFromClient && tgUser
+        ? getDisplayNameFromTelegramUser(tgUser)
         : hasNameFromApi
           ? [data.first_name, data.last_name].filter(Boolean).join(' ').trim() ||
             data.display_name ||
@@ -59,7 +61,7 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
       }
       const photoUrl = getPhotoUrlFromInitData()
       if (photoUrl) {
-        apiPatch('/api/user/profile', { photo_url: photoUrl }, initData).catch(() => {})
+        apiPatch('/api/user/profile', { photo_url: photoUrl }, initData).catch(() => { /* ignore */ })
       }
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {

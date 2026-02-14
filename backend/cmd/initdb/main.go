@@ -21,13 +21,13 @@ func main() {
 		dsn = "host=localhost user=postgres password=postgres dbname=crypto_snake port=5432 sslmode=disable"
 	}
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{SkipDefaultTransaction: true})
 	if err != nil {
 		log.Fatalf("connect: %v", err)
 	}
 
 	log.Println("Running GORM AutoMigrate...")
-	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}, &domain.RevenueLog{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}, &domain.RevenueLog{}, &domain.PendingReward{}); err != nil {
 		log.Fatalf("migrate: %v", err)
 	}
 	log.Println("GORM AutoMigrate OK")
@@ -51,6 +51,7 @@ func main() {
 		"010_revenue_logs.sql",
 		"011_revenue_logs_reference_id.sql",
 		"012_admin_revenue_ledger.sql",
+		"013_pending_rewards.sql",
 	}
 
 	for _, f := range files {

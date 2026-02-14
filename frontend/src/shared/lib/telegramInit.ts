@@ -4,6 +4,22 @@ import { designTokens } from '@/shared/config'
  * Telegram Mini App — только legacy API (window.Telegram.WebApp).
  * Без @telegram-apps/sdk — он падает в WebView и блокирует загрузку.
  */
+/** iOS fix: предотвращает схлопывание при скролле вниз (document не scrollable или scrollY=0). */
+function ensureDocumentIsScrollable(): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return
+  const el = document.documentElement
+  const isScrollable = el.scrollHeight > window.innerHeight
+  if (!isScrollable) {
+    el.style.setProperty('height', 'calc(100vh + 1px)', 'important')
+  }
+}
+
+/** Отключает вертикальный свайп для закрытия (Bot API 7.7+), чтобы скролл не закрывал приложение. */
+function disableVerticalSwipesForScroll(): void {
+  const tg = (window as { Telegram?: { WebApp?: { disableVerticalSwipes?: () => void } } }).Telegram?.WebApp
+  tg?.disableVerticalSwipes?.()
+}
+
 declare global {
   interface Window {
     Telegram?: {
@@ -35,6 +51,7 @@ declare global {
         openTelegramLink?: (url: string) => void
         requestFullscreen?: () => void
         isVersionAtLeast?: (version: string) => boolean
+        disableVerticalSwipes?: () => void
       }
     }
   }
@@ -50,7 +67,12 @@ export async function initTelegram(): Promise<void> {
     tg.ready?.()
     tg.setHeaderColor?.('bg_color')
     tg.setBackgroundColor?.(designTokens.bgMainAlt)
-  } catch {}
+    disableVerticalSwipesForScroll()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('load', ensureDocumentIsScrollable)
+      if (document.readyState === 'complete') ensureDocumentIsScrollable()
+    }
+  } catch { /* Telegram WebApp not available */ }
 }
 
 const INIT_DATA_KEY = 'crypto_snake_init_data'
@@ -60,7 +82,7 @@ export function getInitData(): string {
   if (fromTg) {
     try {
       sessionStorage.setItem(INIT_DATA_KEY, fromTg)
-    } catch {}
+    } catch { /* sessionStorage unavailable */ }
     return fromTg
   }
   try {

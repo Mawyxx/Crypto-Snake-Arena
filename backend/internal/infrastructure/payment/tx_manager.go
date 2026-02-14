@@ -325,24 +325,29 @@ func (m *TxManager) OnPlayerDeath(ctx context.Context, victimUserID uint, victim
 }
 
 // OnExpiredCoins вызывается при удалении просроченных монет по TTL. Записывает totalValue в revenue_logs (expired_coin) + ledger.
+// RevenueLog и ledger пишутся в одной транзакции — данные всегда согласованы.
 func (m *TxManager) OnExpiredCoins(ctx context.Context, roomID string, totalValue float64) error {
 	if totalValue <= 0 {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, txTimeout)
 	defer cancel()
-	if err := m.db.WithContext(ctx).Create(&domain.RevenueLog{
-		RoomID:          roomID,
-		TransactionType: "expired_coin",
-		Amount:          totalValue,
-		CreatedAt:       time.Now(),
-	}).Error; err != nil {
-		return err
-	}
-	if m.ledgerWriter != nil {
-		_ = m.ledgerWriter.AppendLedgerEntry(ctx, nil, &roomID, nil, 0, totalValue, "expired")
-	}
-	return nil
+	return m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&domain.RevenueLog{
+			RoomID:          roomID,
+			TransactionType: "expired_coin",
+			Amount:          totalValue,
+			CreatedAt:       time.Now(),
+		}).Error; err != nil {
+			return err
+		}
+		if m.ledgerWriter != nil {
+			if err := m.ledgerWriter.AppendLedgerEntry(ctx, tx, &roomID, nil, 0, totalValue, "expired"); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // ----------------------------------------------------------------

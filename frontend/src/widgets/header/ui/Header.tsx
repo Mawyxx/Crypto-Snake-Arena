@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useGameStore } from '@/store'
 import { useHaptic } from '@/features/haptic'
 import { useTelegram } from '@/features/auth'
@@ -11,6 +12,11 @@ export function Header() {
   const setScreen = useGameStore((s) => s.setScreen)
   const { impact } = useHaptic()
   const { photoUrl } = useTelegram()
+
+  const handleAddFunds = useCallback(() => {
+    impact?.('light')
+    setScreen('profile')
+  }, [impact, setScreen])
 
   return (
     <header className="header-compact flex items-center justify-between shrink-0 p-4 pb-3 border-b border-white/5 bg-[var(--bg-main)]">
@@ -27,10 +33,7 @@ export function Header() {
       </div>
       <BalanceCapsule
         balance={balance}
-        onAdd={() => {
-          impact('light')
-          setScreen('profile')
-        }}
+        onAdd={handleAddFunds}
       />
     </header>
   )

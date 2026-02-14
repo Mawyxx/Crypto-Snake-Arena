@@ -74,7 +74,7 @@ export const HomeView = React.memo(function HomeView() {
   }
 
   const handleBetChange = (delta: number) => {
-    impact('medium')
+    impact?.('medium')
     const idx = BET_OPTIONS.indexOf(bet)
     let next = idx + delta
     if (next < 0) next = 0
@@ -83,7 +83,7 @@ export const HomeView = React.memo(function HomeView() {
   }
 
   const handleAddFunds = async () => {
-    impact('light')
+    impact?.('light')
     if (!initData?.trim()) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
       if (tg?.showAlert) tg.showAlert('Нет initData')
@@ -217,7 +217,7 @@ export const HomeView = React.memo(function HomeView() {
             {games.length > 5 && (
               <button
                 type="button"
-                onClick={() => { impact('light'); setGamesExpanded(!gamesExpanded) }}
+                onClick={() => { impact?.('light'); setGamesExpanded(!gamesExpanded) }}
                 className="text-[11px] font-bold text-[#007AFF] uppercase tracking-wider active:scale-95 transition-transform"
               >
                 {gamesExpanded ? t('home.showLess') : t('common.showAll')}
@@ -251,7 +251,7 @@ export const HomeView = React.memo(function HomeView() {
                   <button
                     key={game.id ? `game-${game.id}` : `game-i-${i}`}
                     type="button"
-                    onClick={() => impact('light')}
+                    onClick={() => impact?.('light')}
                     className="w-full flex items-center justify-between text-left active:scale-[0.99] transition-transform hover:bg-white/[0.03] rounded-2xl -mx-2 px-2 py-2"
                   >
                     <div className="flex items-center gap-3">

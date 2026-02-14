@@ -16,6 +16,7 @@ import (
 	"github.com/crypto-snake-arena/server/internal/domain"
 	"github.com/crypto-snake-arena/server/internal/game"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
+	"github.com/crypto-snake-arena/server/internal/usecase"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/presence"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/repository"
@@ -40,7 +41,7 @@ func main() {
 	if dsn == "" {
 		dsn = "host=localhost user=postgres password=postgres dbname=crypto_snake port=5432 sslmode=disable"
 	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{SkipDefaultTransaction: true})
 	if err != nil {
 		log.Fatal("failed to connect to postgres", zap.Error(err))
 	}
@@ -50,12 +51,15 @@ func main() {
 	}
 	sqlDB.SetMaxOpenConns(50) // лимит при наплыве игроков
 	sqlDB.SetMaxIdleConns(10) // пул простаивающих соединений
-	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}, &domain.RevenueLog{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}, &domain.RevenueLog{}, &domain.PendingReward{}); err != nil {
 		log.Fatal("failed to migrate", zap.Error(err))
 	}
-	// Миграция 012: admin_revenue_ledger + VIEW (idempotent)
+	// Миграции 012, 013 (idempotent)
 	if err := runAdminLedgerMigration(db); err != nil {
 		log.Warn("admin_revenue_ledger migration failed (table may exist)", zap.Error(err))
+	}
+	if err := runPendingRewardsMigration(db); err != nil {
+		log.Warn("pending_rewards migration failed (table may exist)", zap.Error(err))
 	}
 	log.Info("postgres connected, migrations applied")
 
@@ -68,16 +72,22 @@ func main() {
 
 	// AdminRepository для admin_revenue_ledger (миграция 012)
 	adminRepo := repository.NewAdminRepository(db)
-	// TxManager (PlaceBet, AddGameReward) — реализует GameWallet и RewardCreditor
 	txManager := payment.NewTxManager(db, adminRepo)
+	pendingRewardRepo := repository.NewPendingRewardRepository(db)
+	rewardService := usecase.NewRewardService(txManager, pendingRewardRepo, log)
 	userResolver := repository.NewUserResolverDB(db)
 
-	// Менеджер комнат: хранит map комнат, выдаёт свободную или создаёт новую; каждая комната — своя горутина и Ticker
-	roomManager := game.NewRoomManager(txManager, txManager, txManager, txManager)
+	// Контекст для фоновых задач (processor останавливается при cancel)
+	procCtx, procCancel := context.WithCancel(context.Background())
+	defer procCancel()
+	rewardService.StartProcessor(procCtx)
+
+	// Менеджер комнат: RewardCreditor = rewardService (fallback в pending_rewards при ошибке)
+	roomManager := game.NewRoomManager(rewardService, txManager, txManager, txManager)
 	log.Info("room manager started")
 
-	// WebSocket handler
-	wsHandler := ws.NewHandler(txManager, validator, userResolver)
+	// WebSocket handler (GameWallet = rewardService)
+	wsHandler := ws.NewHandler(rewardService, validator, userResolver)
 
 	// Redis для presence (online-счётчик, multi-instance)
 	redisURL := os.Getenv("REDIS_URL")
@@ -165,7 +175,7 @@ func main() {
 		}
 	}
 	if fi, err := os.Stat(staticDir); err == nil && fi.IsDir() {
-		fs := http.FileServer(http.Dir(staticDir))
+		fs := noDirListingFileServer(http.Dir(staticDir))
 		indexPath := filepath.Join(staticDir, "index.html")
 		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/ws") {
@@ -239,6 +249,8 @@ func main() {
 	<-quit
 	log.Info("shutting down...")
 
+	procCancel() // останавливаем pending reward processor
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -250,8 +262,16 @@ func main() {
 }
 
 func runAdminLedgerMigration(db *gorm.DB) error {
+	return runSQLMigration(db, "012_admin_revenue_ledger.sql")
+}
+
+func runPendingRewardsMigration(db *gorm.DB) error {
+	return runSQLMigration(db, "013_pending_rewards.sql")
+}
+
+func runSQLMigration(db *gorm.DB, filename string) error {
 	for _, dir := range []string{"migrations", "../migrations", "../../migrations", "backend/migrations"} {
-		path := filepath.Join(dir, "012_admin_revenue_ledger.sql")
+		path := filepath.Join(dir, filename)
 		if _, err := os.Stat(path); err == nil {
 			raw, err := os.ReadFile(path)
 			if err != nil {
@@ -271,4 +291,30 @@ func stringList(s string) []string {
 		}
 	}
 	return out
+}
+
+// noDirFS wraps http.FileSystem to return 404 for directory requests (prevents directory listing).
+type noDirFS struct {
+	fs http.FileSystem
+}
+
+func (d noDirFS) Open(name string) (http.File, error) {
+	f, err := d.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	if stat.IsDir() {
+		f.Close()
+		return nil, os.ErrNotExist
+	}
+	return f, nil
+}
+
+func noDirListingFileServer(dir http.Dir) http.Handler {
+	return http.FileServer(noDirFS{fs: dir})
 }

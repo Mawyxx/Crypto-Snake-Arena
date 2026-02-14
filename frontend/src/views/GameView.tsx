@@ -267,8 +267,8 @@ export const GameView = React.memo(function GameView() {
 
       <VictoryOverlay
         visible={gameResult?.status === 'win'}
-        reward={Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult!.reward) : 0}
-        newBalance={(Number(balance) || 0) + (Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult!.reward) : 0)}
+        reward={Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0}
+        newBalance={(Number(balance) || 0) + (Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0)}
         onCollect={handleCollectAndExit}
       />
     </div>

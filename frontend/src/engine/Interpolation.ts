@@ -32,6 +32,31 @@ export const interpolatePosition = (
   };
 };
 
+/** Константы с бэкенда: units/sec */
+export const BASE_SPEED = 60
+export const BOOST_SPEED = 100
+
+/**
+ * Экстраполяция головы вперёд по направлению (для client-side prediction).
+ * @param head текущая позиция головы
+ * @param angle угол направления (рад)
+ * @param boost режим ускорения
+ * @param dtSec время экстраполяции в секундах (напр. 0.05–0.1)
+ */
+export const extrapolateHead = (
+  head: Point,
+  angle: number,
+  boost: boolean,
+  dtSec: number
+): Point => {
+  const speed = boost ? BOOST_SPEED : BASE_SPEED
+  const dist = speed * dtSec
+  return {
+    x: head.x + Math.cos(angle) * dist,
+    y: head.y + Math.sin(angle) * dist,
+  }
+}
+
 /**
  * Интерполяция угла (чтобы змейка не крутилась на 360° при переходе через 0)
  */

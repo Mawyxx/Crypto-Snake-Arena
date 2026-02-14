@@ -1,0 +1,6 @@
+# DeepSource - exclude auto-generated protobuf files
+version = 1
+
+exclude_patterns = [
+  "frontend/src/shared/api/proto/game.js"
+]

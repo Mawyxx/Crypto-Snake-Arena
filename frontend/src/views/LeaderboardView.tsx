@@ -45,9 +45,9 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
     if (openLink) {
       openLink(shareUrl)
     } else if (navigator.share) {
-      navigator.share({ title: 'Crypto Snake Arena', text, url: window.location.href }).catch(() => {})
+      navigator.share({ title: 'Crypto Snake Arena', text, url: window.location.href }).catch(() => { notify?.('error') })
     } else {
-      navigator.clipboard.writeText(window.location.href).catch(() => {})
+      navigator.clipboard.writeText(window.location.href).then(() => notify?.('success')).catch(() => { notify?.('error') })
     }
   }
 
@@ -132,7 +132,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
                 <p className="text-sm text-white/40 text-center">{error}</p>
                 <button
                   type="button"
-                  onClick={() => { impact('light'); refetch() }}
+                  onClick={() => { impact?.('light'); refetch() }}
                   className="px-8 py-4 rounded-2xl bg-primary text-white font-semibold text-base active:scale-95 transition-all"
                 >
                   {t('common.retry')}

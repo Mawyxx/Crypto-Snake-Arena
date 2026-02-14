@@ -1,34 +1,48 @@
 package domain
 
-import "math"
+import (
+	"math"
+	"time"
+)
 
 // Snake — модель змейки. Чистая логика без зависимостей.
+// Векторное движение с плавным поворотом (Slither.io-style).
 type Snake struct {
 	ID         uint64
 	UserID     int64
-	JoinedTick uint64 // tick when snake joined, for duration calculation
+	JoinedTick uint64    // tick when snake joined (logical)
+	JoinedAt   time.Time // wall-clock time when snake joined, for duration calculation
 	HeadX      float64
-	HeadY    float64
-	Angle    float64
-	Score    float64   // Собранные монеты
-	EntryFee float64   // Начальная ставка
-	Tail     []float64 // [x1,y1, x2,y2, ...]
-	Boost    bool
-	Dead     bool // true после killSnake — претендент на награду снимается немедленно
+	HeadY      float64
+	TargetAngle  float64 // куда игрок хочет повернуть (от мыши)
+	CurrentAngle float64 // текущий угол с инерцией
+	Score      float64   // Собранные монеты
+	EntryFee   float64   // Начальная ставка
+	Tail       []float64 // [x1,y1, x2,y2, ...]
+	Boost      bool
+	Dead       bool // true после killSnake — претендент на награду снимается немедленно
 
-	speed      float64
+	speed      float64 // units/sec
 	segmentLen float64
+	turnSpeed  float64 // рад/сек
 }
 
 const (
-	BaseSpeed     = 3.0
-	BoostSpeed    = 5.0
-	SegmentLen    = 12.0
-	InitialLength = 3
+	BaseSpeed         = 60.0  // units/sec (3 units/tick при dt=0.05)
+	BoostSpeed        = 100.0 // units/sec (5 units/tick при dt=0.05)
+	TurnSpeed         = 4.0   // рад/сек
+	SegmentLen        = 12.0
+	InitialLength     = 3
+	constraintPasses  = 6   // итераций Verlet для плавного изгиба хвоста
+	minDist           = 1e-6 // защита от div-by-zero
+	maxStretchRatio   = 1.5 // при сжатии сегментов не "стрелять" их в стороны
 )
 
-// MaxMoveDistance — максимальная дистанция за тик (анти-чит: при превышении — подозрение на читерство).
-const MaxMoveDistance = BoostSpeed + 0.5 // 5.5 с запасом на float
+// MaxMoveDistanceFor возвращает максимально допустимую дистанцию за тик при заданном dt (анти-чит).
+// Формула: BoostSpeed * dt * 1.2 (20% запас).
+func MaxMoveDistanceFor(dt float64) float64 {
+	return BoostSpeed * dt * 1.2
+}
 
 // NewSnake создаёт змейку с начальной длиной в центре арены (500, 500).
 func NewSnake(id uint64) *Snake {
@@ -38,14 +52,16 @@ func NewSnake(id uint64) *Snake {
 // NewSnakeAt создаёт змейку с начальной длиной в заданной позиции.
 func NewSnakeAt(id uint64, headX, headY float64) *Snake {
 	s := &Snake{
-		ID:         id,
-		HeadX:      headX,
-		HeadY:      headY,
-		Angle:      0,
-		Score:      0,
-		EntryFee:   0,
-		speed:      BaseSpeed,
-		segmentLen: SegmentLen,
+		ID:            id,
+		HeadX:         headX,
+		HeadY:         headY,
+		TargetAngle:   0,
+		CurrentAngle:  0,
+		Score:         0,
+		EntryFee:      0,
+		speed:         BaseSpeed,
+		segmentLen:    SegmentLen,
+		turnSpeed:     TurnSpeed,
 	}
 	// Начальный хвост (3 сегмента назад по X)
 	for i := 0; i < InitialLength; i++ {
@@ -54,9 +70,9 @@ func NewSnakeAt(id uint64, headX, headY float64) *Snake {
 	return s
 }
 
-// SetDirection обновляет желаемый угол.
-func (s *Snake) SetDirection(angle float64) {
-	s.Angle = angle
+// SetTargetAngle задаёт целевой угол поворота (от клиента).
+func (s *Snake) SetTargetAngle(angle float64) {
+	s.TargetAngle = angle
 }
 
 // SetBoost устанавливает режим ускорения.
@@ -64,23 +80,71 @@ func (s *Snake) SetBoost(boost bool) {
 	s.Boost = boost
 }
 
-// Move — сдвиг головы и хвоста за один тик.
-func (s *Snake) Move() {
+// UpdatePosition обновляет позицию головы и хвоста за dt секунд.
+// dt — длительность тика в секундах (напр. 0.05 при 20 Hz).
+func (s *Snake) UpdatePosition(dt float64) {
+	// 1. Плавный поворот: CurrentAngle стремится к TargetAngle
+	// normalizeAngle приводит разницу к (-π, π], чтобы змея не крутилась на 360°
+	delta := normalizeAngle(s.TargetAngle - s.CurrentAngle)
+	maxTurn := s.turnSpeed * dt
+	if delta > maxTurn {
+		delta = maxTurn
+	}
+	if delta < -maxTurn {
+		delta = -maxTurn
+	}
+	s.CurrentAngle += delta
+
+	// 2. Векторное движение головы: v = (cos(θ), sin(θ)) * speed * dt
 	speed := s.speed
 	if s.Boost {
 		speed = BoostSpeed
 	}
+	dist := speed * dt
+	s.HeadX += math.Cos(s.CurrentAngle) * dist
+	s.HeadY += math.Sin(s.CurrentAngle) * dist
 
-	prevX, prevY := s.HeadX, s.HeadY
-	s.HeadX += math.Cos(s.Angle) * speed
-	s.HeadY += math.Sin(s.Angle) * speed
+	// 3. Verlet-хвост: каждый сегмент на расстоянии segmentLen от предыдущего
+	s.updateTail()
+}
 
-	// Сдвиг хвоста
-	for i := 0; i < len(s.Tail); i += 2 {
-		x, y := s.Tail[i], s.Tail[i+1]
-		s.Tail[i], s.Tail[i+1] = prevX, prevY
-		prevX, prevY = x, y
+// updateTail применяет Distance Constraint (Verlet): сегмент следует за предыдущим,
+// сохраняя строгое расстояние segmentLen. При dist < minDist сегмент не двигаем,
+// чтобы избежать div-by-zero и "выстрелов". maxStretchRatio ограничивает ratio
+// при сжатии — иначе сегмент мог бы улететь далеко.
+func (s *Snake) updateTail() {
+	for pass := 0; pass < constraintPasses; pass++ {
+		prevX, prevY := s.HeadX, s.HeadY
+		for i := 0; i < len(s.Tail); i += 2 {
+			cx, cy := s.Tail[i], s.Tail[i+1]
+			dx, dy := prevX-cx, prevY-cy
+			dist := math.Sqrt(dx*dx + dy*dy)
+			if dist < minDist {
+				prevX, prevY = s.Tail[i], s.Tail[i+1]
+				continue
+			}
+			// ratio = segmentLen/dist: при dist > segmentLen тянем сегмент к prev
+			ratio := s.segmentLen / dist
+			if ratio > maxStretchRatio {
+				ratio = maxStretchRatio
+			}
+			s.Tail[i] = prevX - dx*ratio
+			s.Tail[i+1] = prevY - dy*ratio
+			prevX, prevY = s.Tail[i], s.Tail[i+1]
+		}
 	}
+}
+
+// normalizeAngle приводит разницу углов к интервалу (-π, π].
+// Используется для плавного поворота без "прыжка" через 0.
+func normalizeAngle(delta float64) float64 {
+	for delta > math.Pi {
+		delta -= 2 * math.Pi
+	}
+	for delta <= -math.Pi {
+		delta += 2 * math.Pi
+	}
+	return delta
 }
 
 // Head возвращает точку головы.
@@ -98,9 +162,21 @@ func (s *Snake) Body() []Point {
 }
 
 // Grow добавляет сегмент (при съедании монеты).
+// Новый сегмент — позади хвоста по направлению last → prev на расстоянии segmentLen.
 func (s *Snake) Grow() {
-	if len(s.Tail) >= 2 {
-		lastX, lastY := s.Tail[len(s.Tail)-2], s.Tail[len(s.Tail)-1]
+	if len(s.Tail) < 2 {
+		return
+	}
+	lastX, lastY := s.Tail[len(s.Tail)-2], s.Tail[len(s.Tail)-1]
+	prevX, prevY := s.Tail[len(s.Tail)-4], s.Tail[len(s.Tail)-3]
+	dx, dy := lastX-prevX, lastY-prevY
+	dist := math.Sqrt(dx*dx + dy*dy)
+	if dist > minDist {
+		ratio := s.segmentLen / dist
+		newX := lastX + dx*ratio
+		newY := lastY + dy*ratio
+		s.Tail = append(s.Tail, newX, newY)
+	} else {
 		s.Tail = append(s.Tail, lastX, lastY)
 	}
 }
