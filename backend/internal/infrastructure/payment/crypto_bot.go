@@ -18,14 +18,14 @@ func NewCryptoBotService() *CryptoBotService {
 	return &CryptoBotService{}
 }
 
-func (s *CryptoBotService) CreateInvoice(ctx context.Context, userID int64, amount float64) (string, error) {
+func (s *CryptoBotService) CreateInvoice(_ context.Context, userID int64, amount float64) (string, error) {
 	// TODO: Crypto Bot API createInvoice
 	_ = userID
 	_ = amount
 	return "", nil
 }
 
-func (s *CryptoBotService) ProcessWithdrawal(ctx context.Context, userID int64, amount float64) error {
+func (s *CryptoBotService) ProcessWithdrawal(_ context.Context, userID int64, amount float64) error {
 	// TODO: Crypto Bot API withdraw
 	_ = userID
 	_ = amount

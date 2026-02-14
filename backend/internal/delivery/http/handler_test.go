@@ -37,7 +37,7 @@ func (m *mockUserProvider) GetUserStats(_ context.Context, _ uint) (int, float64
 func (m *mockUserProvider) GetUserRank(_ context.Context, _ uint, _ int) (int, error) {
 	return 0, m.err
 }
-func (m *mockUserProvider) GetLeaderboard(_ context.Context, limit int) ([]repository.LeaderboardEntry, error) {
+func (m *mockUserProvider) GetLeaderboard(_ context.Context, _ int) ([]repository.LeaderboardEntry, error) {
 	return m.leaderboard, m.err
 }
 func (m *mockUserProvider) GetActivePlayersCount7d(_ context.Context) (int, error) {

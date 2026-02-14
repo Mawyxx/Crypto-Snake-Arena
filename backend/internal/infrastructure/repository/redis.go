@@ -16,7 +16,7 @@ func NewRedisRoomRepo() *RedisRoomRepo {
 	return &RedisRoomRepo{}
 }
 
-func (r *RedisRoomRepo) SaveSnake(ctx context.Context, roomID string, userID int64, snake *domain.Snake) error {
+func (r *RedisRoomRepo) SaveSnake(_ context.Context, roomID string, userID int64, snake *domain.Snake) error {
 	// TODO: HSET snake:{roomID}:{userID} ...
 	_ = roomID
 	_ = userID
@@ -24,14 +24,14 @@ func (r *RedisRoomRepo) SaveSnake(ctx context.Context, roomID string, userID int
 	return nil
 }
 
-func (r *RedisRoomRepo) GetSnake(ctx context.Context, roomID string, userID int64) (*domain.Snake, error) {
+func (r *RedisRoomRepo) GetSnake(_ context.Context, roomID string, userID int64) (*domain.Snake, error) {
 	// TODO: HGETALL snake:{roomID}:{userID}
 	_ = roomID
 	_ = userID
 	return nil, nil
 }
 
-func (r *RedisRoomRepo) SetCoin(ctx context.Context, roomID, coinID string, value float64, ttlSec int) error {
+func (r *RedisRoomRepo) SetCoin(_ context.Context, roomID, coinID string, value float64, ttlSec int) error {
 	// TODO: SET coin:{roomID}:{coinID} value EX ttlSec
 	_ = roomID
 	_ = coinID
@@ -40,7 +40,7 @@ func (r *RedisRoomRepo) SetCoin(ctx context.Context, roomID, coinID string, valu
 	return nil
 }
 
-func (r *RedisRoomRepo) ClaimCoin(ctx context.Context, roomID, coinID string) (float64, bool, error) {
+func (r *RedisRoomRepo) ClaimCoin(_ context.Context, roomID, coinID string) (float64, bool, error) {
 	// TODO: GETDEL coin:{roomID}:{coinID}
 	_ = roomID
 	_ = coinID
