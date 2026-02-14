@@ -37,9 +37,13 @@ func methodGetOnly(next http.Handler) http.Handler {
 	})
 }
 
-// methodPostOnly возвращает 405 для не-POST запросов.
+// methodPostOnly возвращает 405 для не-POST запросов. OPTIONS (CORS preflight) — 200 OK.
 func methodPostOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
