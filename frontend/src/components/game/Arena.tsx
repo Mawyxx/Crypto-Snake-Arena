@@ -309,39 +309,21 @@ interface GameContentProps {
   containerHeight: number
 }
 
-// Slither.io bg54.jpg: 599×519 px, tileable texture
-const BG_PADDING = 500
-const BG_SIZE = WORLD_SIZE + BG_PADDING * 2
+// Slither.io bg54.jpg: 599×519 px, tileable texture. Фон статичный — не следует за камерой.
 const BG_TILE_W = 599
 const BG_TILE_H = 519
 
-function ArenaBackground({
-  viewportX,
-  viewportY,
-  viewportScale,
-  containerWidth,
-  containerHeight,
-}: {
-  viewportX: number
-  viewportY: number
-  viewportScale: number
-  containerWidth: number
-  containerHeight: number
-}) {
-  const worldCenterX = (containerWidth / 2 - viewportX) / viewportScale
-  const worldCenterY = (containerHeight / 2 - viewportY) / viewportScale
-  const tilePosX = ((worldCenterX % BG_TILE_W) + BG_TILE_W) % BG_TILE_W
-  const tilePosY = ((worldCenterY % BG_TILE_H) + BG_TILE_H) % BG_TILE_H
-
+function ArenaBackground({ containerWidth, containerHeight }: { containerWidth: number; containerHeight: number }) {
+  const tileScale = Math.max(containerWidth / BG_TILE_W, containerHeight / BG_TILE_H) * 0.5
   return (
     <TilingSprite
       image="/bg54.jpg"
-      width={BG_SIZE}
-      height={BG_SIZE}
-      x={-BG_PADDING}
-      y={-BG_PADDING}
-      tilePosition={{ x: tilePosX, y: tilePosY }}
-      tileScale={{ x: viewportScale, y: viewportScale }}
+      width={containerWidth + BG_TILE_W * 2}
+      height={containerHeight + BG_TILE_H * 2}
+      x={-BG_TILE_W}
+      y={-BG_TILE_H}
+      tilePosition={{ x: 0, y: 0 }}
+      tileScale={{ x: tileScale, y: tileScale }}
     />
   )
 }
@@ -373,15 +355,12 @@ function GameContent({
   const score = localSnake?.score ?? 0
 
   return (
-    <Container position={[viewportX, viewportY]} scale={viewportScale}>
-      <ArenaBackground
-        viewportX={viewportX}
-        viewportY={viewportY}
-        viewportScale={viewportScale}
-        containerWidth={containerWidth}
-        containerHeight={containerHeight}
-      />
-      <ArenaBoundary />
+    <>
+      <Container>
+        <ArenaBackground containerWidth={containerWidth} containerHeight={containerHeight} />
+      </Container>
+      <Container position={[viewportX, viewportY]} scale={viewportScale}>
+        <ArenaBoundary />
       {state?.snakes?.map((snake) => (
         <SnakeView
           key={String(snake.id)}
@@ -410,6 +389,7 @@ function GameContent({
           })}
         />
       )}
-    </Container>
+      </Container>
+    </>
   )
 }
