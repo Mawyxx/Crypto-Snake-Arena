@@ -10,8 +10,8 @@ import { CoinView } from './CoinView'
 
 const WORLD_SIZE = 2000
 const ARENA_RADIUS = 1000 // круговая арена (Slither.io scale для SegmentLen 42)
-// Не показывать больше мира: scale >= baseScale → factor >= 1
-const CAMERA_ZOOM_FACTOR = 1.0
+// Оригинал Slither.io: камера ближе, змея занимает ~1/4 экрана. >1 = zoom in
+const CAMERA_ZOOM_FACTOR = 2.0
 
 export interface GameResult {
   status: 'win' | 'lose'
