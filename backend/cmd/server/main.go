@@ -135,7 +135,8 @@ func main() {
 			adminTgID = n
 		}
 	}
-	httpHandler := httphandler.NewHandler(validator, userResolver, presenceStore, platformStats, adminRepo, adminTgID, botToken, webhookSecret)
+	addBalanceSecret := os.Getenv("ADD_BALANCE_SECRET")
+	httpHandler := httphandler.NewHandler(validator, userResolver, presenceStore, platformStats, adminRepo, txManager, adminTgID, botToken, webhookSecret, addBalanceSecret)
 
 	// Router
 	mux := http.NewServeMux()

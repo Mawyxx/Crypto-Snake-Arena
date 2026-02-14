@@ -21,6 +21,8 @@ func (h *Handler) SetupRouter(mux *http.ServeMux) {
 	mux.Handle("/api/admin/ledger", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminLedger))))
 	mux.Handle("/api/admin/stats", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminStats))))
 	mux.Handle("/api/admin/export", methodGetOnly(requireAdmin(http.HandlerFunc(h.AdminExport))))
+
+	mux.Handle("/api/internal/add-balance", methodPostOnly(http.HandlerFunc(h.AddBalance)))
 }
 
 // methodGetOnly возвращает 405 для не-GET запросов.

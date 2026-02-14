@@ -52,6 +52,11 @@ type AdminProvider interface {
 	ExportLedgerCSV(ctx context.Context, from, to time.Time) ([]byte, error)
 }
 
+// DepositCreditor — начисление депозита (для internal add-balance).
+type DepositCreditor interface {
+	ProcessDeposit(ctx context.Context, tgID int64, amount float64, externalID string) error
+}
+
 // Handler — REST API: баланс, профиль, история, конфиг, админка.
 type Handler struct {
 	validator          *auth.Validator
@@ -59,22 +64,26 @@ type Handler struct {
 	presenceStore      PresenceStore
 	platformStats      PlatformStatsProvider
 	adminProvider      AdminProvider
-	adminTgID          int64 // ADMIN_TG_ID — только этот пользователь видит is_admin и /api/admin/*
+	depositCreditor    DepositCreditor
+	adminTgID          int64  // ADMIN_TG_ID — только этот пользователь видит is_admin и /api/admin/*
 	botToken           string
 	webhookSecretToken string // X-Telegram-Bot-Api-Secret-Token (опционально)
+	addBalanceSecret   string // ADD_BALANCE_SECRET — для POST /api/internal/add-balance
 }
 
 // NewHandler создаёт HTTP handler.
-func NewHandler(validator *auth.Validator, userProvider UserProvider, presenceStore PresenceStore, platformStats PlatformStatsProvider, adminProvider AdminProvider, adminTgID int64, botToken, webhookSecretToken string) *Handler {
+func NewHandler(validator *auth.Validator, userProvider UserProvider, presenceStore PresenceStore, platformStats PlatformStatsProvider, adminProvider AdminProvider, depositCreditor DepositCreditor, adminTgID int64, botToken, webhookSecretToken, addBalanceSecret string) *Handler {
 	return &Handler{
 		validator:          validator,
 		userProvider:       userProvider,
 		presenceStore:      presenceStore,
 		platformStats:      platformStats,
 		adminProvider:      adminProvider,
+		depositCreditor:    depositCreditor,
 		adminTgID:          adminTgID,
 		botToken:           botToken,
 		webhookSecretToken: webhookSecretToken,
+		addBalanceSecret:   addBalanceSecret,
 	}
 }
 
@@ -533,4 +542,62 @@ func (h *Handler) BotWebhook(w http.ResponseWriter, r *http.Request) {
 		resp.Body.Close()
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// AddBalance — внутренний эндпоинт: начисление баланса по секретному токену.
+// POST /api/internal/add-balance
+// Header: X-Add-Balance-Token: <ADD_BALANCE_SECRET>
+// Body: {"tg_id": 7175104609, "amount": 500} или query: ?tg_id=7175104609&amount=500
+func (h *Handler) AddBalance(w http.ResponseWriter, r *http.Request) {
+	if h.addBalanceSecret == "" || h.depositCreditor == nil {
+		http.Error(w, "add-balance disabled", http.StatusNotFound)
+		return
+	}
+	if r.Header.Get("X-Add-Balance-Token") != h.addBalanceSecret {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	var tgID int64 = 7175104609
+	var amount float64 = 500
+	if r.Header.Get("Content-Type") == "application/json" {
+		var body struct {
+			TgID   int64   `json:"tg_id"`
+			Amount float64 `json:"amount"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil && body.TgID != 0 {
+			tgID = body.TgID
+			if body.Amount > 0 {
+				amount = body.Amount
+			}
+		}
+	} else {
+		if s := r.URL.Query().Get("tg_id"); s != "" {
+			if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+				tgID = n
+			}
+		}
+		if s := r.URL.Query().Get("amount"); s != "" {
+			if f, err := strconv.ParseFloat(s, 64); err == nil && f > 0 {
+				amount = f
+			}
+		}
+	}
+	_, err := h.userProvider.GetOrCreateUser(r.Context(), tgID, "", "", "")
+	if err != nil {
+		log.Printf("[AddBalance] GetOrCreateUser error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	externalID := fmt.Sprintf("admin_credit_%d_%d_%d", tgID, int(amount), time.Now().UnixNano())
+	if err := h.depositCreditor.ProcessDeposit(r.Context(), tgID, amount, externalID); err != nil {
+		if strings.Contains(err.Error(), "уже") || strings.Contains(err.Error(), "23505") {
+			http.Error(w, "already processed", http.StatusConflict)
+			return
+		}
+		log.Printf("[AddBalance] ProcessDeposit error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "tg_id": tgID, "amount": amount})
 }

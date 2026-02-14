@@ -59,7 +59,7 @@ func (mockPresenceStore) Register(_ context.Context, _ uint) {}
 func (mockPresenceStore) Count() int                         { return 0 }
 
 func TestConfig_ReturnsJSON(t *testing.T) {
-	h := NewHandler(auth.NewValidator(""), &mockUserProvider{}, mockPresenceStore{}, nil, nil, 0, "", "")
+	h := NewHandler(auth.NewValidator(""), &mockUserProvider{}, mockPresenceStore{}, nil, nil, nil, 0, "", "", "")
 	req := httptest.NewRequest("GET", "/api/config", nil)
 	rec := httptest.NewRecorder()
 	h.Config(rec, req)
@@ -81,7 +81,7 @@ func TestLeaderboard_ReturnsEntries(t *testing.T) {
 		{Rank: 2, UserID: 2, DisplayName: "Bob", TotalProfit: 50},
 	}
 	provider := &mockUserProvider{leaderboard: entries}
-	h := NewHandler(auth.NewValidator(""), provider, mockPresenceStore{}, nil, nil, 0, "", "")
+	h := NewHandler(auth.NewValidator(""), provider, mockPresenceStore{}, nil, nil, nil, 0, "", "", "")
 	req := httptest.NewRequest("GET", "/api/leaderboard?limit=10", nil)
 	rec := httptest.NewRecorder()
 	h.Leaderboard(rec, req)
@@ -101,7 +101,7 @@ func TestLeaderboard_ReturnsEntries(t *testing.T) {
 }
 
 func TestBotWebhook_RejectsWithoutSecretToken(t *testing.T) {
-	h := NewHandler(auth.NewValidator(""), &mockUserProvider{}, mockPresenceStore{}, nil, nil, 0, "fake-token", "my-secret")
+	h := NewHandler(auth.NewValidator(""), &mockUserProvider{}, mockPresenceStore{}, nil, nil, nil, 0, "fake-token", "my-secret", "")
 	body := []byte(`{"message":{"message_id":1,"from":{"id":123},"chat":{"id":123},"text":"/start r_456"}}`)
 	req := httptest.NewRequest("POST", "/api/bot/webhook", nil)
 	req.Body = io.NopCloser(bytes.NewReader(body))
@@ -114,7 +114,7 @@ func TestBotWebhook_RejectsWithoutSecretToken(t *testing.T) {
 }
 
 func TestBotWebhook_AcceptsWithCorrectSecretToken(t *testing.T) {
-	h := NewHandler(auth.NewValidator(""), &mockUserProvider{}, mockPresenceStore{}, nil, nil, 0, "fake-token", "my-secret")
+	h := NewHandler(auth.NewValidator(""), &mockUserProvider{}, mockPresenceStore{}, nil, nil, nil, 0, "fake-token", "my-secret", "")
 	body := []byte(`{"message":{"message_id":1,"from":{"id":123},"chat":{"id":123},"text":"/start r_456"}}`)
 	req := httptest.NewRequest("POST", "/api/bot/webhook", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

@@ -63,6 +63,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | `DEPLOY_HOST` | IP или домен сервера (например `arrenasnake.net`) |
 | `DEPLOY_USER` | SSH-пользователь (тот же, что в setup, например `deploy`) |
 | `DEPLOY_SSH_KEY` | Приватный SSH-ключ для доступа к серверу |
+| `ADD_BALANCE_SECRET` | Секрет для Add balance workflow (тот же, что ADD_BALANCE_SECRET в .env на сервере) |
 
 **Создание SSH-ключа (если ещё нет):**
 
