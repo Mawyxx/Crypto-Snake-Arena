@@ -45,12 +45,12 @@ const CoinViewInner = ({ coin }: CoinViewProps) => {
       const radius = 4 + Math.min(value * 0.2, 2)
       const color = getOrbColor(coin.id ?? '')
 
-      // Slither.io: светящиеся орбы с мягким ореолом
-      g.beginFill(color, 0.12)
-      g.drawCircle(x, y, radius + 10)
+      // Скрин: яркие светящиеся орбы с мягким ореолом
+      g.beginFill(color, 0.18)
+      g.drawCircle(x, y, radius + 12)
       g.endFill()
-      g.beginFill(color, 0.35)
-      g.drawCircle(x, y, radius + 5)
+      g.beginFill(color, 0.4)
+      g.drawCircle(x, y, radius + 6)
       g.endFill()
       g.beginFill(color, 0.95)
       g.drawCircle(x, y, radius)

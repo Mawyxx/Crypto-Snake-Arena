@@ -20,20 +20,28 @@ function getSnakeColor(snakeId: SnakeId): number {
   return SNAKE_COLORS[Math.abs(id) % SNAKE_COLORS.length]
 }
 
+/** Осветлить цвет для объёма (внутренний круг) */
+function brightenColor(hex: number, factor: number): number {
+  const r = Math.min(255, ((hex >> 16) & 0xff) * (1 + factor))
+  const g = Math.min(255, ((hex >> 8) & 0xff) * (1 + factor))
+  const b = Math.min(255, (hex & 0xff) * (1 + factor))
+  return (r << 16) | (g << 8) | b
+}
+
 interface SnakeViewProps {
   snake: InterpolatedSnake
   isLocalPlayer: boolean
 }
 
-/** Slither.io shadowBlur=30: 2-3 glow layers with ADD blend (scaled for lsz*0.5) */
+/** Boost glow: яркие слои как на скрине (зелёная змея) */
 const BOOST_GLOW_LAYERS: { offset: number; alpha: number }[] = [
-  { offset: 4, alpha: 0.15 },
-  { offset: 8, alpha: 0.08 },
-  { offset: 12, alpha: 0.04 },
+  { offset: 5, alpha: 0.2 },
+  { offset: 10, alpha: 0.12 },
+  { offset: 16, alpha: 0.06 },
 ]
 
-// slither.io-clone: preferredDistance = 17*scale ≈ 10.2, circle radius ~19. SegmentLen 42 → 4 круга на сегмент ≈ 10.5 между
-const CIRCLES_PER_SEGMENT = 4
+// Плавная змея: 5 кругов на сегмент (расстояние ~8.4)
+const CIRCLES_PER_SEGMENT = 5
 
 function expandBodyForRender(
   body: { x?: number | null; y?: number | null }[]
@@ -74,10 +82,10 @@ function drawSnakeAsCircles(
   const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
   const boost = snake.boost ?? false
 
-  // slither.io-clone: scale 0.6, circle radius ~19 (sec.width*0.5*scale). preferredDistance 10.2.
+  // Скрин: medium thickness, объём (светлый центр). Slither lsz*=0.5 + объём
   const bodyLen = rawBody.length + 1
   const scale = Math.min(6, 1 + Math.max(0, (bodyLen - 2) / 106))
-  const lsz = 29 * scale * 1.3 // радиус ~19 как в клоне (было 0.5 — слишком мелко)
+  const lsz = 29 * scale * 0.6 // medium plump как на скрине (0.5=тонко, 0.6=норм)
   const segRadius = lsz / 2
   const headR = (lsz * 62) / 32 / 2
   const outlineExtra = (lsz + 5) / 2 - segRadius
@@ -99,12 +107,15 @@ function drawSnakeAsCircles(
         glowG.endFill()
       }
     }
-    // slither.io-clone: плоские круги как circle.png
-    g.beginFill(0x000000, 0.35)
+    // Объём: outline + основной цвет + светлый центр (как на скрине)
+    g.beginFill(0x000000, 0.4)
     g.drawCircle(sx, sy, radius + outlineExtra)
     g.endFill()
     g.beginFill(color)
     g.drawCircle(sx, sy, radius)
+    g.endFill()
+    g.beginFill(brightenColor(color, 0.15))
+    g.drawCircle(sx, sy, radius * 0.7)
     g.endFill()
   })
 
@@ -117,11 +128,14 @@ function drawSnakeAsCircles(
       glowG.endFill()
     }
   }
-  g.beginFill(0x000000, 0.35)
+  g.beginFill(0x000000, 0.4)
   g.drawCircle(hx, hy, headOutline + outlineExtra)
   g.endFill()
   g.beginFill(color)
   g.drawCircle(hx, hy, headR)
+  g.endFill()
+  g.beginFill(brightenColor(color, 0.15))
+  g.drawCircle(hx, hy, headR * 0.7)
   g.endFill()
 
   // Глаза: ed=6*ssc, esp=6*ssc (Slither default)
