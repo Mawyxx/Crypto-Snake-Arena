@@ -20,6 +20,7 @@ html, body, #root {
   width: 100%;
   height: 100%;
   font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  color: var(--text-primary);
 }
 
 html, body {

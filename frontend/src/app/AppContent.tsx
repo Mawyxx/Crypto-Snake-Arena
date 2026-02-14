@@ -78,8 +78,9 @@ export function AppContent() {
   const Component = screenComponents[screen]
   const isGame = screen === 'game'
 
+  // initial: opacity 1 — контент сразу виден (в WebView Telegram анимация opacity может не сработать)
   const contentVariants = {
-    initial: { opacity: 0, scale: 0.98 },
+    initial: { opacity: 1, scale: 0.98 },
     animate: { opacity: 1, scale: 1 },
     exit: { opacity: 0, scale: 0.98 },
   }
@@ -103,6 +104,8 @@ export function AppContent() {
           >
             <motion.div
               variants={contentVariants}
+              initial="initial"
+              animate="animate"
               transition={contentTransition}
               className="h-full"
             >
