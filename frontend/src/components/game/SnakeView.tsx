@@ -20,14 +20,6 @@ function getSnakeColor(snakeId: SnakeId): number {
   return SNAKE_COLORS[Math.abs(id) % SNAKE_COLORS.length]
 }
 
-/** Осветлить цвет на factor (0..1), для объёма */
-function brightenColor(hex: number, factor: number): number {
-  const r = Math.min(255, ((hex >> 16) & 0xff) * (1 + factor))
-  const g = Math.min(255, ((hex >> 8) & 0xff) * (1 + factor))
-  const b = Math.min(255, (hex & 0xff) * (1 + factor))
-  return (r << 16) | (g << 8) | b
-}
-
 interface SnakeViewProps {
   snake: InterpolatedSnake
   isLocalPlayer: boolean
@@ -40,8 +32,8 @@ const BOOST_GLOW_LAYERS: { offset: number; alpha: number }[] = [
   { offset: 12, alpha: 0.04 },
 ]
 
-/** Slither.io: mct=6 кругов на сегмент (sep=42/6=7), интерполируем точки между body segments */
-const CIRCLES_PER_SEGMENT = 6
+// slither.io-clone: preferredDistance = 17*scale ≈ 10.2, circle radius ~19. SegmentLen 42 → 4 круга на сегмент ≈ 10.5 между
+const CIRCLES_PER_SEGMENT = 4
 
 function expandBodyForRender(
   body: { x?: number | null; y?: number | null }[]
@@ -82,25 +74,23 @@ function drawSnakeAsCircles(
   const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
   const boost = snake.boost ?? false
 
-  // Slither.io: sc = min(6, 1+(sct-2)/106), lsz = 29*sc, render_mode 2: lsz *= .5
+  // slither.io-clone: scale 0.6, circle radius ~19 (sec.width*0.5*scale). preferredDistance 10.2.
   const bodyLen = rawBody.length + 1
   const scale = Math.min(6, 1 + Math.max(0, (bodyLen - 2) / 106))
-  const lsz = 29 * scale * 0.5
+  const lsz = 29 * scale * 1.3 // радиус ~19 как в клоне (было 0.5 — слишком мелко)
   const segRadius = lsz / 2
   const headR = (lsz * 62) / 32 / 2
   const outlineExtra = (lsz + 5) / 2 - segRadius
-  const swell = 0.08
 
   const hx = head.x ?? 0
   const hy = head.y ?? 0
   const angle = snake.angle ?? 0
 
-  // Body: 6 кругов на сегмент (Slither mct=6). Swell для первых 4 логических сегментов.
-  body.forEach((segment, index) => {
+  // Body: дискретные круги как в slither.io-clone (preferredDistance 10.2)
+  body.forEach((segment) => {
     const sx = segment?.x ?? 0
     const sy = segment?.y ?? 0
-    const segmentIndex = Math.floor(index / CIRCLES_PER_SEGMENT)
-    const radius = segRadius * (segmentIndex < 4 ? 1 + (4 - segmentIndex) * swell : 1)
+    const radius = segRadius
 
     if (boost) {
       for (const layer of BOOST_GLOW_LAYERS) {
@@ -109,16 +99,12 @@ function drawSnakeAsCircles(
         glowG.endFill()
       }
     }
-    g.beginFill(0x000000, 0.4)
+    // slither.io-clone: плоские круги как circle.png
+    g.beginFill(0x000000, 0.35)
     g.drawCircle(sx, sy, radius + outlineExtra)
     g.endFill()
     g.beginFill(color)
     g.drawCircle(sx, sy, radius)
-    g.endFill()
-    // Объём: внутренний светлый круг (центр +15% яркости)
-    const lightColor = brightenColor(color, 0.15)
-    g.beginFill(lightColor)
-    g.drawCircle(sx, sy, radius * 0.7)
     g.endFill()
   })
 
@@ -131,14 +117,11 @@ function drawSnakeAsCircles(
       glowG.endFill()
     }
   }
-  g.beginFill(0x000000, 0.4)
+  g.beginFill(0x000000, 0.35)
   g.drawCircle(hx, hy, headOutline + outlineExtra)
   g.endFill()
   g.beginFill(color)
   g.drawCircle(hx, hy, headR)
-  g.endFill()
-  g.beginFill(brightenColor(color, 0.15))
-  g.drawCircle(hx, hy, headR * 0.7)
   g.endFill()
 
   // Глаза: ed=6*ssc, esp=6*ssc (Slither default)
