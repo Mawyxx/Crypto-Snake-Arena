@@ -114,3 +114,32 @@ export async function apiPatch<T>(
   }
   return {} as T
 }
+
+export async function apiPost<T>(
+  path: string,
+  body?: Record<string, unknown> | null,
+  initData?: string | null
+): Promise<T> {
+  const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': '1',
+  }
+  if (initData?.trim()) {
+    headers['Authorization'] = `tma ${initData}`
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new ApiError(text || `Request failed: ${res.status}`, res.status)
+  }
+  const ct = res.headers.get('content-type')
+  if (ct?.includes('application/json')) {
+    return (await res.json()) as T
+  }
+  return {} as T
+}

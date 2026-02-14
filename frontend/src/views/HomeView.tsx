@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store'
 import { useHaptic } from '@/features/haptic'
 import { useTelegram } from '@/features/auth'
+import { useBalance } from '@/entities/balance'
 import { Icon } from '@/shared/ui'
 import { UserAvatar } from '@/entities/user'
 import { getRecentGames, formatRelativeTime, type RecentGame } from '@/features/game-history'
@@ -23,6 +24,7 @@ export const HomeView = React.memo(function HomeView() {
   const onlineCount = useGameStore((s) => s.onlineCount)
   const { impact, notify } = useHaptic()
   const { photoUrl, initData } = useTelegram()
+  const { refetch } = useBalance({ refetchOnMount: false })
   const [games, setGames] = useState<RecentGame[]>([])
   const [loading, setLoading] = useState(true)
   const [gamesExpanded, setGamesExpanded] = useState(false)
@@ -80,10 +82,26 @@ export const HomeView = React.memo(function HomeView() {
     setBet(BET_OPTIONS[next])
   }
 
-  const handleAddFunds = () => {
+  const handleAddFunds = async () => {
     impact('light')
-    const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-    if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+    const { DEV_AUTO_CREDIT } = await import('@/config/dev')
+    if (DEV_AUTO_CREDIT && initData) {
+      try {
+        await import('@/shared/api').then(({ apiPost }) => apiPost('/api/dev/credit-500', {}, initData))
+        refetch()
+        notify?.('success')
+        if ((window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp?.showAlert) {
+          ;(window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram!.WebApp!.showAlert!('+500 USDT')
+        }
+      } catch {
+        if ((window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp?.showAlert) {
+          ;(window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram!.WebApp!.showAlert!(t('common.deposit'))
+        }
+      }
+    } else {
+      const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+      if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+    }
     setScreen('profile')
   }
 

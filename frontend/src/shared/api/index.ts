@@ -1,7 +1,7 @@
 export { GameWebSocket } from './websocket'
 export type { MessageHandler } from './websocket'
 export { decodeWorldSnapshot, encodePlayerInput } from './protoSerializer'
-export { apiFetch, apiGet, apiPatch, ApiError } from './client'
+export { apiFetch, apiGet, apiPatch, apiPost, ApiError } from './client'
 export type {
   ProfileResponse,
   ConfigResponse,

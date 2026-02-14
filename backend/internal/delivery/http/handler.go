@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -542,6 +543,48 @@ func (h *Handler) BotWebhook(w http.ResponseWriter, r *http.Request) {
 		resp.Body.Close()
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// DevCredit500 — для тестов: при клике на баланс/пополнить начисляет 500 USDT текущему пользователю.
+// POST /api/dev/credit-500. Требует auth. Работает только при DEV_AUTO_CREDIT=true в .env.
+// Для релиза: убрать DEV_AUTO_CREDIT из .env — эндпоинт вернёт 404.
+func (h *Handler) DevCredit500(w http.ResponseWriter, r *http.Request) {
+	// Проверяем флаг — для релиза просто не задаём DEV_AUTO_CREDIT
+	if os.Getenv("DEV_AUTO_CREDIT") != "true" && os.Getenv("DEV_AUTO_CREDIT") != "1" {
+		http.Error(w, "disabled", http.StatusNotFound)
+		return
+	}
+	if h.depositCreditor == nil {
+		http.Error(w, "disabled", http.StatusNotFound)
+		return
+	}
+	userInfo := UserInfoFromContext(r.Context())
+	if userInfo == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	tgID := userInfo.ID
+	amount := 500.0
+	_, err := h.userProvider.GetOrCreateUser(r.Context(), tgID, "", "", "")
+	if err != nil {
+		log.Printf("[DevCredit500] GetOrCreateUser error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	externalID := fmt.Sprintf("dev_credit_%d_%d_%d", tgID, int(amount), time.Now().UnixNano())
+	if err := h.depositCreditor.ProcessDeposit(r.Context(), tgID, amount, externalID); err != nil {
+		if strings.Contains(err.Error(), "уже") || strings.Contains(err.Error(), "23505") {
+			// Уже начислено в эту секунду — считаем успехом
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "amount": amount})
+			return
+		}
+		log.Printf("[DevCredit500] ProcessDeposit error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "amount": amount})
 }
 
 // AddBalance — внутренний эндпоинт: начисление баланса по секретному токену.

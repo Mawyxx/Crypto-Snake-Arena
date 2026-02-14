@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store'
 import { useTelegram } from '@/features/auth'
 import { useBalance } from '@/entities/balance'
+import { useHaptic } from '@/features/haptic'
 import { UserAvatar } from '@/entities/user'
 import { IconRound } from '@/shared/ui'
 import { setStoredLang, LANG_RU, LANG_EN, getTelegramUserFromInitData, type LangCode } from '@/shared/lib'
@@ -42,7 +43,8 @@ export const ProfileView = React.memo(function ProfileView() {
   const vibrationEnabled = useGameStore((s) => s.vibrationEnabled)
   const setSoundEnabled = useGameStore((s) => s.setSoundEnabled)
   const setVibrationEnabled = useGameStore((s) => s.setVibrationEnabled)
-  const { photoUrl } = useTelegram()
+  const { photoUrl, initData } = useTelegram()
+  const { impact, notify } = useHaptic()
 
   const { t } = useTranslation()
   const tgUser = getTelegramUserFromInitData()
@@ -54,9 +56,24 @@ export const ProfileView = React.memo(function ProfileView() {
   const rankStr = gamesPlayed === 0 || rank === 0 ? '???' : String(rank)
   const bannerLine2 = handleStr ? `${handleStr} • Rank #${rankStr}` : `Rank #${rankStr}`
 
-  const handleDeposit = () => {
-    const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-    if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+  const handleDeposit = async () => {
+    impact('light')
+    const { DEV_AUTO_CREDIT } = await import('@/config/dev')
+    if (DEV_AUTO_CREDIT && initData) {
+      try {
+        await import('@/shared/api').then(({ apiPost }) => apiPost('/api/dev/credit-500', {}, initData))
+        refetch()
+        notify('success')
+        const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+        if (tg?.showAlert) tg.showAlert('+500 USDT')
+      } catch {
+        const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+        if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+      }
+    } else {
+      const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+      if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+    }
   }
 
   const handleWithdraw = () => {
@@ -81,7 +98,11 @@ export const ProfileView = React.memo(function ProfileView() {
       </section>
 
       <section className="bg-[#111111] rounded-2xl p-6 border border-white/5">
-        <div className="flex flex-col items-center text-center mb-5">
+        <button
+          type="button"
+          className="flex flex-col items-center text-center mb-5 w-full cursor-pointer bg-transparent border-0 p-0"
+          onClick={handleDeposit}
+        >
           <span className="text-[10px] font-medium text-white/40 tracking-[0.2em] mb-1.5 uppercase">{t('profile.balance')}</span>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-bold text-[#22C55E] tracking-tight">
@@ -89,7 +110,7 @@ export const ProfileView = React.memo(function ProfileView() {
             </span>
             <span className="text-base font-bold text-white/30 uppercase tracking-widest">usdt</span>
           </div>
-        </div>
+        </button>
         <div className="flex gap-3">
           <button
             type="button"
