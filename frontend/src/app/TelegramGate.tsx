@@ -3,11 +3,14 @@ import { designTokens } from '@/shared/config'
 const BOT = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'CryptoSnakeArena_Bot'
 const BOT_LINK = `https://t.me/${BOT}`
 
-/** Проверяет, что приложение открыто из Telegram Mini App (есть initData) */
+/** Проверяет, что приложение открыто из Telegram Mini App */
 export function isInTelegramMiniApp(): boolean {
   if (typeof window === 'undefined') return false
+  // Есть initData — точно Mini App
   const initData = window.Telegram?.WebApp?.initData ?? ''
-  return initData.length > 0
+  if (initData.length > 0) return true
+  // Нет initData, но Telegram API есть — вероятно WebView (ссылка, шаринг)
+  return Boolean(window.Telegram?.WebApp)
 }
 
 /** Dev: ?dev=1 в URL — обход TelegramGate для локального тестирования */

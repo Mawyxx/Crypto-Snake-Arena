@@ -96,7 +96,10 @@ export function AppContent() {
 
   if (isGame) {
     return (
-      <div className="app app-content-wrap relative h-full w-full max-w-[420px] mx-auto bg-[var(--bg-main)] touch-none overflow-hidden min-h-[100dvh]">
+      <div
+        className="app app-content-wrap relative h-full w-full max-w-[420px] mx-auto bg-[var(--bg-main)] touch-none overflow-hidden"
+        style={{ minHeight: '100vh' }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={screen}
@@ -123,7 +126,10 @@ export function AppContent() {
   }
 
   return (
-    <div className="app app-content-wrap relative flex flex-col h-full min-h-0 w-full max-w-[420px] mx-auto bg-[var(--bg-main)] overflow-hidden pt-[env(safe-area-inset-top)]">
+    <div
+      className="app app-content-wrap relative flex flex-col h-full w-full max-w-[420px] mx-auto bg-[var(--bg-main)] overflow-hidden pt-[env(safe-area-inset-top)]"
+      style={{ minHeight: '100vh' }}
+    >
       <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <div
           className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain touch-auto hide-scrollbar bg-[var(--bg-main)]"
