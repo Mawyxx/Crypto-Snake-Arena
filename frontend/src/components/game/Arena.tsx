@@ -1,7 +1,8 @@
-import { Stage, Container, useTick, useApp, Text, Graphics, TilingSprite } from '@pixi/react'
-import { TextStyle } from 'pixi.js'
+import { Stage, Container, useTick, useApp, Text, Graphics } from '@pixi/react'
+import { TextStyle, ColorMatrixFilter } from 'pixi.js'
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { game } from '@/shared/api/proto/game'
 import { useGameEngine, type InterpolatedWorldSnapshot, type InterpolatedSnake } from '@/hooks/useGameEngine'
 import { useInputHandler } from '@/hooks/useInputHandler'
 import { useTelegram } from '@/features/auth'
@@ -24,6 +25,7 @@ interface ArenaProps {
   stake?: number
   localSnakeId?: number | null
   onGameEnd?: (result: GameResult) => void
+  onDeathDetected?: (snake: game.ISnake, score: number) => void
   onConnectionFailed?: () => void
   cashOutRequested?: boolean
   blockInputRef?: React.RefObject<boolean>
@@ -38,6 +40,7 @@ export const Arena = ({
   stake = 0.3,
   localSnakeId = null,
   onGameEnd,
+  onDeathDetected,
   onConnectionFailed,
   cashOutRequested = false,
   blockInputRef,
@@ -48,6 +51,7 @@ export const Arena = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const snakeHeadRef = useRef<{ x: number; y: number } | null>(null)
   const [size, setSize] = useState({ width: WORLD_SIZE, height: WORLD_SIZE })
+  const [lastGrowAt, setLastGrowAt] = useState(0)
 
   const base = wsBaseUrl.replace(/\/$/, '')
   const wsPath = base.endsWith('/ws') ? '' : '/ws'
@@ -63,6 +67,8 @@ export const Arena = ({
         },
         [onGameEnd]
       ),
+      onDeathDetected,
+      onGrow: useCallback(() => setLastGrowAt(Date.now()), []),
     }
   )
 
@@ -116,9 +122,6 @@ export const Arena = ({
     return () => cancelAnimationFrame(rafId)
   }, [getLocalSnakeScore, onScoreUpdate])
 
-  // slither.io-clone: stage.backgroundColor '#444'
-  const bgColor = 0x444444
-
   return (
     <div
       ref={containerRef}
@@ -134,6 +137,20 @@ export const Arena = ({
         cursor: 'default',
       }}
     >
+      {/* Статичный фон — HTML-слой, не следует за камерой */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          backgroundImage: 'url(/bg54.jpg)',
+          backgroundRepeat: 'repeat',
+          backgroundSize: '599px 519px',
+          backgroundPosition: '0 0',
+          backgroundColor: '#161c22',
+        }}
+        aria-hidden
+      />
       {(status === 'reconnecting' || status === 'connecting') && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <span className="text-white font-medium">
@@ -163,8 +180,9 @@ export const Arena = ({
       <Stage
         width={size.width}
         height={size.height}
+        style={{ position: 'relative', zIndex: 1 }}
         options={{
-          background: bgColor,
+          backgroundAlpha: 0,
           resolution: Math.min(window.devicePixelRatio || 1, 2),
           autoDensity: true,
           antialias: true,
@@ -175,9 +193,11 @@ export const Arena = ({
           getInterpolatedState={getInterpolatedState}
           localSnakeId={localSnakeId}
           snakeHeadRef={snakeHeadRef}
+          containerRef={containerRef}
           containerWidth={size.width}
           containerHeight={size.height}
           status={status}
+          lastGrowAt={lastGrowAt}
         />
       </Stage>
     </div>
@@ -212,23 +232,52 @@ function GameLoop({
   getInterpolatedState,
   localSnakeId,
   snakeHeadRef,
+  containerRef,
   containerWidth,
   containerHeight,
   status,
+  lastGrowAt,
 }: {
   getInterpolatedState: () => InterpolatedWorldSnapshot | null
   localSnakeId: number | null | undefined
   snakeHeadRef: React.MutableRefObject<{ x: number; y: number } | null>
+  containerRef: React.RefObject<HTMLDivElement | null>
   containerWidth: number
   containerHeight: number
   status: string
+  lastGrowAt: number
 }) {
   const app = useApp()
   const stateRef = useRef<InterpolatedWorldSnapshot | null>(null)
   const viewportRef = useRef({ x: 0, y: 0, scale: 1 })
   const targetViewportRef = useRef({ x: 0, y: 0, scale: 1 })
+  const mouseWorldRef = useRef<{ x: number; y: number } | null>(null)
   const [, forceUpdate] = useState(0)
   const CAMERA_LERP = 0.15
+
+  useEffect(() => {
+    const el = containerRef?.current
+    if (!el) return
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX
+      const clientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY
+      if (clientX == null || clientY == null) return
+      const rect = el.getBoundingClientRect()
+      const vp = viewportRef.current
+      const screenX = clientX - rect.left
+      const screenY = clientY - rect.top
+      mouseWorldRef.current = {
+        x: (screenX - vp.x) / vp.scale,
+        y: (screenY - vp.y) / vp.scale,
+      }
+    }
+    el.addEventListener('mousemove', onMove)
+    el.addEventListener('touchmove', onMove, { passive: true })
+    return () => {
+      el.removeEventListener('mousemove', onMove)
+      el.removeEventListener('touchmove', onMove)
+    }
+  }, [containerRef])
 
   useTick((delta) => {
     const state = getInterpolatedState()
@@ -293,8 +342,8 @@ function GameLoop({
       viewportX={vp.x}
       viewportY={vp.y}
       viewportScale={vp.scale}
-      containerWidth={containerWidth}
-      containerHeight={containerHeight}
+      mouseWorld={mouseWorldRef.current}
+      lastGrowAt={lastGrowAt}
     />
   )
 }
@@ -305,27 +354,8 @@ interface GameContentProps {
   viewportX: number
   viewportY: number
   viewportScale: number
-  containerWidth: number
-  containerHeight: number
-}
-
-// Slither.io bg54.jpg: 599×519 px, tileable texture. Фон статичный — не следует за камерой.
-const BG_TILE_W = 599
-const BG_TILE_H = 519
-
-function ArenaBackground({ containerWidth, containerHeight }: { containerWidth: number; containerHeight: number }) {
-  const tileScale = Math.max(containerWidth / BG_TILE_W, containerHeight / BG_TILE_H) * 0.5
-  return (
-    <TilingSprite
-      image="/bg54.jpg"
-      width={containerWidth + BG_TILE_W * 2}
-      height={containerHeight + BG_TILE_H * 2}
-      x={-BG_TILE_W}
-      y={-BG_TILE_H}
-      tilePosition={{ x: 0, y: 0 }}
-      tileScale={{ x: tileScale, y: tileScale }}
-    />
-  )
+  mouseWorld: { x: number; y: number } | null
+  lastGrowAt: number
 }
 
 /** Круговая граница арены — смерть при пересечении */
@@ -340,14 +370,20 @@ function ArenaBoundary() {
   return <Graphics draw={draw} />
 }
 
+const BLOOM_FILTER = (() => {
+  const f = new ColorMatrixFilter()
+  f.brightness(1.05, false)
+  return f
+})()
+
 function GameContent({
   state,
   localSnakeId,
   viewportX,
   viewportY,
   viewportScale,
-  containerWidth,
-  containerHeight,
+  mouseWorld,
+  lastGrowAt,
 }: GameContentProps) {
   const localSnake = state && localSnakeId != null
     ? state.snakes?.find((s) => Number(s.id) === Number(localSnakeId))
@@ -356,16 +392,15 @@ function GameContent({
 
   return (
     <>
-      <Container>
-        <ArenaBackground containerWidth={containerWidth} containerHeight={containerHeight} />
-      </Container>
-      <Container position={[viewportX, viewportY]} scale={viewportScale}>
+      <Container position={[viewportX, viewportY]} scale={viewportScale} filters={[BLOOM_FILTER]}>
         <ArenaBoundary />
       {state?.snakes?.map((snake) => (
         <SnakeView
           key={String(snake.id)}
           snake={snake}
           isLocalPlayer={localSnakeId != null && Number(snake.id) === Number(localSnakeId)}
+          mouseWorld={mouseWorld}
+          growthFlash={localSnakeId != null && Number(snake.id) === Number(localSnakeId) ? lastGrowAt : undefined}
         />
       ))}
       {state?.coins?.map((coin, i) => (

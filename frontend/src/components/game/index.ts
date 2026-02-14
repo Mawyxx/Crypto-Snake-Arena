@@ -1,4 +1,5 @@
 export { Arena, type GameResult } from './Arena'
+export { DeathEffectOverlay } from './DeathEffectOverlay'
 export { CoinView } from './CoinView'
 export { SnakeView } from './SnakeView'
 export { GameOverOverlay } from './GameOverOverlay'

@@ -28,16 +28,26 @@ export interface InterpolatedWorldSnapshot {
   coins?: game.ICoin[] | null
 }
 
+const DEATH_ANIMATION_MS = 500
+
 export interface GameEngineOptions {
   localSnakeId?: number | null
   onDeath?: (score: number) => void
+  onDeathDetected?: (snake: game.ISnake, score: number) => void
+  onGrow?: () => void
   enabled?: boolean
 }
 
 export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
-  const { localSnakeId, onDeath, enabled = true } = options ?? {}
+  const { localSnakeId, onDeath, onDeathDetected, onGrow, enabled = true } = options ?? {}
   const onDeathRef = useRef(onDeath)
   onDeathRef.current = onDeath
+  const onDeathDetectedRef = useRef(onDeathDetected)
+  onDeathDetectedRef.current = onDeathDetected
+  const onGrowRef = useRef(onGrow)
+  onGrowRef.current = onGrow
+  const deathTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prevBodyLengthRef = useRef<number>(0)
 
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const lastMessageTime = useRef<number>(0)
@@ -58,6 +68,7 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
     intentionalClose.current = false
     deathFired.current = false
     localSnakeBodyRef.current = null
+    prevBodyLengthRef.current = 0
     const isReconnecting = reconnectAttempt.current > 0
     setStatus(isReconnecting ? 'reconnecting' : 'connecting')
 
@@ -134,6 +145,10 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
           }
           const body = mySnake.body ?? []
           const bodyLength = mySnake.bodyLength ?? body.length
+          if (bodyLength > prevBodyLengthRef.current && prevBodyLengthRef.current > 0) {
+            onGrowRef.current?.()
+          }
+          prevBodyLengthRef.current = bodyLength
           if (body.length > 0) {
             localSnakeBodyRef.current = initFromServerBody(
               mySnake.head as { x: number; y: number },
@@ -155,6 +170,7 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
           }
         } else {
           localSnakeBodyRef.current = null
+          prevBodyLengthRef.current = 0
         }
       }
 
@@ -171,7 +187,11 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
         socket.current?.close()
         socket.current = null
         setStatus('closed')
-        onDeathRef.current?.(score)
+        if (deadSnake) onDeathDetectedRef.current?.(deadSnake, score)
+        deathTimeoutRef.current = setTimeout(() => {
+          deathTimeoutRef.current = null
+          onDeathRef.current?.(score)
+        }, DEATH_ANIMATION_MS)
       }
     }
 
@@ -213,6 +233,10 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current)
         reconnectTimeout.current = null
+      }
+      if (deathTimeoutRef.current) {
+        clearTimeout(deathTimeoutRef.current)
+        deathTimeoutRef.current = null
       }
       socket.current?.close()
       socket.current = null

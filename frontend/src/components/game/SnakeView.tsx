@@ -21,9 +21,15 @@ function lightenColor(hex: number, factor = 0.3): number {
   return (r << 16) | (g << 8) | b
 }
 
+const GROWTH_FLASH_MS = 200
+const TRAIL_LENGTH = 18
+const TRAIL_POSITION_THRESHOLD = 2
+
 interface SnakeViewProps {
   snake: InterpolatedSnake
   isLocalPlayer: boolean
+  mouseWorld?: { x: number; y: number } | null
+  growthFlash?: number
 }
 
 /** Build path from head to tail for stroke drawing. body[0] is head from server. */
@@ -42,7 +48,7 @@ function buildBodyPath(
   return path
 }
 
-/** Draw path on graphics with lineStyle. PixiJS strokes when lineTo is called with lineStyle set. */
+/** Draw path with quadraticCurveTo (Slither.io render_mode 1) — гибкие плавные кривые вместо угловатых lineTo. */
 function drawPath(
   g: PixiGraphics,
   path: { x: number; y: number }[],
@@ -60,21 +66,47 @@ function drawPath(
   })
   g.moveTo(path[0].x, path[0].y)
   for (let i = 1; i < path.length; i++) {
-    g.lineTo(path[i].x, path[i].y)
+    const prev = path[i - 1]
+    const curr = path[i]
+    const midX = (prev.x + curr.x) / 2
+    const midY = (prev.y + curr.y) / 2
+    g.quadraticCurveTo(prev.x, prev.y, midX, midY)
   }
+  g.lineTo(path[path.length - 1].x, path[path.length - 1].y)
 }
 
-/** Slither-style: stroke path instead of circles. Layers: shadow, glow, main, highlight, eyes. */
+/** Update trail buffer and return points for drawing. Modifies buffer in place. */
+function updateHeadTrail(
+  buffer: { x: number; y: number }[],
+  lastHead: { x: number; y: number } | null,
+  head: { x: number; y: number }
+): { x: number; y: number }[] {
+  const dx = head.x - (lastHead?.x ?? head.x - 1)
+  const dy = head.y - (lastHead?.y ?? head.y - 1)
+  if (lastHead && dx * dx + dy * dy < TRAIL_POSITION_THRESHOLD * TRAIL_POSITION_THRESHOLD) {
+    return buffer
+  }
+  buffer.push({ x: head.x, y: head.y })
+  if (buffer.length > TRAIL_LENGTH) buffer.shift()
+  return buffer
+}
+
+/** Slither-style: stroke path instead of circles. Layers: trail, shadow, glow, main, highlight, eyes. */
 function drawSnake(
   g: PixiGraphics,
   glowG: PixiGraphics,
   shadowG: PixiGraphics,
+  trailG: PixiGraphics,
   snake: InterpolatedSnake,
-  isLocalPlayer: boolean
+  isLocalPlayer: boolean,
+  mouseWorld: { x: number; y: number } | null,
+  growthFlash?: number,
+  trailState?: { buffer: { x: number; y: number }[]; lastHead: { x: number; y: number } | null }
 ) {
   g.clear()
   glowG.clear()
   shadowG.clear()
+  trailG.clear()
   const head = snake.head
   if (!head) return
 
@@ -91,9 +123,31 @@ function drawSnake(
   const hy = head.y ?? 0
   const angle = snake.angle ?? 0
 
+  // Trail — semi-transparent path behind head when boosting (local player only)
+  if (boost && isLocalPlayer && trailState && path.length >= 2) {
+    const trailPoints = updateHeadTrail(trailState.buffer, trailState.lastHead, { x: hx, y: hy })
+    trailState.lastHead = { x: hx, y: hy }
+    if (trailPoints.length >= 2) {
+      trailG.blendMode = BLEND_MODES.ADD
+      const n = trailPoints.length - 1
+      for (let i = 0; i < n; i++) {
+        const alpha = 0.3 * (i + 1) / n // head (last) = 0.3, tail (first) ≈ 0
+        drawPath(trailG, trailPoints.slice(i, i + 2), lsz * 0.6, color, alpha)
+      }
+    }
+  } else if (trailState) {
+    trailState.buffer.length = 0
+    trailState.lastHead = null
+  }
+
   if (path.length >= 2) {
-    // Layer 1: Shadow
-    drawPath(shadowG, path, lsz + 10, 0x000000, 0.3)
+    // Layer 1: Shadow — dark base; when boost, reddish glow (slither-clone lightUp)
+    if (boost) {
+      drawPath(shadowG, path, lsz + 10, 0xaa3333, 0.4)
+      drawPath(shadowG, path, lsz + 8, 0xdd3333, 0.3)
+    } else {
+      drawPath(shadowG, path, lsz + 10, 0x000000, 0.3)
+    }
 
     // Layer 2: Glow (BLEND_MODES.ADD) — constant neon
     drawPath(glowG, path, lsz + 20, color, 0.1)
@@ -110,30 +164,60 @@ function drawSnake(
     g.lineStyle(0) // flush last path
   }
 
-  // Eyes — draw on top of head (use head radius from lsz)
+  // Eyes — pupils follow cursor for local player (slither-clone), else use angle
   const headR = lsz * 0.5
+
+  // Growth flash — bright circle on head when body length increased
+  if (growthFlash && growthFlash > 0) {
+    const elapsed = Date.now() - growthFlash
+    if (elapsed < GROWTH_FLASH_MS) {
+      const alpha = 0.8 * (1 - elapsed / GROWTH_FLASH_MS)
+      g.lineStyle(0)
+      g.beginFill(0xffffff, alpha)
+      g.drawCircle(hx, hy, headR * 1.5)
+      g.endFill()
+    }
+  }
+
   const eyeOffsetX = headR * 0.5
   const eyeOffsetY = headR * 0.25
   const eyeR = headR * 0.2
   const pupilR = headR * 0.1
+  const maxPupilOffset = pupilR * 0.8
   const leftEx = hx - eyeOffsetX
   const leftEy = hy - eyeOffsetY
   const rightEx = hx + eyeOffsetX
   const rightEy = hy - eyeOffsetY
+
+  const pupilOffset = (eyeX: number, eyeY: number) => {
+    if (isLocalPlayer && mouseWorld) {
+      const dx = mouseWorld.x - eyeX
+      const dy = mouseWorld.y - eyeY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist > 0.01) {
+        const scale = Math.min(1, maxPupilOffset / dist)
+        return { x: dx * scale, y: dy * scale }
+      }
+    }
+    return { x: Math.cos(angle) * 2, y: Math.sin(angle) * 2 }
+  }
+
+  const leftPupil = pupilOffset(leftEx, leftEy)
+  const rightPupil = pupilOffset(rightEx, rightEy)
 
   g.lineStyle(0)
   g.beginFill(0xffffff)
   g.drawCircle(leftEx, leftEy, eyeR)
   g.endFill()
   g.beginFill(0x000000)
-  g.drawCircle(leftEx + Math.cos(angle) * 2, leftEy + Math.sin(angle) * 2, pupilR)
+  g.drawCircle(leftEx + leftPupil.x, leftEy + leftPupil.y, pupilR)
   g.endFill()
 
   g.beginFill(0xffffff)
   g.drawCircle(rightEx, rightEy, eyeR)
   g.endFill()
   g.beginFill(0x000000)
-  g.drawCircle(rightEx + Math.cos(angle) * 2, rightEy + Math.sin(angle) * 2, pupilR)
+  g.drawCircle(rightEx + rightPupil.x, rightEy + rightPupil.y, pupilR)
   g.endFill()
 
   // Fallback: single point (head only) — draw a circle
@@ -145,51 +229,55 @@ function drawSnake(
   }
 }
 
+type SnakeContainerRef = {
+  __graphics: PixiGraphics
+  __glowGraphics: PixiGraphics
+  __shadowGraphics: PixiGraphics
+  __trailGraphics: PixiGraphics
+  __trailState: { buffer: { x: number; y: number }[]; lastHead: { x: number; y: number } | null }
+}
+
 const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer', {
   create: () => {
     const container = new Container()
+    const trailGraphics = new PixiGraphics()
     const shadowGraphics = new PixiGraphics()
     const glowGraphics = new PixiGraphics()
     glowGraphics.blendMode = BLEND_MODES.ADD
     const graphics = new PixiGraphics()
+    container.addChild(trailGraphics)
     container.addChild(shadowGraphics)
     container.addChild(glowGraphics)
     container.addChild(graphics)
-    ;(container as unknown as {
-      __graphics: PixiGraphics
-      __glowGraphics: PixiGraphics
-      __shadowGraphics: PixiGraphics
-    }).__graphics = graphics
-    ;(container as unknown as {
-      __graphics: PixiGraphics
-      __glowGraphics: PixiGraphics
-      __shadowGraphics: PixiGraphics
-    }).__glowGraphics = glowGraphics
-    ;(container as unknown as {
-      __graphics: PixiGraphics
-      __glowGraphics: PixiGraphics
-      __shadowGraphics: PixiGraphics
-    }).__shadowGraphics = shadowGraphics
+    const ref = container as unknown as SnakeContainerRef
+    ref.__graphics = graphics
+    ref.__glowGraphics = glowGraphics
+    ref.__shadowGraphics = shadowGraphics
+    ref.__trailGraphics = trailGraphics
+    ref.__trailState = { buffer: [], lastHead: null }
     return container
   },
   applyProps: (instance, _oldProps, newProps) => {
-    const ref = instance as unknown as {
-      __graphics: PixiGraphics
-      __glowGraphics: PixiGraphics
-      __shadowGraphics: PixiGraphics
-    }
+    const ref = instance as unknown as SnakeContainerRef
     drawSnake(
       ref.__graphics,
       ref.__glowGraphics,
       ref.__shadowGraphics,
+      ref.__trailGraphics,
       newProps.snake,
-      newProps.isLocalPlayer
+      newProps.isLocalPlayer,
+      newProps.mouseWorld ?? null,
+      newProps.growthFlash,
+      ref.__trailState
     )
   },
 })
 
 function areSnakePropsEqual(prev: SnakeViewProps, next: SnakeViewProps): boolean {
   if (prev.isLocalPlayer !== next.isLocalPlayer) return false
+  const prevMw = prev.mouseWorld
+  const nextMw = next.mouseWorld
+  if (prevMw && nextMw && (Math.round(prevMw.x) !== Math.round(nextMw.x) || Math.round(prevMw.y) !== Math.round(nextMw.y))) return false
   const prevSnake = prev.snake
   const nextSnake = next.snake
   if (Number(prevSnake?.id) !== Number(nextSnake?.id)) return false
@@ -209,12 +297,13 @@ function areSnakePropsEqual(prev: SnakeViewProps, next: SnakeViewProps): boolean
     if (Math.round(prevFirst?.x ?? 0) !== Math.round(nextFirst?.x ?? 0)) return false
     if (Math.round(prevFirst?.y ?? 0) !== Math.round(nextFirst?.y ?? 0)) return false
   }
+  if ((prev.growthFlash ?? 0) !== (next.growthFlash ?? 0)) return false
   return true
 }
 
 export const SnakeView = React.memo(
-  ({ snake, isLocalPlayer }: SnakeViewProps) => (
-    <SnakeContainer snake={snake} isLocalPlayer={isLocalPlayer} />
+  ({ snake, isLocalPlayer, mouseWorld, growthFlash }: SnakeViewProps) => (
+    <SnakeContainer snake={snake} isLocalPlayer={isLocalPlayer} mouseWorld={mouseWorld} growthFlash={growthFlash} />
   ),
   areSnakePropsEqual
 )

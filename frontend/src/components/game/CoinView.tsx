@@ -27,10 +27,12 @@ function areCoinPropsEqual(prev: CoinViewProps, next: CoinViewProps): boolean {
   const nextPos = nextCoin?.pos
   if (Math.round(prevPos?.x ?? 0) !== Math.round(nextPos?.x ?? 0)) return false
   if (Math.round(prevPos?.y ?? 0) !== Math.round(nextPos?.y ?? 0)) return false
+  if ((prevCoin?.consumingSnakeId ?? 0) !== (nextCoin?.consumingSnakeId ?? 0)) return false
+  if ((nextCoin?.consumingSnakeId ?? 0) !== 0) return false // when consuming, always re-render for pulse
   return Math.round((prevCoin?.value ?? 0) * 100) === Math.round((nextCoin?.value ?? 0) * 100)
 }
 
-/** Slither.io style: светящиеся орбы */
+/** Slither.io style: светящиеся орбы. When consuming — pulse toward head (constraint animation). */
 const CoinViewInner = ({ coin }: CoinViewProps) => {
   const draw = useCallback(
     (g: PixiGraphics) => {
@@ -42,14 +44,18 @@ const CoinViewInner = ({ coin }: CoinViewProps) => {
       const x = pos.x
       const y = pos.y
       const value = coin.value ?? 0
-      const radius = 4 + Math.min(value * 0.2, 2)
+      const baseRadius = 4 + Math.min(value * 0.2, 2)
+      const consuming = (coin.consumingSnakeId ?? 0) !== 0
+      // Pulse scale when being consumed (slither-clone: food moves toward head)
+      const pulse = consuming ? 1 + Math.sin(Date.now() / 100) * 0.15 : 1
+      const radius = baseRadius * pulse
       const color = getOrbColor(coin.id ?? '')
 
       // Скрин: яркие светящиеся орбы с мягким ореолом
-      g.beginFill(color, 0.18)
+      g.beginFill(color, consuming ? 0.25 : 0.18)
       g.drawCircle(x, y, radius + 12)
       g.endFill()
-      g.beginFill(color, 0.4)
+      g.beginFill(color, consuming ? 0.55 : 0.4)
       g.drawCircle(x, y, radius + 6)
       g.endFill()
       g.beginFill(color, 0.95)

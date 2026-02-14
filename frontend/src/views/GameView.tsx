@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Arena, GameOverOverlay, VictoryOverlay, type GameResult } from '@/components/game'
+import { Arena, DeathEffectOverlay, GameOverOverlay, VictoryOverlay, type GameResult } from '@/components/game'
 import { useGameStore } from '@/store'
 import { getUserIdFromInitData } from '@/shared/lib'
 import { useHaptic } from '@/features/haptic'
@@ -100,6 +101,7 @@ export const GameView = React.memo(function GameView() {
   const { refetch: refetchBalance } = useBalance({ refetchOnMount: false })
   const [gameResult, setGameResult] = useState<GameResult | null>(null)
   const [liveScore, setLiveScore] = useState(0)
+  const [deathPhase, setDeathPhase] = useState<'playing' | 'dying'>('playing')
   const [cashOutRequested, setCashOutRequested] = useState(false)
   const blockInputRef = useRef(false)
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -147,6 +149,7 @@ export const GameView = React.memo(function GameView() {
 
   const handleGameEnd = useCallback(
     (result: GameResult) => {
+      setDeathPhase('playing')
       setGameResult(result)
       setInGame(false)
       if (result.status === 'win') {
@@ -166,9 +169,14 @@ export const GameView = React.memo(function GameView() {
     setScreen('home')
   }, [setInGame, setScreen])
 
+  const handleDeathDetected = useCallback(() => {
+    setDeathPhase('dying')
+  }, [])
+
   const handleRetry = useCallback(() => {
     setGameResult(null)
     setLiveScore(0)
+    setDeathPhase('playing')
     setCashOutRequested(false)
     setInGame(true)
     setScreen('game')
@@ -203,11 +211,13 @@ export const GameView = React.memo(function GameView() {
               stake={stakeAmount}
               localSnakeId={localSnakeId}
               onGameEnd={handleGameEnd}
+              onDeathDetected={handleDeathDetected}
               onConnectionFailed={handleExit}
               cashOutRequested={cashOutRequested}
               blockInputRef={blockInputRef}
               onScoreUpdate={setLiveScore}
             />
+            <DeathEffectOverlay visible={deathPhase === 'dying'} />
             {/* Top overlay with stake summary */}
             <div className="absolute top-3 left-3 right-3 z-20 pointer-events-none">
               <div className="flex items-center justify-between gap-3 pointer-events-auto rounded-[28px] bg-[var(--bg-menu-card)]/95 px-4 py-3">
@@ -224,9 +234,15 @@ export const GameView = React.memo(function GameView() {
                     <span className="text-[11px] text-white/40">
                       {t('game.score')}
                     </span>
-                    <span className="text-sm font-semibold text-white tabular-nums">
+                    <motion.span
+                      key={liveScore}
+                      initial={{ scale: 1.15 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', damping: 20, stiffness: 400 }}
+                      className="text-sm font-semibold text-white tabular-nums"
+                    >
                       {liveScore}
-                    </span>
+                    </motion.span>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[11px] text-white/40">
