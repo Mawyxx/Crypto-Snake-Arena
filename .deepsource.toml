@@ -4,3 +4,9 @@ version = 1
 exclude_patterns = [
   "frontend/src/shared/api/proto/game.js"
 ]
+
+# JS-0045: useEffect cleanup return is valid React pattern
+[[analyzers]]
+name = "javascript"
+enabled = true
+ignore = ["JS-0045"]

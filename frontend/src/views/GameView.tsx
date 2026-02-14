@@ -131,6 +131,13 @@ export const GameView = React.memo(function GameView() {
     return () => clearTimeout(timeoutId)
   }, [gameResult, refetchBalance])
 
+  const stakeAmount = useMemo(() => Math.max(0.3, bet / 100), [bet])
+
+  const victoryNewBalance = useMemo(
+    () => (Number(balance) || 0) + (Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0),
+    [balance, gameResult?.reward]
+  )
+
   const localSnakeId = useMemo((): number | null => {
     const fromTg = getUserIdFromInitData()
     if (fromTg != null && Number.isFinite(fromTg)) return fromTg
@@ -154,30 +161,30 @@ export const GameView = React.memo(function GameView() {
     [setInGame, setBalance, notify]
   )
 
-  const handleExit = () => {
+  const handleExit = useCallback(() => {
     setInGame(false)
     setScreen('home')
-  }
+  }, [setInGame, setScreen])
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setGameResult(null)
     setLiveScore(0)
     setCashOutRequested(false)
     setInGame(true)
     setScreen('game')
-  }
+  }, [setInGame, setScreen])
 
-  const handleGoHome = () => {
+  const handleGoHome = useCallback(() => {
     setGameResult(null)
     setCashOutRequested(false)
     setScreen('home')
-  }
+  }, [setScreen])
 
-  const handleCollectAndExit = () => {
+  const handleCollectAndExit = useCallback(() => {
     setGameResult(null)
     setCashOutRequested(false)
     setScreen('home')
-  }
+  }, [setScreen])
 
   useEffect(() => {
     return () => {
@@ -193,7 +200,7 @@ export const GameView = React.memo(function GameView() {
             <Arena
               key="arena"
               wsBaseUrl={getWsBaseUrl()}
-              stake={Math.max(0.3, bet / 100)}
+              stake={stakeAmount}
               localSnakeId={localSnakeId}
               onGameEnd={handleGameEnd}
               onConnectionFailed={handleExit}
@@ -226,7 +233,7 @@ export const GameView = React.memo(function GameView() {
                       {t('game.stake')}
                     </span>
                     <span className="text-sm font-semibold text-white tabular-nums">
-                      {Math.max(0.3, bet / 100).toLocaleString('ru-RU', {
+                      {stakeAmount.toLocaleString('ru-RU', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}{' '}
@@ -269,7 +276,7 @@ export const GameView = React.memo(function GameView() {
       <VictoryOverlay
         visible={gameResult?.status === 'win'}
         reward={Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0}
-        newBalance={(Number(balance) || 0) + (Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0)}
+        newBalance={victoryNewBalance}
         onCollect={handleCollectAndExit}
       />
     </div>

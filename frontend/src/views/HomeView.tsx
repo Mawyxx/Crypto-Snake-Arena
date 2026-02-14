@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store'
 import { useHaptic } from '@/features/haptic'
@@ -66,24 +66,36 @@ export const HomeView = React.memo(function HomeView() {
   const stakeUsdt = validBet / 100
   const canPlay = balance >= stakeUsdt
 
-  const handlePlay = () => {
+  const handlePlay = useCallback(() => {
     if (!canPlay) return
     impact?.('medium')
     notify?.('success')
     setInGame(true)
     setScreen('game')
-  }
+  }, [canPlay, impact, notify, setInGame, setScreen])
 
-  const handleBetChange = (delta: number) => {
+  const handleBetChange = useCallback((delta: number) => {
     impact?.('medium')
     const idx = BET_OPTIONS.indexOf(bet)
     let next = idx + delta
     if (next < 0) next = 0
     if (next >= BET_OPTIONS.length) next = BET_OPTIONS.length - 1
     setBet(BET_OPTIONS[next])
-  }
+  }, [bet, impact, setBet])
 
-  const handleAddFunds = async () => {
+  const handleBetDecrease = useCallback(() => handleBetChange(-1), [handleBetChange])
+  const handleBetIncrease = useCallback(() => handleBetChange(1), [handleBetChange])
+
+  const handleToggleGamesExpanded = useCallback(() => {
+    impact?.('light')
+    setGamesExpanded((prev) => !prev)
+  }, [impact])
+
+  const handleGameItemClick = useCallback(() => {
+    impact?.('light')
+  }, [impact])
+
+  const handleAddFunds = useCallback(async () => {
     impact?.('light')
     if (!initData?.trim()) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
@@ -112,7 +124,7 @@ export const HomeView = React.memo(function HomeView() {
       if (tg?.showAlert) tg.showAlert(msg)
     }
     setScreen('profile')
-  }
+  }, [initData, impact, notify, refetch, setScreen])
 
   return (
     <div className="flex flex-col h-full w-full max-w-md relative bg-[var(--bg-main)]">
@@ -169,7 +181,7 @@ export const HomeView = React.memo(function HomeView() {
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => handleBetChange(-1)}
+                onClick={handleBetDecrease}
                 className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
               >
                 <Icon name="remove" size={20} className="text-white/60" />
@@ -182,7 +194,7 @@ export const HomeView = React.memo(function HomeView() {
               </div>
               <button
                 type="button"
-                onClick={() => handleBetChange(1)}
+                onClick={handleBetIncrease}
                 className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
               >
                 <Icon name="add" size={20} className="text-white/60" />
@@ -218,7 +230,7 @@ export const HomeView = React.memo(function HomeView() {
             {games.length > 5 && (
               <button
                 type="button"
-                onClick={() => { impact?.('light'); setGamesExpanded(!gamesExpanded) }}
+                onClick={handleToggleGamesExpanded}
                 className="text-[11px] font-bold text-[#007AFF] uppercase tracking-wider active:scale-95 transition-transform"
               >
                 {gamesExpanded ? t('home.showLess') : t('common.showAll')}
@@ -252,7 +264,7 @@ export const HomeView = React.memo(function HomeView() {
                   <button
                     key={game.id ? `game-${game.id}` : `game-i-${i}`}
                     type="button"
-                    onClick={() => impact?.('light')}
+                    onClick={handleGameItemClick}
                     className="w-full flex items-center justify-between text-left active:scale-[0.99] transition-transform hover:bg-white/[0.03] rounded-2xl -mx-2 px-2 py-2"
                   >
                     <div className="flex items-center gap-3">

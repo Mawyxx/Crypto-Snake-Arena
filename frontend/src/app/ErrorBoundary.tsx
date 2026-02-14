@@ -1,6 +1,10 @@
 import React from 'react'
 import { designTokens } from '@/shared/config'
 
+function handleReload(): void {
+  window.location.reload()
+}
+
 interface Props {
   children: React.ReactNode
 }
@@ -37,7 +41,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <p className="text-lg font-medium mb-4">Ошибка загрузки</p>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={handleReload}
             className="px-6 py-3 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/25"
           >
             Обновить

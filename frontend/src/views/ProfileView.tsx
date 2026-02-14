@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store'
 import { useTelegram } from '@/features/auth'
@@ -11,11 +11,11 @@ import { setStoredLang, LANG_RU, LANG_EN, getTelegramUserFromInitData, type Lang
 function LanguageSwitcher() {
   const { i18n } = useTranslation()
   const lang = (i18n.language?.startsWith('en') ? LANG_EN : LANG_RU) as LangCode
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     const next = lang === LANG_RU ? LANG_EN : LANG_RU
     i18n.changeLanguage(next)
     setStoredLang(next)
-  }
+  }, [lang, i18n])
   return (
     <button
       type="button"
@@ -56,7 +56,7 @@ export const ProfileView = React.memo(function ProfileView() {
   const rankStr = gamesPlayed === 0 || rank === 0 ? '???' : String(rank)
   const bannerLine2 = handleStr ? `${handleStr} • Rank #${rankStr}` : `Rank #${rankStr}`
 
-  const handleDeposit = async () => {
+  const handleDeposit = useCallback(async () => {
     impact?.('light')
     if (!initData?.trim()) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
@@ -83,12 +83,20 @@ export const ProfileView = React.memo(function ProfileView() {
               : `Сеть? ${e instanceof Error ? e.message : String(e)}`
       if (tg?.showAlert) tg.showAlert(msg)
     }
-  }
+  }, [initData, impact, notify, refetch])
 
-  const handleWithdraw = () => {
+  const handleWithdraw = useCallback(() => {
     const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
     if (tg?.showAlert) tg.showAlert(t('common.withdraw'))
-  }
+  }, [t])
+
+  const handleSoundToggle = useCallback(() => {
+    setSoundEnabled(!soundEnabled)
+  }, [soundEnabled, setSoundEnabled])
+
+  const handleVibrationToggle = useCallback(() => {
+    setVibrationEnabled(!vibrationEnabled)
+  }, [vibrationEnabled, setVibrationEnabled])
 
   return (
     <main className="flex-1 flex flex-col justify-start gap-3 pt-4 px-5 pb-bottom-bar">
@@ -163,7 +171,7 @@ export const ProfileView = React.memo(function ProfileView() {
             type="button"
             role="switch"
             aria-checked={soundEnabled}
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={handleSoundToggle}
             className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 active:scale-95 ${soundEnabled ? 'bg-[#007AFF] justify-end' : 'bg-white/10 justify-start'}`}
           >
             <div className="w-4 h-4 bg-white rounded-full shadow-sm flex-shrink-0" />
@@ -178,7 +186,7 @@ export const ProfileView = React.memo(function ProfileView() {
             type="button"
             role="switch"
             aria-checked={vibrationEnabled}
-            onClick={() => setVibrationEnabled(!vibrationEnabled)}
+            onClick={handleVibrationToggle}
             className={`w-11 h-6 rounded-full relative flex items-center px-1 transition-colors duration-200 active:scale-95 ${vibrationEnabled ? 'bg-[#007AFF] justify-end' : 'bg-white/10 justify-start'}`}
           >
             <div className="w-4 h-4 bg-white rounded-full shadow-sm flex-shrink-0" />
