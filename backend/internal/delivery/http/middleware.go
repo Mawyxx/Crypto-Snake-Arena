@@ -48,11 +48,24 @@ func UserFromContext(ctx context.Context) *domain.User {
 }
 
 // RequireAuth — middleware: извлекает initData, валидирует, GetOrCreateUser (создаёт нового при реферале), кладёт userInfo и userID в контекст.
-// При ошибке возвращает 401 и не вызывает next.
+// При ошибке возвращает 401 и не вызывает next. Только GET.
 func RequireAuth(validator AuthValidator, userProvider AuthUserProvider) func(http.Handler) http.Handler {
+	return requireAuthImpl(validator, userProvider, []string{http.MethodGet})
+}
+
+// RequireAuthAllowPost — то же, но разрешает POST и OPTIONS (для /api/dev/credit-500).
+func RequireAuthAllowPost(validator AuthValidator, userProvider AuthUserProvider) func(http.Handler) http.Handler {
+	return requireAuthImpl(validator, userProvider, []string{http.MethodGet, http.MethodPost, http.MethodOptions})
+}
+
+func requireAuthImpl(validator AuthValidator, userProvider AuthUserProvider, allowedMethods []string) func(http.Handler) http.Handler {
+	allowed := make(map[string]bool)
+	for _, m := range allowedMethods {
+		allowed[m] = true
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet {
+			if !allowed[r.Method] {
 				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 				return
 			}

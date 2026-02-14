@@ -168,6 +168,10 @@ func main() {
 		fs := http.FileServer(http.Dir(staticDir))
 		indexPath := filepath.Join(staticDir, "index.html")
 		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/ws") {
+				http.NotFound(w, r)
+				return
+			}
 			if r.URL.Path == "/" || r.URL.Path == "" || !strings.Contains(r.URL.Path, ".") {
 				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 				http.ServeFile(w, r, indexPath)
