@@ -4,15 +4,13 @@
  */
 import { useCallback, useEffect } from 'react'
 import { useGameStore } from '@/store'
-import { getInitData, getTelegramUserFromInitData, getDisplayNameFromTelegramUser, getPhotoUrlFromInitData } from '@/shared/lib'
+import { useTelegram } from '@/features/auth'
+import { getTelegramUserFromInitData, getDisplayNameFromTelegramUser, getPhotoUrlFromInitData } from '@/shared/lib'
 import { apiGet, apiPatch, ApiError } from '@/shared/api'
 import type { ProfileResponse } from '@/shared/api'
 
 export function useBalance(options?: { refetchOnMount?: boolean }) {
-  const initData =
-    typeof window !== 'undefined'
-      ? getInitData() || (window as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp?.initData || ''
-      : ''
+  const { initData } = useTelegram()
   const { setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank, setAdmin } = useGameStore()
   const refetchOnMount = options?.refetchOnMount ?? true
 
@@ -42,7 +40,9 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
             data.username ||
             ''
           : (data.display_name ?? (data.username || ''))
-      setProfile(displayName, tgId)
+      const internalUserId =
+        typeof data.user_id === 'number' && Number.isFinite(data.user_id) ? data.user_id : undefined
+      setProfile(displayName, tgId, internalUserId)
       setReferralStats(data.referral_invited ?? 0, data.referral_earned ?? 0)
       setProfileStats(
         data.games_played ?? 0,
@@ -64,7 +64,7 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {
         setBalance(0)
-        setProfile('', 0)
+        setProfile('', 0, undefined)
         setReferralStats(0, 0)
         setProfileStats(0, 0, 0)
         setTotalProfit(0)

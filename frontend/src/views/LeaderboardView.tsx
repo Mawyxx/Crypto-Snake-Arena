@@ -14,7 +14,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
   const bet = useGameStore((s) => s.bet)
   const balance = useGameStore((s) => s.balance)
   const rank = useGameStore((s) => s.rank)
-  const userId = useGameStore((s) => s.userId)
+  const internalUserId = useGameStore((s) => s.internalUserId)
   const gamesPlayed = useGameStore((s) => s.gamesPlayed)
   const totalProfit = useGameStore((s) => s.totalProfit)
   const activePlayers7d = useGameStore((s) => s.activePlayers7d)
@@ -30,14 +30,14 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
       setScreen('home')
       return
     }
-    impact('medium')
-    notify('success')
+    impact?.('medium')
+    notify?.('success')
     setInGame(true)
     setScreen('game')
   }
 
   const handleShare = () => {
-    impact('light')
+    impact?.('light')
     const url = encodeURIComponent(window.location.href)
     const text = t('leaderboard.shareText')
     const shareUrl = `https://t.me/share/url?url=${url}&text=${encodeURIComponent(text)}`
@@ -151,7 +151,7 @@ export const LeaderboardView = React.memo(function LeaderboardView() {
               </div>
             ) : (
               entries.map((entry) => {
-                const isCurrentUser = userId != null && Number(entry.user_id) === Number(userId)
+                const isCurrentUser = internalUserId != null && Number(entry.user_id) === Number(internalUserId)
                 return (
                 <div
                   key={entry.user_id}

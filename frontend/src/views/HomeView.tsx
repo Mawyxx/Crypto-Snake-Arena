@@ -67,8 +67,8 @@ export const HomeView = React.memo(function HomeView() {
 
   const handlePlay = () => {
     if (!canPlay) return
-    impact('medium')
-    notify('success')
+    impact?.('medium')
+    notify?.('success')
     setInGame(true)
     setScreen('game')
   }

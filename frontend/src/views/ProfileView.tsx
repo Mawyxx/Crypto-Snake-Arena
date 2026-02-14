@@ -57,7 +57,7 @@ export const ProfileView = React.memo(function ProfileView() {
   const bannerLine2 = handleStr ? `${handleStr} • Rank #${rankStr}` : `Rank #${rankStr}`
 
   const handleDeposit = async () => {
-    impact('light')
+    impact?.('light')
     if (!initData?.trim()) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
       if (tg?.showAlert) tg.showAlert('Нет initData')
@@ -67,7 +67,7 @@ export const ProfileView = React.memo(function ProfileView() {
       const { apiPost } = await import('@/shared/api')
       await apiPost('/api/dev/credit-500', {}, initData)
       refetch()
-      notify('success')
+      notify?.('success')
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
       if (tg?.showAlert) tg.showAlert('+500 USDT')
     } catch (e) {

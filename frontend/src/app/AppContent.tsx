@@ -41,7 +41,7 @@ export function AppContent() {
       /* localStorage disabled */
     }
     const name = cached ?? getDisplayNameFromTelegramUser(tgUser)
-    setProfile(name || '', tgUser.id)
+    setProfile(name || '', tgUser.id, undefined)
   }, [setProfile])
 
   if (prevScreenRef.current !== screen) {

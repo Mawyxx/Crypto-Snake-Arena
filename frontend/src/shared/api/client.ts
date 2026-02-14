@@ -66,8 +66,13 @@ export async function apiFetch<T>(
         throw err
       }
 
-      const data = (await res.json()) as T
-      return data
+      const text = await res.text()
+      if (!text || !text.trim()) return {} as T
+      try {
+        return JSON.parse(text) as T
+      } catch {
+        throw new ApiError(`Invalid JSON: ${text.slice(0, 100)}`, res.status)
+      }
     } catch (e) {
       if (e instanceof ApiError) throw e
       lastError = e
@@ -108,9 +113,14 @@ export async function apiPatch<T>(
     const text = await res.text()
     throw new ApiError(text || `Request failed: ${res.status}`, res.status)
   }
+  const text = await res.text()
   const ct = res.headers.get('content-type')
-  if (ct?.includes('application/json')) {
-    return (await res.json()) as T
+  if (ct?.includes('application/json') && text) {
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      /* fallthrough to empty */
+    }
   }
   return {} as T
 }
@@ -137,9 +147,14 @@ export async function apiPost<T>(
     const text = await res.text()
     throw new ApiError(text || `Request failed: ${res.status}`, res.status)
   }
+  const text = await res.text()
   const ct = res.headers.get('content-type')
-  if (ct?.includes('application/json')) {
-    return (await res.json()) as T
+  if (ct?.includes('application/json') && text) {
+    try {
+      return JSON.parse(text) as T
+    } catch {
+      /* fallthrough */
+    }
   }
   return {} as T
 }

@@ -9,7 +9,10 @@ interface GameState {
   screen: Screen
   balance: number
   username: string | null
+  /** Telegram ID — для localSnakeId, game, etc. */
   userId: number | null
+  /** Internal DB user_id — для leaderboard isCurrentUser */
+  internalUserId: number | null
   botUsername: string | null
   referralInvited: number
   referralEarned: number
@@ -30,7 +33,7 @@ interface GameState {
   setScreen: (screen: Screen) => void
   setAdmin: (isAdmin: boolean) => void
   setBalance: (balance: number) => void
-  setProfile: (username: string, userId: number) => void
+  setProfile: (username: string, tgId: number, internalUserId?: number) => void
   setBotUsername: (username: string | null) => void
   setReferralStats: (invited: number, earned: number) => void
   setProfileStats: (games: number, deposited: number, withdrawn: number) => void
@@ -49,6 +52,7 @@ export const useGameStore = create<GameState>((set) => ({
   balance: 0,
   username: null,
   userId: null,
+  internalUserId: null,
   botUsername: null,
   referralInvited: 0,
   referralEarned: 0,
@@ -69,7 +73,8 @@ export const useGameStore = create<GameState>((set) => ({
   setScreen: (screen) => set({ screen }),
   setAdmin: (isAdmin) => set({ isAdmin }),
   setBalance: (balance) => set({ balance }),
-  setProfile: (username, userId) => set({ username, userId }),
+  setProfile: (username, tgId, internalUserId) =>
+    set({ username, userId: tgId, internalUserId: internalUserId ?? null }),
   setBotUsername: (botUsername) => set({ botUsername }),
   setReferralStats: (referralInvited, referralEarned) => set({ referralInvited, referralEarned }),
   setProfileStats: (gamesPlayed, totalDeposited, totalWithdrawn) => set({ gamesPlayed, totalDeposited, totalWithdrawn }),
