@@ -49,12 +49,22 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -e
+            echo "=== Copy addbalance ==="
+            mkdir -p /opt/crypto-snake-arena/backend
             cp -f /opt/crypto-snake-arena/incoming/backend/addbalance /opt/crypto-snake-arena/backend/addbalance
             chmod +x /opt/crypto-snake-arena/backend/addbalance
+            echo "=== Load .env ==="
             cd /opt/crypto-snake-arena/backend
-            if [ -f .env ]; then
-              set -a
-              source .env
-              set +a
+            if [ ! -f .env ]; then
+              echo "ERROR: .env not found in backend/"
+              exit 1
             fi
+            set -a
+            source .env
+            set +a
+            if [ -z "$DATABASE_URL" ]; then
+              echo "ERROR: DATABASE_URL not set in .env"
+              exit 1
+            fi
+            echo "=== Running addbalance ==="
             ./addbalance
