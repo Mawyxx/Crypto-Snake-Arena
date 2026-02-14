@@ -59,24 +59,32 @@ export const ProfileView = React.memo(function ProfileView() {
   const handleDeposit = async () => {
     impact('light')
     const { DEV_AUTO_CREDIT } = await import('@/config/dev')
-    if (DEV_AUTO_CREDIT && initData) {
-      try {
-        const { apiPost } = await import('@/shared/api')
-        await apiPost('/api/dev/credit-500', {}, initData)
-        refetch()
-        notify('success')
-        const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-        if (tg?.showAlert) tg.showAlert('+500 USDT')
-      } catch (e) {
-        const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-        const msg = e && typeof e === 'object' && 'status' in e && (e as { status: number }).status === 404
-          ? 'Добавь DEV_AUTO_CREDIT=true в .env на сервере и перезапусти'
-          : t('common.deposit')
-        if (tg?.showAlert) tg.showAlert(msg)
-      }
-    } else {
+    if (!initData?.trim()) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-      if (tg?.showAlert) tg.showAlert(initData ? t('common.deposit') : 'Нет initData')
+      if (tg?.showAlert) tg.showAlert('Нет initData')
+      return
+    }
+    if (!DEV_AUTO_CREDIT) {
+      const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+      if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+      return
+    }
+    try {
+      const { apiPost } = await import('@/shared/api')
+      await apiPost('/api/dev/credit-500', {}, initData)
+      refetch()
+      notify('success')
+      const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+      if (tg?.showAlert) tg.showAlert('+500 USDT')
+    } catch (e) {
+      const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+      const status = e && typeof e === 'object' && 'status' in e ? (e as { status: number }).status : 0
+      const msg = status === 404
+        ? 'DEV_AUTO_CREDIT=true в .env на сервере + systemctl restart crypto-snake-arena'
+        : status === 401
+          ? 'Ошибка авторизации'
+          : t('common.deposit')
+      if (tg?.showAlert) tg.showAlert(msg)
     }
   }
 

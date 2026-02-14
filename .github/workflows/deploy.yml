@@ -39,8 +39,8 @@ jobs:
           npm ci
           npm run build
         env:
-          # API/WS будут с того же домена — relative URLs
           VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME || 'CryptoSnakeArena_Bot' }}
+          VITE_DEV_AUTO_CREDIT: 'true'
 
       - name: Deploy to server
         uses: appleboy/scp-action@v0.1.7

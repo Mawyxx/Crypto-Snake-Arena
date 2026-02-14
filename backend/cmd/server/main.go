@@ -201,7 +201,8 @@ func main() {
 				strings.HasPrefix(origin, "https://127.0.0.1") ||
 				strings.HasPrefix(origin, "https://web.telegram.org") ||
 				strings.Contains(origin, ".ngrok-free.app") ||
-				strings.Contains(origin, ".ngrok-free.dev")
+				strings.Contains(origin, ".ngrok-free.dev") ||
+				strings.Contains(origin, "arrenasnake.net")
 		}
 		c = cors.New(cors.Options{
 			AllowOriginRequestFunc: allowOrigin,
