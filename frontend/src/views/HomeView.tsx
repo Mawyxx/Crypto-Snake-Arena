@@ -93,14 +93,16 @@ export const HomeView = React.memo(function HomeView() {
         if ((window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp?.showAlert) {
           ;(window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram!.WebApp!.showAlert!('+500 USDT')
         }
-      } catch {
-        if ((window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp?.showAlert) {
-          ;(window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram!.WebApp!.showAlert!(t('common.deposit'))
-        }
+      } catch (e) {
+        const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
+        const msg = e && typeof e === 'object' && 'status' in e && (e as { status: number }).status === 404
+          ? 'Добавь DEV_AUTO_CREDIT=true в .env на сервере и перезапусти'
+          : t('common.deposit')
+        if (tg?.showAlert) tg.showAlert(msg)
       }
     } else {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-      if (tg?.showAlert) tg.showAlert(t('common.deposit'))
+      if (tg?.showAlert) tg.showAlert(initData ? t('common.deposit') : 'Нет initData')
     }
     setScreen('profile')
   }
