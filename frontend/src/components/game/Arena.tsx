@@ -1,4 +1,4 @@
-import { Stage, Container, useTick, useApp, Text, Graphics } from '@pixi/react'
+import { Stage, Container, useTick, useApp, Text, Graphics, TilingSprite } from '@pixi/react'
 import { TextStyle } from 'pixi.js'
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,8 +8,8 @@ import { useTelegram } from '@/features/auth'
 import { SnakeView } from './SnakeView'
 import { CoinView } from './CoinView'
 
-const WORLD_SIZE = 1000
-const ARENA_RADIUS = 500 // круговая арена, смерть за границей
+const WORLD_SIZE = 2000
+const ARENA_RADIUS = 1000 // круговая арена (Slither.io scale для SegmentLen 42)
 // Slither.io: показываем больше арены (зум камеры ~0.8 = видно больше поля)
 const CAMERA_ZOOM = 0.8
 
@@ -191,15 +191,16 @@ export const Arena = ({
 // Mock state для проверки рендеринга при отсутствии соединения (dev)
 const MOCK_SNAKE = {
   id: 1,
-  head: { x: 500, y: 500 },
+  head: { x: 1000, y: 1000 },
   body: [
-    { x: 488, y: 500 },
-    { x: 476, y: 500 },
-    { x: 464, y: 500 },
+    { x: 958, y: 1000 },
+    { x: 916, y: 1000 },
+    { x: 874, y: 1000 },
   ],
   angle: 0,
   score: 0,
-  bodyLength: 3,
+  bodyLength: 4,
+  boost: false,
 } as InterpolatedSnake
 
 const MOCK_STATE: InterpolatedWorldSnapshot = {
@@ -287,6 +288,8 @@ function GameLoop({
       viewportX={vp.x}
       viewportY={vp.y}
       viewportScale={vp.scale}
+      containerWidth={containerWidth}
+      containerHeight={containerHeight}
     />
   )
 }
@@ -297,52 +300,45 @@ interface GameContentProps {
   viewportX: number
   viewportY: number
   viewportScale: number
+  containerWidth: number
+  containerHeight: number
 }
 
-// Фон арены: тёмная сетка шестиугольников как в Slither.io
+// Slither.io bg54.jpg: 599×519 px, tileable texture
 const BG_PADDING = 500
 const BG_SIZE = WORLD_SIZE + BG_PADDING * 2
-const HEX_SIZE = 42
-const HEX_COLOR = 0x161c22
-const HEX_BORDER = 0x1a2332
+const BG_TILE_W = 599
+const BG_TILE_H = 519
 
-function ArenaBackground() {
-  const draw = React.useCallback((g: import('pixi.js').Graphics) => {
-    g.clear()
-    g.beginFill(0x0f1419, 1)
-    g.drawRect(-BG_PADDING, -BG_PADDING, BG_SIZE, BG_SIZE)
-    g.endFill()
+function ArenaBackground({
+  viewportX,
+  viewportY,
+  viewportScale,
+  containerWidth,
+  containerHeight,
+}: {
+  viewportX: number
+  viewportY: number
+  viewportScale: number
+  containerWidth: number
+  containerHeight: number
+}) {
+  const worldCenterX = (containerWidth / 2 - viewportX) / viewportScale
+  const worldCenterY = (containerHeight / 2 - viewportY) / viewportScale
+  const tilePosX = ((worldCenterX % BG_TILE_W) + BG_TILE_W) % BG_TILE_W
+  const tilePosY = ((worldCenterY % BG_TILE_H) + BG_TILE_H) % BG_TILE_H
 
-    // Шестиугольная сетка (flat-top)
-    const h = HEX_SIZE * Math.sqrt(3)
-    const w = HEX_SIZE * 2
-    const startX = -BG_PADDING - w
-    const startY = -BG_PADDING - h
-    const cols = Math.ceil(BG_SIZE / (w * 0.75)) + 2
-    const rows = Math.ceil(BG_SIZE / h) + 2
-
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const x = startX + col * w * 0.75
-        const y = startY + row * h + (col % 2) * (h / 2)
-
-        const cx = x + w / 2
-        const cy = y + h / 2
-        const r = HEX_SIZE * 0.92
-        const points: number[] = []
-        for (let i = 0; i < 6; i++) {
-          const angle = Math.PI / 2 + (Math.PI / 3) * i
-          points.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle))
-        }
-
-        g.lineStyle(1, HEX_BORDER, 0.6)
-        g.beginFill(HEX_COLOR, 0.95)
-        g.drawPolygon(points)
-        g.endFill()
-      }
-    }
-  }, [])
-  return <Graphics draw={draw} />
+  return (
+    <TilingSprite
+      image="/bg54.jpg"
+      width={BG_SIZE}
+      height={BG_SIZE}
+      x={-BG_PADDING}
+      y={-BG_PADDING}
+      tilePosition={{ x: tilePosX, y: tilePosY }}
+      tileScale={{ x: 1, y: 1 }}
+    />
+  )
 }
 
 /** Круговая граница арены — смерть при пересечении */
@@ -363,6 +359,8 @@ function GameContent({
   viewportX,
   viewportY,
   viewportScale,
+  containerWidth,
+  containerHeight,
 }: GameContentProps) {
   const localSnake = state && localSnakeId != null
     ? state.snakes?.find((s) => Number(s.id) === Number(localSnakeId))
@@ -371,7 +369,13 @@ function GameContent({
 
   return (
     <Container position={[viewportX, viewportY]} scale={viewportScale}>
-      <ArenaBackground />
+      <ArenaBackground
+        viewportX={viewportX}
+        viewportY={viewportY}
+        viewportScale={viewportScale}
+        containerWidth={containerWidth}
+        containerHeight={containerHeight}
+      />
       <ArenaBoundary />
       {state?.snakes?.map((snake) => (
         <SnakeView

@@ -73,7 +73,7 @@ func NewRoom(rewardCreditor RewardCreditor, deathHandler DeathHandler, expiredCo
 		ID:                  uuid.New().String(),
 		Snakes:              make(map[uint64]*domain.Snake),
 		Coins:               make(map[string]*domain.Coin),
-		Grid:                domain.NewSpatialGrid(1000), // Карта 1000x1000
+		Grid:                domain.NewSpatialGrid(2000), // Карта 2000x2000 (Slither.io scale для SegmentLen 42)
 		Register:            make(chan *Player),
 		Unregister:          make(chan *Player),
 		Inputs:              make(chan *PlayerInput, 100), // Буфер на 100 команд

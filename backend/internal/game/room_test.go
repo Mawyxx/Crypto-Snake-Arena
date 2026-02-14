@@ -194,15 +194,15 @@ func TestRoom_StopRemovesFromManager(t *testing.T) {
 }
 
 func TestPickSpawnPosition_EmptyRoom(t *testing.T) {
-	grid := domain.NewSpatialGrid(1000)
+	grid := domain.NewSpatialGrid(2000)
 	snakes := make(map[uint64]*domain.Snake)
 
 	x, y := PickSpawnPosition(grid, snakes)
 
-	cx, cy := 500.0, 500.0
+	cx, cy := 1000.0, 1000.0
 	dx, dy := x-cx, y-cy
 	dist := math.Sqrt(dx*dx + dy*dy)
-	arenaRadius := 500.0
+	arenaRadius := 1000.0
 	if dist > arenaRadius {
 		t.Errorf("spawn (%.2f, %.2f) is outside arena (dist=%.2f > radius=%.0f)", x, y, dist, arenaRadius)
 	}
@@ -212,41 +212,41 @@ func TestPickSpawnPosition_EmptyRoom(t *testing.T) {
 }
 
 func TestPickSpawnPosition_AwayFromOthers(t *testing.T) {
-	grid := domain.NewSpatialGrid(1000)
-	s1 := domain.NewSnakeAt(1, 500, 500)
+	grid := domain.NewSpatialGrid(2000)
+	s1 := domain.NewSnakeAt(1, 1000, 1000)
 	snakes := map[uint64]*domain.Snake{1: s1}
 
 	x, y := PickSpawnPosition(grid, snakes)
 
 	// Should not spawn on top of existing snake
-	dx, dy := x-500, y-500
+	dx, dy := x-1000, y-1000
 	dist := math.Sqrt(dx*dx + dy*dy)
 	if dist < 20 {
-		t.Errorf("spawn (%.2f, %.2f) too close to existing snake at (500,500), dist=%.2f", x, y, dist)
+		t.Errorf("spawn (%.2f, %.2f) too close to existing snake at (1000,1000), dist=%.2f", x, y, dist)
 	}
 	// Should be inside arena
-	cx, cy := 500.0, 500.0
+	cx, cy := 1000.0, 1000.0
 	dx2, dy2 := x-cx, y-cy
 	distFromCenter := math.Sqrt(dx2*dx2 + dy2*dy2)
-	if distFromCenter > 500 {
-		t.Errorf("spawn (%.2f, %.2f) outside arena (dist=%.2f > 500)", x, y, distFromCenter)
+	if distFromCenter > 1000 {
+		t.Errorf("spawn (%.2f, %.2f) outside arena (dist=%.2f > 1000)", x, y, distFromCenter)
 	}
 }
 
 func TestPickSpawnPosition_MultipleSnakes_PrefersSpread(t *testing.T) {
-	grid := domain.NewSpatialGrid(1000)
+	grid := domain.NewSpatialGrid(2000)
 	snakes := map[uint64]*domain.Snake{
-		1: domain.NewSnakeAt(1, 200, 500),
-		2: domain.NewSnakeAt(2, 800, 500),
-		3: domain.NewSnakeAt(3, 500, 200),
+		1: domain.NewSnakeAt(1, 400, 1000),
+		2: domain.NewSnakeAt(2, 1600, 1000),
+		3: domain.NewSnakeAt(3, 1000, 400),
 	}
 
 	// Запускаем несколько раз — точка должна быть внутри и не на других змейках
 	for run := 0; run < 5; run++ {
 		x, y := PickSpawnPosition(grid, snakes)
-		cx, cy := 500.0, 500.0
+		cx, cy := 1000.0, 1000.0
 		dist := math.Sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy))
-		if dist > 500 {
+		if dist > 1000 {
 			t.Errorf("run %d: spawn (%.2f, %.2f) outside arena", run, x, y)
 		}
 		for id, s := range snakes {
@@ -291,14 +291,14 @@ func TestRoom_SnakeSpawnsAtRandomPosition(t *testing.T) {
 	if !ok {
 		t.Fatal("snake not found after register")
 	}
-	cx, cy := 500.0, 500.0
+	cx, cy := 1000.0, 1000.0
 	dx, dy := snake.HeadX-cx, snake.HeadY-cy
 	dist := math.Sqrt(dx*dx + dy*dy)
-	if dist > 500 {
+	if dist > 1000 {
 		t.Errorf("spawned snake at (%.2f, %.2f) outside circular arena", snake.HeadX, snake.HeadY)
 	}
-	// Не в центре (500,500) — случайный спавн
-	if snake.HeadX == 500 && snake.HeadY == 500 {
+	// Не в центре (1000,1000) — случайный спавн
+	if snake.HeadX == 1000 && snake.HeadY == 1000 {
 		t.Log("snake spawned at center — possible but rare with random spawn")
 	}
 }

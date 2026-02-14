@@ -13,8 +13,8 @@ func TestNewSnake(t *testing.T) {
 	if s.ID != 42 {
 		t.Errorf("ID = %d, want 42", s.ID)
 	}
-	if s.HeadX != 500 || s.HeadY != 500 {
-		t.Errorf("Head = (%.0f, %.0f), want (500, 500)", s.HeadX, s.HeadY)
+	if s.HeadX != 1000 || s.HeadY != 1000 {
+		t.Errorf("Head = (%.0f, %.0f), want (1000, 1000)", s.HeadX, s.HeadY)
 	}
 	if s.TargetAngle != 0 || s.CurrentAngle != 0 || s.Score != 0 || s.EntryFee != 0 {
 		t.Errorf("TargetAngle=%v CurrentAngle=%v Score=%v EntryFee=%v", s.TargetAngle, s.CurrentAngle, s.Score, s.EntryFee)
@@ -269,14 +269,14 @@ func TestSnake_UpdatePosition_SmoothTurn(t *testing.T) {
 	// SetTargetAngle(π/2) — CurrentAngle должен плавно стремиться к π/2
 	s.SetTargetAngle(math.Pi / 2)
 	dt := 0.05
-	// За один тик: maxTurn = TurnSpeed * dt = 4 * 0.05 = 0.2 рад
-	// CurrentAngle станет 0.2, не π/2
+	// За один тик: maxTurn = TurnSpeed * dt * spang; при BaseSpeed spang=min(1, 71/4.8)=1 → 0.1 рад
+	// CurrentAngle станет 0.1, не π/2
 	s.UpdatePosition(dt)
-	if s.CurrentAngle < 0.1 || s.CurrentAngle > 0.3 {
-		t.Errorf("CurrentAngle = %.3f, want ~0.2 (smooth turn, not instant)", s.CurrentAngle)
+	if s.CurrentAngle < 0.05 || s.CurrentAngle > 0.15 {
+		t.Errorf("CurrentAngle = %.3f, want ~0.1 (smooth turn, not instant)", s.CurrentAngle)
 	}
-	// Ещё несколько тиков — CurrentAngle приближается к π/2
-	for i := 0; i < 10; i++ {
+	// Ещё несколько тиков — CurrentAngle приближается к π/2 (TurnSpeed=2 → ~16 тиков)
+	for i := 0; i < 20; i++ {
 		s.UpdatePosition(dt)
 	}
 	if s.CurrentAngle < math.Pi/2*0.9 {

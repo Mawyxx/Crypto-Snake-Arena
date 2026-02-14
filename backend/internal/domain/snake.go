@@ -28,10 +28,14 @@ type Snake struct {
 }
 
 const (
-	BaseSpeed         = 60.0  // units/sec (3 units/tick при dt=0.05)
-	BoostSpeed        = 100.0 // units/sec (5 units/tick при dt=0.05)
-	TurnSpeed         = 4.0   // рад/сек
-	SegmentLen        = 12.0
+	// Slither.io 1:1: nsp1=4.25, nsp2=0.5 → ssp≈4.75; nsp3=12; csp=sp*vfr/4 → 71/180 units/sec
+	BaseSpeed         = 71.0  // units/sec (≈3.55 units/tick при dt=0.05)
+	BoostSpeed        = 180.0 // units/sec (9 units/tick при dt=0.05)
+	TurnSpeed         = 2.0   // рад/сек (mamu*60 ≈ 1.98)
+	SegmentLen        = 42.0  // default_msl в Slither.io
+	Spangdv           = 4.8   // spang = speed/Spangdv, ограничение поворота от скорости
+	Cst               = 0.43  // сглаживание тела (smus), Slither.io recalcSepMults
+	Smuc              = 100  // размер smus
 	InitialLength     = 3
 	constraintPasses  = 6   // итераций Verlet для плавного изгиба хвоста
 	minDist           = 1e-6 // защита от div-by-zero
@@ -44,9 +48,9 @@ func MaxMoveDistanceFor(dt float64) float64 {
 	return BoostSpeed * dt * 1.2
 }
 
-// NewSnake создаёт змейку с начальной длиной в центре арены (500, 500).
+// NewSnake создаёт змейку с начальной длиной в центре арены (1000, 1000).
 func NewSnake(id uint64) *Snake {
-	return NewSnakeAt(id, 500, 500)
+	return NewSnakeAt(id, 1000, 1000)
 }
 
 // NewSnakeAt создаёт змейку с начальной длиной в заданной позиции.
@@ -83,10 +87,20 @@ func (s *Snake) SetBoost(boost bool) {
 // UpdatePosition обновляет позицию головы и хвоста за dt секунд.
 // dt — длительность тика в секундах (напр. 0.05 при 20 Hz).
 func (s *Snake) UpdatePosition(dt float64) {
+	// Текущая скорость для spang (ограничение поворота от скорости)
+	speed := s.speed
+	if s.Boost {
+		speed = BoostSpeed
+	}
+	spang := speed / Spangdv
+	if spang > 1 {
+		spang = 1
+	}
+
 	// 1. Плавный поворот: CurrentAngle стремится к TargetAngle
 	// normalizeAngle приводит разницу к (-π, π], чтобы змея не крутилась на 360°
 	delta := normalizeAngle(s.TargetAngle - s.CurrentAngle)
-	maxTurn := s.turnSpeed * dt
+	maxTurn := s.turnSpeed * dt * spang
 	if delta > maxTurn {
 		delta = maxTurn
 	}
@@ -96,10 +110,6 @@ func (s *Snake) UpdatePosition(dt float64) {
 	s.CurrentAngle += delta
 
 	// 2. Векторное движение головы: v = (cos(θ), sin(θ)) * speed * dt
-	speed := s.speed
-	if s.Boost {
-		speed = BoostSpeed
-	}
 	dist := speed * dt
 	s.HeadX += math.Cos(s.CurrentAngle) * dist
 	s.HeadY += math.Sin(s.CurrentAngle) * dist
@@ -112,6 +122,7 @@ func (s *Snake) UpdatePosition(dt float64) {
 // сохраняя строгое расстояние segmentLen. При dist < minDist сегмент не двигаем,
 // чтобы избежать div-by-zero и "выстрелов". maxStretchRatio ограничивает ratio
 // при сжатии — иначе сегмент мог бы улететь далеко.
+// После Verlet — smus-проход (Slither.io): сглаживание от 3-го сегмента с конца к хвосту.
 func (s *Snake) updateTail() {
 	for pass := 0; pass < constraintPasses; pass++ {
 		prevX, prevY := s.HeadX, s.HeadY
@@ -132,6 +143,32 @@ func (s *Snake) updateTail() {
 			s.Tail[i+1] = prevY - dy*ratio
 			prevX, prevY = s.Tail[i], s.Tail[i+1]
 		}
+	}
+	s.applySmusSmoothing()
+}
+
+// applySmusSmoothing — Slither.io recalcSepMults: каждый сегмент от 3-го с конца
+// к хвосту смещается к следующему (в сторону головы) с коэффициентом mv = cst*min(n,4)/4.
+func (s *Snake) applySmusSmoothing() {
+	segCount := len(s.Tail) / 2
+	k := segCount - 3
+	if k < 1 {
+		return
+	}
+	lmpoX := s.Tail[2*k]
+	lmpoY := s.Tail[2*k+1]
+	for i := k - 1; i >= 0; i-- {
+		n := k - i
+		if n > 4 {
+			n = 4
+		}
+		mv := Cst * float64(n) / 4
+		cx := s.Tail[2*i]
+		cy := s.Tail[2*i+1]
+		s.Tail[2*i] += (lmpoX - cx) * mv
+		s.Tail[2*i+1] += (lmpoY - cy) * mv
+		lmpoX = s.Tail[2*i]
+		lmpoY = s.Tail[2*i+1]
 	}
 }
 

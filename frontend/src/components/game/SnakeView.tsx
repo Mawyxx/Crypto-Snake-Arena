@@ -1,6 +1,6 @@
 import React from 'react'
 import { PixiComponent } from '@pixi/react'
-import { Container, Graphics as PixiGraphics } from 'pixi.js'
+import { Container, Graphics as PixiGraphics, BLEND_MODES } from 'pixi.js'
 import type { InterpolatedSnake } from '@/hooks/useGameEngine'
 
 // Slither.io palette (first 9 colors)
@@ -25,51 +25,84 @@ interface SnakeViewProps {
   isLocalPlayer: boolean
 }
 
-/** Slither.io style: змейка полностью из кружков — body + head + глаза */
+/** Slither.io shadowBlur=30: 2-3 glow layers with ADD blend */
+const BOOST_GLOW_LAYERS: { offset: number; alpha: number }[] = [
+  { offset: 8, alpha: 0.15 },
+  { offset: 16, alpha: 0.08 },
+  { offset: 24, alpha: 0.04 },
+]
+
+/** Slither.io 1:1: lsz=29*scale, head 52/32 и 62/32, outline (lsz+5), glow при boost */
 function drawSnakeAsCircles(
   g: PixiGraphics,
+  glowG: PixiGraphics,
   snake: InterpolatedSnake,
   isLocalPlayer: boolean
 ) {
   g.clear()
+  glowG.clear()
   const body = snake.body ?? []
   const head = snake.head
   if (!head) return
 
   const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
-  const segRadius = isLocalPlayer ? 5.5 : 5
-  const headR = 9
+  const boost = snake.boost ?? false
+
+  // Slither.io: sc = min(6, 1+(sct-2)/106), lsz = 29*sc
+  const bodyLen = body.length + 1
+  const scale = Math.min(6, 1 + Math.max(0, (bodyLen - 2) / 106))
+  const lsz = 29 * scale
+  const segRadius = lsz / 2
+  const headR = (lsz * 62) / 32 / 2
+  const outlineExtra = (lsz + 5) / 2 - segRadius
+  const swell = 0.08
+
   const hx = head.x ?? 0
   const hy = head.y ?? 0
   const angle = snake.angle ?? 0
 
-  // Body: хвост → голова, каждый сегмент — круг (как в Slither.io)
+  // Body: body[0]=ближайший к голове, body[n-1]=хвост. Swell для первых 4 сегментов.
   body.forEach((segment, index) => {
     const sx = segment?.x ?? 0
     const sy = segment?.y ?? 0
-    const distFromHead = index
-    const radius = segRadius * (distFromHead < 4 ? 1 + (4 - distFromHead) * 0.08 : 1)
+    const distFromHead = index + 1
+    const radius = segRadius * (distFromHead < 4 ? 1 + (4 - distFromHead) * swell : 1)
 
-    g.beginFill(0xffffff, isLocalPlayer ? 0.4 : 0.25)
-    g.drawCircle(sx, sy, radius + 1.2)
+    if (boost) {
+      for (const layer of BOOST_GLOW_LAYERS) {
+        glowG.beginFill(color, layer.alpha)
+        glowG.drawCircle(sx, sy, radius + layer.offset)
+        glowG.endFill()
+      }
+    }
+    g.beginFill(0x000000, 0.4)
+    g.drawCircle(sx, sy, radius + outlineExtra)
     g.endFill()
     g.beginFill(color)
     g.drawCircle(sx, sy, radius)
     g.endFill()
   })
 
-  // Голова — самый большой круг
-  g.beginFill(0xffffff, isLocalPlayer ? 0.5 : 0.3)
-  g.drawCircle(hx, hy, headR + 1.5)
+  // Голова — olsz 52/32, shsz 62/32
+  const headOutline = (lsz * 52) / 32 / 2
+  if (boost) {
+    for (const layer of BOOST_GLOW_LAYERS) {
+      glowG.beginFill(color, layer.alpha)
+      glowG.drawCircle(hx, hy, headR + layer.offset)
+      glowG.endFill()
+    }
+  }
+  g.beginFill(0x000000, 0.4)
+  g.drawCircle(hx, hy, headOutline + outlineExtra)
   g.endFill()
   g.beginFill(color)
   g.drawCircle(hx, hy, headR)
   g.endFill()
 
-  // Глаза только на голове
-  const eyeDist = 5.5
-  const eyeR = 2.8
-  const pupilR = 1.3
+  // Глаза: ed=6*ssc, esp=6*ssc (Slither default)
+  const eyeDist = 6 * scale
+  const eyeR = 2.8 * scale
+  const pupilR = 1.3 * scale
   const leftEx = hx + Math.cos(angle - 0.45) * eyeDist
   const leftEy = hy + Math.sin(angle - 0.45) * eyeDist
   const rightEx = hx + Math.cos(angle + 0.45) * eyeDist
@@ -99,14 +132,19 @@ function drawSnakeAsCircles(
 const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer', {
   create: () => {
     const container = new Container()
+    const glowGraphics = new PixiGraphics()
+    glowGraphics.blendMode = BLEND_MODES.ADD
     const graphics = new PixiGraphics()
+    container.addChild(glowGraphics)
     container.addChild(graphics)
-    ;(container as unknown as { __graphics: PixiGraphics }).__graphics = graphics
+    ;(container as unknown as { __graphics: PixiGraphics; __glowGraphics: PixiGraphics }).__graphics = graphics
+    ;(container as unknown as { __graphics: PixiGraphics; __glowGraphics: PixiGraphics }).__glowGraphics = glowGraphics
     return container
   },
   applyProps: (instance, _oldProps, newProps) => {
-    const graphics = (instance as unknown as { __graphics: PixiGraphics }).__graphics
-    drawSnakeAsCircles(graphics, newProps.snake, newProps.isLocalPlayer)
+    const graphics = (instance as unknown as { __graphics: PixiGraphics; __glowGraphics: PixiGraphics }).__graphics
+    const glowGraphics = (instance as unknown as { __graphics: PixiGraphics; __glowGraphics: PixiGraphics }).__glowGraphics
+    drawSnakeAsCircles(graphics, glowGraphics, newProps.snake, newProps.isLocalPlayer)
   },
 })
 
@@ -115,6 +153,7 @@ function areSnakePropsEqual(prev: SnakeViewProps, next: SnakeViewProps): boolean
   const prevSnake = prev.snake
   const nextSnake = next.snake
   if (Number(prevSnake?.id) !== Number(nextSnake?.id)) return false
+  if ((prevSnake?.boost ?? false) !== (nextSnake?.boost ?? false)) return false
   const prevHead = prevSnake?.head
   const nextHead = nextSnake?.head
   if (Math.round(prevHead?.x ?? 0) !== Math.round(nextHead?.x ?? 0)) return false

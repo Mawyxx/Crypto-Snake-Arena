@@ -8,10 +8,11 @@ export interface Point {
   y: number
 }
 
-const SEGMENT_LEN = 12.0
+const SEGMENT_LEN = 42.0 // Slither.io default_msl
 const CONSTRAINT_PASSES = 6
 const MIN_DIST = 1e-6
 const MAX_STRETCH_RATIO = 1.5
+const CST = 0.43 // Slither.io recalcSepMults, сглаживание тела
 
 /** Локальное состояние змеи для reconstruction */
 export interface LocalSnakeState {
@@ -46,6 +47,29 @@ export function initFromServerBody(
     headX: hx,
     headY: hy,
     tail,
+  }
+}
+
+/**
+ * Smus-проход (Slither.io): сглаживание от 3-го сегмента с конца к хвосту.
+ * Синхронно с backend applySmusSmoothing.
+ */
+function applySmusSmoothing(state: LocalSnakeState): void {
+  const segCount = state.tail.length / 2
+  const k = segCount - 3
+  if (k < 1) return
+  let lmpoX = state.tail[2 * k]
+  let lmpoY = state.tail[2 * k + 1]
+  for (let i = k - 1; i >= 0; i--) {
+    let n = k - i
+    if (n > 4) n = 4
+    const mv = (CST * n) / 4
+    const cx = state.tail[2 * i]
+    const cy = state.tail[2 * i + 1]
+    state.tail[2 * i] += (lmpoX - cx) * mv
+    state.tail[2 * i + 1] += (lmpoY - cy) * mv
+    lmpoX = state.tail[2 * i]
+    lmpoY = state.tail[2 * i + 1]
   }
 }
 
@@ -116,6 +140,7 @@ export function updateLocalSnake(
   for (let pass = 0; pass < CONSTRAINT_PASSES; pass++) {
     updateTail(state)
   }
+  applySmusSmoothing(state)
 }
 
 /**

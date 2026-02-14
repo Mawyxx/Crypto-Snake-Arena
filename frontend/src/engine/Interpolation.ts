@@ -32,9 +32,9 @@ export const interpolatePosition = (
   };
 };
 
-/** Константы с бэкенда: units/sec */
-export const BASE_SPEED = 60
-export const BOOST_SPEED = 100
+/** Константы с бэкенда: units/sec (Slither.io 1:1) */
+export const BASE_SPEED = 71
+export const BOOST_SPEED = 180
 
 /**
  * Экстраполяция головы вперёд по направлению (для client-side prediction).

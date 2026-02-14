@@ -19,6 +19,7 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'cl
 export interface InterpolatedSnake extends game.ISnake {
   head: { x: number; y: number }
   angle: number
+  boost?: boolean
 }
 
 export interface InterpolatedWorldSnapshot {
@@ -285,6 +286,7 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
         head: displayHead,
         angle: displayAngle,
         body: displayBody,
+        boost: isLocal ? lastSentBoostRef.current : false,
       } as InterpolatedSnake
     })
 
