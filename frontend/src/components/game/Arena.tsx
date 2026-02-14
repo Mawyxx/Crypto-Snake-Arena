@@ -10,8 +10,6 @@ import { CoinView } from './CoinView'
 
 const WORLD_SIZE = 2000
 const ARENA_RADIUS = 1000 // круговая арена (Slither.io scale для SegmentLen 42)
-// Slither.io: показываем больше арены (зум камеры ~0.8 = видно больше поля)
-const CAMERA_ZOOM = 0.8
 
 export interface GameResult {
   status: 'win' | 'lose'
@@ -247,7 +245,12 @@ function GameLoop({
 
     const centerX = head?.x ?? WORLD_SIZE / 2
     const centerY = head?.y ?? WORLD_SIZE / 2
-    const scale = Math.min(containerWidth / WORLD_SIZE, containerHeight / WORLD_SIZE) * CAMERA_ZOOM
+    const bodyLen = state?.snakes && localSnakeId != null
+      ? (state.snakes.find((s) => Number(s.id) === Number(localSnakeId))?.body?.length ?? 0)
+      : 0
+    const slitherZoom = 0.64285 + 0.514285714 / Math.max(1, (bodyLen + 16) / 36)
+    const baseScale = Math.min(containerWidth / WORLD_SIZE, containerHeight / WORLD_SIZE)
+    const scale = baseScale * slitherZoom
     const targetX = containerWidth / 2 - centerX * scale
     const targetY = containerHeight / 2 - centerY * scale
     targetViewportRef.current = { scale, x: targetX, y: targetY }
@@ -336,7 +339,7 @@ function ArenaBackground({
       x={-BG_PADDING}
       y={-BG_PADDING}
       tilePosition={{ x: tilePosX, y: tilePosY }}
-      tileScale={{ x: 1, y: 1 }}
+      tileScale={{ x: viewportScale, y: viewportScale }}
     />
   )
 }

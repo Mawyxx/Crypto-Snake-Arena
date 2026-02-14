@@ -20,17 +20,49 @@ function getSnakeColor(snakeId: SnakeId): number {
   return SNAKE_COLORS[Math.abs(id) % SNAKE_COLORS.length]
 }
 
+/** Осветлить цвет на factor (0..1), для объёма */
+function brightenColor(hex: number, factor: number): number {
+  const r = Math.min(255, ((hex >> 16) & 0xff) * (1 + factor))
+  const g = Math.min(255, ((hex >> 8) & 0xff) * (1 + factor))
+  const b = Math.min(255, (hex & 0xff) * (1 + factor))
+  return (r << 16) | (g << 8) | b
+}
+
 interface SnakeViewProps {
   snake: InterpolatedSnake
   isLocalPlayer: boolean
 }
 
-/** Slither.io shadowBlur=30: 2-3 glow layers with ADD blend */
+/** Slither.io shadowBlur=30: 2-3 glow layers with ADD blend (scaled for lsz*0.5) */
 const BOOST_GLOW_LAYERS: { offset: number; alpha: number }[] = [
-  { offset: 8, alpha: 0.15 },
-  { offset: 16, alpha: 0.08 },
-  { offset: 24, alpha: 0.04 },
+  { offset: 4, alpha: 0.15 },
+  { offset: 8, alpha: 0.08 },
+  { offset: 12, alpha: 0.04 },
 ]
+
+/** Slither.io: mct=6 кругов на сегмент (sep=42/6=7), интерполируем точки между body segments */
+const CIRCLES_PER_SEGMENT = 6
+
+function expandBodyForRender(
+  body: { x?: number | null; y?: number | null }[]
+): { x: number; y: number }[] {
+  if (body.length < 2) return body.map((p) => ({ x: p.x ?? 0, y: p.y ?? 0 }))
+  const result: { x: number; y: number }[] = []
+  for (let i = 0; i < body.length - 1; i++) {
+    const p0 = { x: body[i].x ?? 0, y: body[i].y ?? 0 }
+    const p1 = { x: body[i + 1].x ?? 0, y: body[i + 1].y ?? 0 }
+    result.push(p0)
+    for (let k = 1; k < CIRCLES_PER_SEGMENT; k++) {
+      const t = k / CIRCLES_PER_SEGMENT
+      result.push({
+        x: p0.x + (p1.x - p0.x) * t,
+        y: p0.y + (p1.y - p0.y) * t,
+      })
+    }
+  }
+  result.push({ x: body[body.length - 1].x ?? 0, y: body[body.length - 1].y ?? 0 })
+  return result
+}
 
 /** Slither.io 1:1: lsz=29*scale, head 52/32 и 62/32, outline (lsz+5), glow при boost */
 function drawSnakeAsCircles(
@@ -41,17 +73,19 @@ function drawSnakeAsCircles(
 ) {
   g.clear()
   glowG.clear()
-  const body = snake.body ?? []
+  const rawBody = snake.body ?? []
   const head = snake.head
   if (!head) return
+
+  const body = expandBodyForRender(rawBody)
 
   const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
   const boost = snake.boost ?? false
 
-  // Slither.io: sc = min(6, 1+(sct-2)/106), lsz = 29*sc
-  const bodyLen = body.length + 1
+  // Slither.io: sc = min(6, 1+(sct-2)/106), lsz = 29*sc, render_mode 2: lsz *= .5
+  const bodyLen = rawBody.length + 1
   const scale = Math.min(6, 1 + Math.max(0, (bodyLen - 2) / 106))
-  const lsz = 29 * scale
+  const lsz = 29 * scale * 0.5
   const segRadius = lsz / 2
   const headR = (lsz * 62) / 32 / 2
   const outlineExtra = (lsz + 5) / 2 - segRadius
@@ -61,12 +95,12 @@ function drawSnakeAsCircles(
   const hy = head.y ?? 0
   const angle = snake.angle ?? 0
 
-  // Body: body[0]=ближайший к голове, body[n-1]=хвост. Swell для первых 4 сегментов.
+  // Body: 6 кругов на сегмент (Slither mct=6). Swell для первых 4 логических сегментов.
   body.forEach((segment, index) => {
     const sx = segment?.x ?? 0
     const sy = segment?.y ?? 0
-    const distFromHead = index + 1
-    const radius = segRadius * (distFromHead < 4 ? 1 + (4 - distFromHead) * swell : 1)
+    const segmentIndex = Math.floor(index / CIRCLES_PER_SEGMENT)
+    const radius = segRadius * (segmentIndex < 4 ? 1 + (4 - segmentIndex) * swell : 1)
 
     if (boost) {
       for (const layer of BOOST_GLOW_LAYERS) {
@@ -80,6 +114,11 @@ function drawSnakeAsCircles(
     g.endFill()
     g.beginFill(color)
     g.drawCircle(sx, sy, radius)
+    g.endFill()
+    // Объём: внутренний светлый круг (центр +15% яркости)
+    const lightColor = brightenColor(color, 0.15)
+    g.beginFill(lightColor)
+    g.drawCircle(sx, sy, radius * 0.7)
     g.endFill()
   })
 
@@ -97,6 +136,9 @@ function drawSnakeAsCircles(
   g.endFill()
   g.beginFill(color)
   g.drawCircle(hx, hy, headR)
+  g.endFill()
+  g.beginFill(brightenColor(color, 0.15))
+  g.drawCircle(hx, hy, headR * 0.7)
   g.endFill()
 
   // Глаза: ed=6*ssc, esp=6*ssc (Slither default)
