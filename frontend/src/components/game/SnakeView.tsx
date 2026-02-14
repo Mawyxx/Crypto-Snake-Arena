@@ -71,9 +71,9 @@ function drawSnakeAsCircles(
   const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
   const boost = snake.boost ?? false
 
-  // clone: scale 0.6, radius ~16
+  // clone: scale 0.6, radius ~16. Голова и тело — одинаковый размер
   const segRadius = CLONE_CIRCLE_RADIUS
-  const headR = segRadius * 1.2 // голова чуть больше
+  const headR = segRadius
 
   const hx = head.x ?? 0
   const hy = head.y ?? 0
