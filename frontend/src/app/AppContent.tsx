@@ -116,6 +116,8 @@ export function AppContent() {
             </motion.div>
             <motion.div
               variants={overlayVariants}
+              initial="initial"
+              animate="animate"
               transition={overlayExitTransition}
               className="absolute inset-0 bg-black pointer-events-none"
             />
