@@ -66,6 +66,7 @@ export function AppContent() {
     else btn.hide()
   }, [showBackButton])
 
+  // deepsource ignore JS-0045: useEffect cleanup return is valid React pattern
   useEffect(() => {
     const btn = (window as { Telegram?: { WebApp?: { BackButton?: { onClick: (cb: () => void) => void; offClick: (cb: () => void) => void } } } }).Telegram?.WebApp?.BackButton
     if (!btn) return

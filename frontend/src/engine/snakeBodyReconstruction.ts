@@ -34,8 +34,8 @@ export function initFromServerBody(
   const hy = head?.y ?? 0
   if (body && body.length > 1) {
     for (let i = 1; i < body.length; i++) {
-      const p = body[i]
-      tail.push(p?.x ?? 0, p?.y ?? 0)
+      const point = body[i]
+      tail.push(point?.x ?? 0, point?.y ?? 0)
     }
   } else if (bodyLength != null && bodyLength > 1) {
     for (let i = 1; i < bodyLength; i++) {

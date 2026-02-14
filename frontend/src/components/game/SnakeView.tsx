@@ -122,16 +122,15 @@ function drawBodyAndHeadFallback(
   const segRadius = isLocalPlayer ? 5 : 4.5
 
   g.lineStyle(0)
-  for (let i = 0; i < body.length; i++) {
-    const p = body[i]
-    const px = p?.x ?? 0
-    const py = p?.y ?? 0
-    const swell = i < 4 ? 1 + (4 - i) * 0.08 : 1
-    const r = segRadius * swell
+  body.forEach((segment, index) => {
+    const segmentX = segment?.x ?? 0
+    const segmentY = segment?.y ?? 0
+    const swell = index < 4 ? 1 + (4 - index) * 0.08 : 1
+    const radius = segRadius * swell
     g.beginFill(color)
-    g.drawCircle(px, py, r)
+    g.drawCircle(segmentX, segmentY, radius)
     g.endFill()
-  }
+  })
   drawHeadAndEyes(g, snake, isLocalPlayer, true)
 }
 
@@ -171,8 +170,8 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
         rope.destroy()
         const newPoints: Point[] = []
         newPoints.push(new Point(head.x ?? 0, head.y ?? 0))
-        for (let i = 0; i < body.length; i++) {
-          newPoints.push(new Point(body[i]?.x ?? 0, body[i]?.y ?? 0))
+        for (const segment of body) {
+          newPoints.push(new Point(segment?.x ?? 0, segment?.y ?? 0))
         }
         data.points = newPoints
         const newRope = new SimpleRope(ROPE_TEXTURE, newPoints, 0.5)
@@ -183,10 +182,10 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
       } else {
         data.points[0].x = head.x ?? 0
         data.points[0].y = head.y ?? 0
-        for (let i = 0; i < body.length; i++) {
-          data.points[i + 1].x = body[i]?.x ?? 0
-          data.points[i + 1].y = body[i]?.y ?? 0
-        }
+        body.forEach((segment, index) => {
+          data.points[index + 1].x = segment?.x ?? 0
+          data.points[index + 1].y = segment?.y ?? 0
+        })
         rope.visible = true
       }
       drawHeadAndEyes(graphics, snake, newProps.isLocalPlayer)
@@ -199,29 +198,28 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
 
 function areSnakePropsEqual(prev: SnakeViewProps, next: SnakeViewProps): boolean {
   if (prev.isLocalPlayer !== next.isLocalPlayer) return false
-  const a = prev.snake
-  const b = next.snake
-  if (Number(a?.id) !== Number(b?.id)) return false
-  const ah = a?.head
-  const bh = b?.head
-  if (Math.round(ah?.x ?? 0) !== Math.round(bh?.x ?? 0)) return false
-  if (Math.round(ah?.y ?? 0) !== Math.round(bh?.y ?? 0)) return false
-  if (Math.round((a?.angle ?? 0) * 100) !== Math.round((b?.angle ?? 0) * 100)) return false
-  if (Math.round((a?.score ?? 0) * 100) !== Math.round((b?.score ?? 0) * 100)) return false
-  const ab = a?.body ?? []
-  const bb = b?.body ?? []
-  if (ab.length !== bb.length) return false
-  // Compare first and last body point for rope/position updates
-  if (ab.length > 0) {
-    const af = ab[0]
-    const bf = bb[0]
-    if (Math.round(af?.x ?? 0) !== Math.round(bf?.x ?? 0)) return false
-    if (Math.round(af?.y ?? 0) !== Math.round(bf?.y ?? 0)) return false
-    if (ab.length > 1) {
-      const al = ab[ab.length - 1]
-      const bl = bb[bb.length - 1]
-      if (Math.round(al?.x ?? 0) !== Math.round(bl?.x ?? 0)) return false
-      if (Math.round(al?.y ?? 0) !== Math.round(bl?.y ?? 0)) return false
+  const prevSnake = prev.snake
+  const nextSnake = next.snake
+  if (Number(prevSnake?.id) !== Number(nextSnake?.id)) return false
+  const prevHead = prevSnake?.head
+  const nextHead = nextSnake?.head
+  if (Math.round(prevHead?.x ?? 0) !== Math.round(nextHead?.x ?? 0)) return false
+  if (Math.round(prevHead?.y ?? 0) !== Math.round(nextHead?.y ?? 0)) return false
+  if (Math.round((prevSnake?.angle ?? 0) * 100) !== Math.round((nextSnake?.angle ?? 0) * 100)) return false
+  if (Math.round((prevSnake?.score ?? 0) * 100) !== Math.round((nextSnake?.score ?? 0) * 100)) return false
+  const prevBody = prevSnake?.body ?? []
+  const nextBody = nextSnake?.body ?? []
+  if (prevBody.length !== nextBody.length) return false
+  if (prevBody.length > 0) {
+    const prevFirst = prevBody[0]
+    const nextFirst = nextBody[0]
+    if (Math.round(prevFirst?.x ?? 0) !== Math.round(nextFirst?.x ?? 0)) return false
+    if (Math.round(prevFirst?.y ?? 0) !== Math.round(nextFirst?.y ?? 0)) return false
+    if (prevBody.length > 1) {
+      const prevLast = prevBody[prevBody.length - 1]
+      const nextLast = nextBody[nextBody.length - 1]
+      if (Math.round(prevLast?.x ?? 0) !== Math.round(nextLast?.x ?? 0)) return false
+      if (Math.round(prevLast?.y ?? 0) !== Math.round(nextLast?.y ?? 0)) return false
     }
   }
   return true

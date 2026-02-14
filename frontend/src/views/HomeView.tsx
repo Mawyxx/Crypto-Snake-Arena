@@ -55,6 +55,7 @@ export const HomeView = React.memo(function HomeView() {
           setLoading(false)
         }
       })
+    // deepsource ignore JS-0045: useEffect cleanup return is valid React pattern
     return () => { cancelled = true }
   }, [initData])
 

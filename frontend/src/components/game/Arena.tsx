@@ -66,20 +66,21 @@ export const Arena = ({
     }
   )
 
+  // deepsource ignore JS-0045: useEffect cleanup return is valid React pattern
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
 
-    const update = () => {
-      const w = Math.max(el.clientWidth || WORLD_SIZE, 200)
-      const h = Math.max(el.clientHeight || WORLD_SIZE, 200)
-      setSize({ width: w, height: h })
+    const updateSize = () => {
+      const width = Math.max(el.clientWidth || WORLD_SIZE, 200)
+      const height = Math.max(el.clientHeight || WORLD_SIZE, 200)
+      setSize({ width, height })
     }
 
-    update()
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => ro.disconnect()
+    updateSize()
+    const resizeObserver = new ResizeObserver(updateSize)
+    resizeObserver.observe(el)
+    return () => resizeObserver.disconnect()
   }, [])
 
   const cashOutHandled = useRef(false)
@@ -94,20 +95,25 @@ export const Arena = ({
   const sendInputStable = useCallback(sendInput, [])
   useInputHandler(sendInputStable, { containerRef, blockInputRef })
 
+  const handleConnectionFailed = useCallback(() => {
+    onConnectionFailed?.()
+  }, [onConnectionFailed])
+
   const lastScoreRef = useRef(-1)
+  // deepsource ignore JS-0045: useEffect cleanup return is valid React pattern
   useEffect(() => {
     if (!onScoreUpdate) return
-    let id = 0
+    let rafId = 0
     const tick = () => {
-      const s = getLocalSnakeScore()
-      if (s !== lastScoreRef.current) {
-        lastScoreRef.current = s
-        onScoreUpdate(s)
+      const score = getLocalSnakeScore()
+      if (score !== lastScoreRef.current) {
+        lastScoreRef.current = score
+        onScoreUpdate(score)
       }
-      id = requestAnimationFrame(tick)
+      rafId = requestAnimationFrame(tick)
     }
-    id = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(id)
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
   }, [getLocalSnakeScore, onScoreUpdate])
 
   // Slither.io body background: #161c22
@@ -147,7 +153,7 @@ export const Arena = ({
           <span className="text-white/70 text-sm text-center">{t('game.checkInternet')}</span>
           <button
             type="button"
-            onClick={() => onConnectionFailed?.()}
+            onClick={handleConnectionFailed}
             className="px-6 py-3 rounded-2xl bg-primary text-white font-semibold text-sm active:scale-95 transition-transform hover:brightness-110"
           >
             {t('common.toMainMenu')}
@@ -224,12 +230,12 @@ function GameLoop({
   const CAMERA_LERP = 0.15
 
   useTick((delta) => {
-    const s = getInterpolatedState()
-    stateRef.current = s
+    const state = getInterpolatedState()
+    stateRef.current = state
 
     let head = snakeHeadRef.current
-    if (s?.snakes && localSnakeId != null) {
-      const mySnake = s.snakes.find((sn) => Number(sn.id) === Number(localSnakeId))
+    if (state?.snakes && localSnakeId != null) {
+      const mySnake = state.snakes.find((snake) => Number(snake.id) === Number(localSnakeId))
       if (mySnake?.head) {
         head = { x: mySnake.head.x ?? 0, y: mySnake.head.y ?? 0 }
         snakeHeadRef.current = head
@@ -238,20 +244,20 @@ function GameLoop({
       snakeHeadRef.current = null
     }
 
-    const cx = head?.x ?? WORLD_SIZE / 2
-    const cy = head?.y ?? WORLD_SIZE / 2
+    const centerX = head?.x ?? WORLD_SIZE / 2
+    const centerY = head?.y ?? WORLD_SIZE / 2
     const scale = Math.min(containerWidth / WORLD_SIZE, containerHeight / WORLD_SIZE) * CAMERA_ZOOM
-    const targetX = containerWidth / 2 - cx * scale
-    const targetY = containerHeight / 2 - cy * scale
+    const targetX = containerWidth / 2 - centerX * scale
+    const targetY = containerHeight / 2 - centerY * scale
     targetViewportRef.current = { scale, x: targetX, y: targetY }
 
-    const vp = viewportRef.current
-    const tv = targetViewportRef.current
-    const t = Math.min(1, CAMERA_LERP * (typeof delta === 'number' ? delta : 1))
+    const viewport = viewportRef.current
+    const targetViewport = targetViewportRef.current
+    const lerpFactor = Math.min(1, CAMERA_LERP * (typeof delta === 'number' ? delta : 1))
     viewportRef.current = {
-      scale: vp.scale + (tv.scale - vp.scale) * t,
-      x: vp.x + (tv.x - vp.x) * t,
-      y: vp.y + (tv.y - vp.y) * t,
+      scale: viewport.scale + (targetViewport.scale - viewport.scale) * lerpFactor,
+      x: viewport.x + (targetViewport.x - viewport.x) * lerpFactor,
+      y: viewport.y + (targetViewport.y - viewport.y) * lerpFactor,
     }
   })
 

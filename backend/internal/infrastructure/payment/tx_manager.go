@@ -233,7 +233,6 @@ func (m *TxManager) OnPlayerDeath(ctx context.Context, victimUserID uint, victim
 		return nil
 	}
 	rakeF, referralF := computeDeathSplit(victimScore)
-
 	if rakeF <= 0 {
 		return nil
 	}
@@ -242,7 +241,6 @@ func (m *TxManager) OnPlayerDeath(ctx context.Context, victimUserID uint, victim
 	defer cancel()
 
 	return m.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 0. Идемпотентность: уже обработано?
 		var exist int64
 		if err := tx.Model(&domain.RevenueLog{}).Where("reference_id = ?", referenceID).Count(&exist).Error; err != nil {
 			return err
@@ -250,77 +248,10 @@ func (m *TxManager) OnPlayerDeath(ctx context.Context, victimUserID uint, victim
 		if exist > 0 {
 			return nil
 		}
-
-		// 1. Revenue log — комиссия платформы (админ)
-		if err := tx.Create(&domain.RevenueLog{
-			RoomID:          roomID,
-			TransactionType: "death_rake",
-			ReferenceID:     referenceID,
-			Amount:          rakeF,
-			CreatedAt:       time.Now(),
-		}).Error; err != nil {
+		if err := createRevenueLog(ctx, tx, roomID, referenceID, rakeF, entryFee, victimUserID, m.ledgerWriter); err != nil {
 			return err
 		}
-
-		// 1b. Admin ledger
-		if m.ledgerWriter != nil {
-			pid := int64(victimUserID)
-			if err := m.ledgerWriter.AppendLedgerEntry(ctx, tx, &roomID, &pid, entryFee, rakeF, "death"); err != nil {
-				return err
-			}
-		}
-
-		// 2. Referrer bonus (если есть)
-		var ref domain.Referral
-		if err := tx.Where("referred_id = ?", victimUserID).First(&ref).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil
-			}
-			return err
-		}
-
-		if referralF < 0.00000001 {
-			return nil
-		}
-
-		var count int64
-		if err := tx.Model(&domain.ReferralEarning{}).
-			Where("referrer_id = ? AND source_tx_id = ?", ref.ReferrerID, referenceID).
-			Count(&count).Error; err != nil {
-			return err
-		}
-		if count > 0 {
-			return nil
-		}
-
-		var user domain.User
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, ref.ReferrerID).Error; err != nil {
-			return err
-		}
-		newBalance := user.Balance + referralF
-		if err := tx.Model(&user).Update("balance", gorm.Expr("balance + ?", referralF)).Error; err != nil {
-			return err
-		}
-
-		if err := tx.Create(&domain.ReferralEarning{
-			ReferrerID: ref.ReferrerID,
-			ReferredID: ref.ReferredID,
-			Amount:     referralF,
-			SourceTxID: referenceID,
-		}).Error; err != nil {
-			return err
-		}
-
-		return tx.Create(&domain.Transaction{
-			ID:           uuid.New().String(),
-			UserID:       ref.ReferrerID,
-			Amount:       referralF,
-			Type:         "referral_bonus",
-			Status:       "completed",
-			ExternalID:   referenceID,
-			BalanceAfter: &newBalance,
-			CreatedAt:    time.Now(),
-		}).Error
+		return createReferrerBonus(tx, victimUserID, referralF, referenceID)
 	})
 }
 

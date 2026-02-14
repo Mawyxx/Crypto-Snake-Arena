@@ -14,19 +14,19 @@ type noopRewardCreditor struct{}
 type noopDeathHandler struct{}
 type noopResultRecorder struct{}
 
-func (noopRewardCreditor) AddGameReward(ctx context.Context, userID uint, amount float64, referenceID string) error {
+func (noopRewardCreditor) AddGameReward(_ context.Context, _ uint, _ float64, _ string) error {
 	return nil
 }
-func (noopDeathHandler) OnPlayerDeath(ctx context.Context, victimUserID uint, victimScore, entryFee float64, referenceID, roomID string) error {
+func (noopDeathHandler) OnPlayerDeath(_ context.Context, _ uint, _ float64, _ float64, _ string, _ string) error {
 	return nil
 }
-func (noopResultRecorder) RecordGameResult(ctx context.Context, userID uint, stake, loot float64, roomID string, status string, durationSec int) error {
+func (noopResultRecorder) RecordGameResult(_ context.Context, _ uint, _ float64, _ float64, _ string, _ string, _ int) error {
 	return nil
 }
 
 type noopExpiredCoinsHandler struct{}
 
-func (noopExpiredCoinsHandler) OnExpiredCoins(ctx context.Context, roomID string, totalValue float64) error {
+func (noopExpiredCoinsHandler) OnExpiredCoins(_ context.Context, _ string, _ float64) error {
 	return nil
 }
 

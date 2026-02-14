@@ -48,10 +48,10 @@ export const ProfileView = React.memo(function ProfileView() {
 
   const { t } = useTranslation()
   const tgUser = getTelegramUserFromInitData()
-  const first = tgUser && tgUser.first_name ? tgUser.first_name : ''
-  const last = tgUser && tgUser.last_name ? tgUser.last_name : ''
+  const first = tgUser?.first_name ?? ''
+  const last = tgUser?.last_name ?? ''
   const fullName = [first, last].filter(Boolean).join(' ').trim() || username || ''
-  const handleStr = tgUser && tgUser.username ? '@' + tgUser.username : (username ? '@' + String(username).replace(/\s/g, '_').toLowerCase() : '')
+  const handleStr = tgUser?.username ? `@${tgUser.username}` : (username ? `@${String(username).replace(/\s/g, '_').toLowerCase()}` : '')
   const bannerLine1 = fullName || t('leaderboard.player')
   const rankStr = gamesPlayed === 0 || rank === 0 ? '???' : String(rank)
   const bannerLine2 = handleStr ? `${handleStr} • Rank #${rankStr}` : `Rank #${rankStr}`

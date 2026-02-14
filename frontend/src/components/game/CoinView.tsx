@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react'
 import { Graphics } from '@pixi/react'
-import type * as PIXI from 'pixi.js'
+import type { Graphics as PixiGraphics } from 'pixi.js'
 import type { game } from '@/shared/api/proto/game'
 
 // Точная палитра slither.io (первые 9 цветов из per_color_imgs)
@@ -20,20 +20,20 @@ function getOrbColor(coinId: string | null | undefined): number {
 }
 
 function areCoinPropsEqual(prev: CoinViewProps, next: CoinViewProps): boolean {
-  const a = prev.coin
-  const b = next.coin
-  if ((a?.id ?? '') !== (b?.id ?? '')) return false
-  const ap = a?.pos
-  const bp = b?.pos
-  if (Math.round(ap?.x ?? 0) !== Math.round(bp?.x ?? 0)) return false
-  if (Math.round(ap?.y ?? 0) !== Math.round(bp?.y ?? 0)) return false
-  return Math.round((a?.value ?? 0) * 100) === Math.round((b?.value ?? 0) * 100)
+  const prevCoin = prev.coin
+  const nextCoin = next.coin
+  if ((prevCoin?.id ?? '') !== (nextCoin?.id ?? '')) return false
+  const prevPos = prevCoin?.pos
+  const nextPos = nextCoin?.pos
+  if (Math.round(prevPos?.x ?? 0) !== Math.round(nextPos?.x ?? 0)) return false
+  if (Math.round(prevPos?.y ?? 0) !== Math.round(nextPos?.y ?? 0)) return false
+  return Math.round((prevCoin?.value ?? 0) * 100) === Math.round((nextCoin?.value ?? 0) * 100)
 }
 
 /** Slither.io style: светящиеся орбы */
 const CoinViewInner = ({ coin }: CoinViewProps) => {
   const draw = useCallback(
-    (g: PIXI.Graphics) => {
+    (g: PixiGraphics) => {
       g.clear()
 
       const pos = coin.pos

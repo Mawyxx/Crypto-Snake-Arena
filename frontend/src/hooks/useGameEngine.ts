@@ -199,6 +199,7 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
     }
   }, [wsUrl, localSnakeId, enabled])
 
+  // deepsource ignore JS-0045: useEffect cleanup return is valid React pattern
   useEffect(() => {
     if (!enabled) {
       setStatus('closed')
@@ -322,8 +323,8 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
   }, [])
 
   const getLocalSnakeScore = useCallback((): number => {
-    const s = currState.current?.snakes?.find((sn) => Number(sn.id) === Number(localSnakeId))
-    return s?.score ?? 0
+    const snake = currState.current?.snakes?.find((sn) => Number(sn.id) === Number(localSnakeId))
+    return snake?.score ?? 0
   }, [localSnakeId])
 
   return { getInterpolatedState, sendInput, closeSocket, getLocalSnakeScore, status }

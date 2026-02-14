@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,11 +19,11 @@ import (
 	"github.com/crypto-snake-arena/server/internal/domain"
 	"github.com/crypto-snake-arena/server/internal/game"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
-	"github.com/crypto-snake-arena/server/internal/usecase"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/presence"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/repository"
 	"github.com/crypto-snake-arena/server/internal/logger"
+	"github.com/crypto-snake-arena/server/internal/usecase"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/cors"
@@ -35,61 +38,64 @@ func main() {
 	}
 	logger.Init()
 	log := zap.L()
+	if err := run(log); err != nil {
+		log.Fatal("server failed", zap.Error(err))
+	}
+}
 
-	// Postgres
+func run(log *zap.Logger) error {
+	db, sqlDB, err := setupDB()
+	if err != nil {
+		return fmt.Errorf("setup db: %w", err)
+	}
+	defer sqlDB.Close()
+
+	procCtx, procCancel := context.WithCancel(context.Background())
+	defer procCancel()
+
+	rdb, err := setupRedis()
+	if err != nil {
+		return fmt.Errorf("setup redis: %w", err)
+	}
+	defer rdb.Close()
+
+	roomManager, mux, err := setupHandlers(log, db, rdb, procCtx)
+	if err != nil {
+		return err
+	}
+
+	return runHTTPServer(log, mux, roomManager, procCancel)
+}
+
+func setupDB() (*gorm.DB, *sql.DB, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "host=localhost user=postgres password=postgres dbname=crypto_snake port=5432 sslmode=disable"
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{SkipDefaultTransaction: true})
 	if err != nil {
-		log.Fatal("failed to connect to postgres", zap.Error(err))
+		return nil, nil, fmt.Errorf("connect postgres: %w", err)
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatal("failed to get sql.DB", zap.Error(err))
+		return nil, nil, fmt.Errorf("get sql.DB: %w", err)
 	}
-	sqlDB.SetMaxOpenConns(50) // лимит при наплыве игроков
-	sqlDB.SetMaxIdleConns(10) // пул простаивающих соединений
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetMaxIdleConns(10)
 	if err := db.AutoMigrate(&domain.User{}, &domain.Transaction{}, &domain.Referral{}, &domain.ReferralEarning{}, &domain.GameResult{}, &domain.RevenueLog{}, &domain.PendingReward{}); err != nil {
-		log.Fatal("failed to migrate", zap.Error(err))
+		return nil, nil, fmt.Errorf("migrate: %w", err)
 	}
-	// Миграции 012, 013 (idempotent)
 	if err := runAdminLedgerMigration(db); err != nil {
-		log.Warn("admin_revenue_ledger migration failed (table may exist)", zap.Error(err))
+		zap.L().Warn("admin_revenue_ledger migration failed (table may exist)", zap.Error(err))
 	}
 	if err := runPendingRewardsMigration(db); err != nil {
-		log.Warn("pending_rewards migration failed (table may exist)", zap.Error(err))
+		zap.L().Warn("pending_rewards migration failed (table may exist)", zap.Error(err))
 	}
-	log.Info("postgres connected, migrations applied")
+	zap.L().Info("postgres connected, migrations applied")
+	return db, sqlDB, nil
+}
 
-	// Auth
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if botToken == "" {
-		log.Warn("TELEGRAM_BOT_TOKEN not set, auth will fail")
-	}
-	validator := auth.NewValidator(botToken)
-
-	// AdminRepository для admin_revenue_ledger (миграция 012)
-	adminRepo := repository.NewAdminRepository(db)
-	txManager := payment.NewTxManager(db, adminRepo)
-	pendingRewardRepo := repository.NewPendingRewardRepository(db)
-	rewardService := usecase.NewRewardService(txManager, pendingRewardRepo, log)
-	userResolver := repository.NewUserResolverDB(db)
-
-	// Контекст для фоновых задач (processor останавливается при cancel)
-	procCtx, procCancel := context.WithCancel(context.Background())
-	defer procCancel()
-	rewardService.StartProcessor(procCtx)
-
-	// Менеджер комнат: RewardCreditor = rewardService (fallback в pending_rewards при ошибке)
-	roomManager := game.NewRoomManager(rewardService, txManager, txManager, txManager)
-	log.Info("room manager started")
-
-	// WebSocket handler (GameWallet = rewardService)
-	wsHandler := ws.NewHandler(rewardService, validator, userResolver)
-
-	// Redis для presence (online-счётчик, multi-instance)
+func setupRedis() (*redis.Client, error) {
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
 		redisURL = "localhost:6379"
@@ -98,45 +104,45 @@ func main() {
 	if strings.HasPrefix(redisURL, "redis://") || strings.HasPrefix(redisURL, "rediss://") {
 		opt, err := redis.ParseURL(redisURL)
 		if err != nil {
-			log.Fatal("redis parse URL failed", zap.Error(err))
+			return nil, fmt.Errorf("redis parse URL: %w", err)
 		}
 		rdb = redis.NewClient(opt)
 	} else {
 		rdb = redis.NewClient(&redis.Options{Addr: redisURL})
 	}
-	rdbCtx, rdbCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	if err := rdb.Ping(rdbCtx).Err(); err != nil {
-		log.Fatal("redis connect failed", zap.Error(err))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("redis connect: %w", err)
 	}
-	rdbCancel()
-	defer rdb.Close()
-	log.Info("redis connected")
+	zap.L().Info("redis connected")
+	return rdb, nil
+}
+
+func setupHandlers(log *zap.Logger, db *gorm.DB, rdb *redis.Client, procCtx context.Context) (*game.RoomManager, *http.ServeMux, error) {
+	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	if botToken == "" {
+		log.Warn("TELEGRAM_BOT_TOKEN not set, auth will fail")
+	}
+	validator := auth.NewValidator(botToken)
+
+	adminRepo := repository.NewAdminRepository(db)
+	txManager := payment.NewTxManager(db, adminRepo)
+	pendingRewardRepo := repository.NewPendingRewardRepository(db)
+	rewardService := usecase.NewRewardService(txManager, pendingRewardRepo, log)
+	userResolver := repository.NewUserResolverDB(db)
+
+	rewardService.StartProcessor(procCtx)
+
+	roomManager := game.NewRoomManager(rewardService, txManager, txManager, txManager)
+	log.Info("room manager started")
+
+	wsHandler := ws.NewHandler(rewardService, validator, userResolver)
 
 	presenceStore := presence.NewRedisStore(rdb)
 
-	// Фоновая задача: обновление rank в users раз в 15 мин
-	go func() {
-		ticker := time.NewTicker(15 * time.Minute)
-		defer ticker.Stop()
-		updateRanks := func() {
-			if err := db.Exec(`
-				WITH t AS (SELECT user_id, SUM(profit) as total FROM game_results GROUP BY user_id),
-				ranked AS (SELECT user_id, ROW_NUMBER() OVER (ORDER BY total DESC, user_id ASC)::int as r FROM t)
-				UPDATE users u SET rank = ranked.r FROM ranked WHERE u.id = ranked.user_id
-			`).Error; err != nil {
-				log.Error("rank-updater failed", zap.Error(err))
-			}
-			if err := db.Exec(`UPDATE users u SET rank = 0 WHERE NOT EXISTS (SELECT 1 FROM game_results g WHERE g.user_id = u.id)`).Error; err != nil {
-				log.Error("rank-updater unranked failed", zap.Error(err))
-			}
-		}
-		updateRanks() // первый раз сразу после старта
-		for range ticker.C {
-			updateRanks()
-		}
-	}()
+	go startRankUpdater(db)
 
-	// HTTP handler (REST API)
 	webhookSecret := os.Getenv("WEBHOOK_SECRET_TOKEN")
 	platformStats := repository.NewPlatformStatsDB(db)
 	adminTgID := int64(0)
@@ -148,7 +154,6 @@ func main() {
 	addBalanceSecret := os.Getenv("ADD_BALANCE_SECRET")
 	httpHandler := httphandler.NewHandler(validator, userResolver, presenceStore, platformStats, adminRepo, txManager, adminTgID, botToken, webhookSecret, addBalanceSecret)
 
-	// Router
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("health check", zap.String("remote", r.RemoteAddr))
@@ -161,7 +166,34 @@ func main() {
 	})
 	httpHandler.SetupRouter(mux)
 
-	// Static frontend (for single ngrok tunnel)
+	setupStaticFiles(mux, log)
+
+	return roomManager, mux, nil
+}
+
+func startRankUpdater(db *gorm.DB) {
+	log := zap.L()
+	ticker := time.NewTicker(15 * time.Minute)
+	defer ticker.Stop()
+	updateRanks := func() {
+		if err := db.Exec(`
+			WITH t AS (SELECT user_id, SUM(profit) as total FROM game_results GROUP BY user_id),
+			ranked AS (SELECT user_id, ROW_NUMBER() OVER (ORDER BY total DESC, user_id ASC)::int as r FROM t)
+			UPDATE users u SET rank = ranked.r FROM ranked WHERE u.id = ranked.user_id
+		`).Error; err != nil {
+			log.Error("rank-updater failed", zap.Error(err))
+		}
+		if err := db.Exec(`UPDATE users u SET rank = 0 WHERE NOT EXISTS (SELECT 1 FROM game_results g WHERE g.user_id = u.id)`).Error; err != nil {
+			log.Error("rank-updater unranked failed", zap.Error(err))
+		}
+	}
+	updateRanks()
+	for range ticker.C {
+		updateRanks()
+	}
+}
+
+func setupStaticFiles(mux *http.ServeMux, log *zap.Logger) {
 	staticDir := os.Getenv("STATIC_DIR")
 	if staticDir == "" {
 		for _, p := range []string{"../frontend/dist", "frontend/dist"} {
@@ -175,6 +207,7 @@ func main() {
 		}
 	}
 	if fi, err := os.Stat(staticDir); err == nil && fi.IsDir() {
+		// deepsource ignore GO-S1034: noDirFS prevents directory listing
 		fs := noDirListingFileServer(http.Dir(staticDir))
 		indexPath := filepath.Join(staticDir, "index.html")
 		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +220,6 @@ func main() {
 				http.ServeFile(w, r, indexPath)
 				return
 			}
-			// Отключаем кэш для JS/CSS — всегда свежая версия
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			fs.ServeHTTP(w, r)
 		}))
@@ -195,52 +227,57 @@ func main() {
 	} else {
 		log.Info("STATIC_DIR not found, API only mode")
 	}
+}
 
-	// CORS: ALLOWED_ORIGINS или * для dev
+func setupCORS() *cors.Cors {
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-	var c *cors.Cors
 	if allowedOrigins == "*" || allowedOrigins == "all" {
-		c = cors.AllowAll()
-	} else if allowedOrigins != "" {
-		c = cors.New(cors.Options{
+		return cors.AllowAll()
+	}
+	if allowedOrigins != "" {
+		return cors.New(cors.Options{
 			AllowedOrigins:   stringList(allowedOrigins),
 			AllowCredentials: true,
 			AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		})
-	} else {
-		allowOrigin := func(_ *http.Request, origin string) bool {
-			return strings.HasPrefix(origin, "http://localhost") ||
-				strings.HasPrefix(origin, "https://localhost") ||
-				strings.HasPrefix(origin, "http://127.0.0.1") ||
-				strings.HasPrefix(origin, "https://127.0.0.1") ||
-				strings.HasPrefix(origin, "https://web.telegram.org") ||
-				strings.Contains(origin, ".ngrok-free.app") ||
-				strings.Contains(origin, ".ngrok-free.dev") ||
-				strings.Contains(origin, "arrenasnake.net")
-		}
-		c = cors.New(cors.Options{
-			AllowOriginRequestFunc: allowOrigin,
-			AllowCredentials:       true,
-			AllowedHeaders:         []string{"Authorization", "Content-Type"},
-		})
 	}
+	allowOrigin := func(_ *http.Request, origin string) bool {
+		return strings.HasPrefix(origin, "http://localhost") ||
+			strings.HasPrefix(origin, "https://localhost") ||
+			strings.HasPrefix(origin, "http://127.0.0.1") ||
+			strings.HasPrefix(origin, "https://127.0.0.1") ||
+			strings.HasPrefix(origin, "https://web.telegram.org") ||
+			strings.Contains(origin, ".ngrok-free.app") ||
+			strings.Contains(origin, ".ngrok-free.dev") ||
+			strings.Contains(origin, "arrenasnake.net")
+	}
+	return cors.New(cors.Options{
+		AllowOriginRequestFunc: allowOrigin,
+		AllowCredentials:      true,
+		AllowedHeaders:        []string{"Authorization", "Content-Type"},
+	})
+}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+func getPort() string {
+	if p := os.Getenv("PORT"); p != "" {
+		return p
 	}
+	return "8080"
+}
+
+func runHTTPServer(log *zap.Logger, mux *http.ServeMux, roomManager *game.RoomManager, procCancel context.CancelFunc) error {
+	c := setupCORS()
 	srv := &http.Server{
-		Addr:         ":" + port,
+		Addr:         ":" + getPort(),
 		Handler:      c.Handler(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 	}
 
-	// Graceful Shutdown
 	go func() {
 		log.Info("server listening", zap.String("addr", srv.Addr))
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("server error", zap.Error(err))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("server error", zap.Error(err))
 		}
 	}()
 
@@ -249,16 +286,17 @@ func main() {
 	<-quit
 	log.Info("shutting down...")
 
-	procCancel() // останавливаем pending reward processor
+	procCancel()
+	roomManager.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	roomManager.Stop()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error("server shutdown error", zap.Error(err))
 	}
 	log.Info("server stopped")
+	return nil
 }
 
 func runAdminLedgerMigration(db *gorm.DB) error {

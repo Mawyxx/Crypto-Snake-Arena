@@ -11,6 +11,6 @@ type FailingLedgerWriter struct {
 	Err error
 }
 
-func (f *FailingLedgerWriter) AppendLedgerEntry(ctx context.Context, db *gorm.DB, gameID *string, playerID *int64, entryFee, platformFee float64, entryType string) error {
+func (f *FailingLedgerWriter) AppendLedgerEntry(_ context.Context, _ *gorm.DB, _ *string, _ *int64, _ float64, _ float64, _ string) error {
 	return f.Err
 }

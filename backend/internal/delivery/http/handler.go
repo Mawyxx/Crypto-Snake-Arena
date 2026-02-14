@@ -128,7 +128,7 @@ var (
 )
 
 // Config возвращает публичную конфигурацию (bot_username для реферальной ссылки). Без auth.
-func (h *Handler) Config(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Config(w http.ResponseWriter, _ *http.Request) {
 	username := getBotUsername(h.botToken)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"bot_username": username}); err != nil {
@@ -616,35 +616,11 @@ func (h *Handler) AddBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "add-balance disabled", http.StatusNotFound)
 		return
 	}
-	if r.Header.Get("X-Add-Balance-Token") != h.addBalanceSecret {
+	if !validateAddBalanceToken(h, r) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	var tgID int64 = 7175104609
-	var amount float64 = 500
-	if r.Header.Get("Content-Type") == "application/json" {
-		var body struct {
-			TgID   int64   `json:"tg_id"`
-			Amount float64 `json:"amount"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err == nil && body.TgID != 0 {
-			tgID = body.TgID
-			if body.Amount > 0 {
-				amount = body.Amount
-			}
-		}
-	} else {
-		if s := r.URL.Query().Get("tg_id"); s != "" {
-			if n, err := strconv.ParseInt(s, 10, 64); err == nil {
-				tgID = n
-			}
-		}
-		if s := r.URL.Query().Get("amount"); s != "" {
-			if f, err := strconv.ParseFloat(s, 64); err == nil && f > 0 {
-				amount = f
-			}
-		}
-	}
+	tgID, amount := parseAddBalanceRequest(r)
 	_, err := h.userProvider.GetOrCreateUser(r.Context(), tgID, "", "", "")
 	if err != nil {
 		log.Printf("[AddBalance] GetOrCreateUser error: %v", err)
@@ -663,4 +639,37 @@ func (h *Handler) AddBalance(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "tg_id": tgID, "amount": amount})
+}
+
+func validateAddBalanceToken(h *Handler, r *http.Request) bool {
+	return r.Header.Get("X-Add-Balance-Token") == h.addBalanceSecret
+}
+
+func parseAddBalanceRequest(r *http.Request) (tgID int64, amount float64) {
+	tgID = 7175104609
+	amount = 500
+	if r.Header.Get("Content-Type") == "application/json" {
+		var body struct {
+			TgID   int64   `json:"tg_id"`
+			Amount float64 `json:"amount"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil && body.TgID != 0 {
+			tgID = body.TgID
+			if body.Amount > 0 {
+				amount = body.Amount
+			}
+		}
+	} else {
+		if s := r.URL.Query().Get("tg_id"); s != "" {
+			if n, e := strconv.ParseInt(s, 10, 64); e == nil {
+				tgID = n
+			}
+		}
+		if s := r.URL.Query().Get("amount"); s != "" {
+			if f, e := strconv.ParseFloat(s, 64); e == nil && f > 0 {
+				amount = f
+			}
+		}
+	}
+	return tgID, amount
 }

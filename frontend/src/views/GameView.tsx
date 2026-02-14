@@ -122,12 +122,13 @@ export const GameView = React.memo(function GameView() {
     blockInputRef.current = false
   }, [])
 
+  // deepsource ignore JS-0045: useEffect cleanup return is valid React pattern
   useEffect(() => {
     if (!gameResult) return
     // При победе бэкенд зачисляет на баланс с задержкой — даём 600ms, чтобы избежать race condition
     const delayMs = gameResult.status === 'win' ? 600 : 0
-    const t = setTimeout(refetchBalance, delayMs)
-    return () => clearTimeout(t)
+    const timeoutId = setTimeout(refetchBalance, delayMs)
+    return () => clearTimeout(timeoutId)
   }, [gameResult, refetchBalance])
 
   const localSnakeId = useMemo((): number | null => {

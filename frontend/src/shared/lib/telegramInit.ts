@@ -143,8 +143,8 @@ function normalizeTelegramUser(raw: Record<string, unknown>): TelegramUser | nul
 export function getTelegramUserFromInitData(): TelegramUser | null {
   const unsafe = window.Telegram?.WebApp?.initDataUnsafe
   if (unsafe?.user) {
-    const u = normalizeTelegramUser(unsafe.user as Record<string, unknown>)
-    if (u) return u
+    const user = normalizeTelegramUser(unsafe.user as Record<string, unknown>)
+    if (user) return user
   }
 
   const raw = getInitData()

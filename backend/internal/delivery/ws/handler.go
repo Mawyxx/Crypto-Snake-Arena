@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -115,7 +114,6 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 		return
 	}
 
-	// Upgrade до PlaceBet — ставка списывается только при входе в комнату
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		zap.L().Warn("ws upgrade failed", zap.Error(err))
@@ -130,31 +128,26 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 
 	room, queued := roomManager.GetOrCreateRoom(stake)
 	if room != nil {
-		if !room.CanJoin() {
-			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"room is full"}`))
-			return
-		}
-		if err := h.wallet.PlaceBet(r.Context(), userID, stake); err != nil {
-			if err == payment.ErrInsufficientFunds {
-				zap.L().Info("ws insufficient funds", zap.Uint("userID", userID), zap.Float64("stake", stake))
-				_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
-				return
-			}
-			zap.L().Error("ws PlaceBet failed", zap.Error(err))
-			return
-		}
-		h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
+		handleImmediateRoom(h, wsConn, r.Context(), userID, userInfo.ID, stake, room, conn)
 		return
 	}
+	if queued {
+		handleQueued(h, wsConn, conn, userID, userInfo.ID, stake, roomManager)
+	}
+}
 
-	if !queued {
+func handleImmediateRoom(h *Handler, conn Conn, ctx context.Context, userID uint, tgID int64, stake float64, room *game.Room, rawConn *websocket.Conn) {
+	if !room.CanJoin() {
+		_ = rawConn.WriteMessage(websocket.TextMessage, []byte(`{"error":"room is full"}`))
 		return
 	}
+	joinRoomAndPlay(h, conn, ctx, userID, tgID, stake, room, rawConn)
+}
 
-	// Очередь: AddToQueue, ждём Ready или Done
+func handleQueued(h *Handler, conn Conn, rawConn *websocket.Conn, userID uint, tgID int64, stake float64, roomManager RoomProvider) {
 	p := &game.QueuedPlayer{
 		UserID: userID,
-		TgID:   userInfo.ID,
+		TgID:   tgID,
 		Stake:  stake,
 		Ready:  make(chan *game.Room, 1),
 		Done:   make(chan struct{}),
@@ -162,48 +155,53 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 	roomManager.AddToQueue(p)
 
 	stopTicker := make(chan struct{})
-	go func() {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stopTicker:
-				return
-			case <-p.Done:
-				return
-			case <-ticker.C:
-				msg, errMarshal := json.Marshal(map[string]interface{}{"type": "queue", "position": 1})
-				if errMarshal != nil {
-					zap.L().Warn("ws queue status marshal failed", zap.Error(errMarshal))
-					return
-				}
-				if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-					roomManager.RemoveFromQueue(p.ID)
-					return
-				}
-			}
-		}
-	}()
+	go runQueueTicker(rawConn, roomManager, p, stopTicker)
 
 	select {
 	case room := <-p.Ready:
 		close(stopTicker)
-		if room == nil || !room.CanJoin() {
-			return
+		if room != nil && room.CanJoin() {
+			joinRoomAndPlay(h, conn, context.Background(), userID, tgID, stake, room, rawConn)
 		}
-		if err := h.wallet.PlaceBet(r.Context(), userID, stake); err != nil {
-			if err == payment.ErrInsufficientFunds {
-				_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
-				return
-			}
-			zap.L().Error("ws PlaceBet failed from queue", zap.Error(err))
-			return
-		}
-		h.HandleConnection(wsConn, userID, userInfo.ID, stake, room)
 	case <-p.Done:
 		close(stopTicker)
+	}
+}
+
+func runQueueTicker(conn *websocket.Conn, roomManager RoomProvider, p *game.QueuedPlayer, stopCh <-chan struct{}) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-p.Done:
+			return
+		case <-ticker.C:
+			msg, err := json.Marshal(map[string]interface{}{"type": "queue", "position": 1})
+			if err != nil {
+				zap.L().Warn("ws queue status marshal failed", zap.Error(err))
+				return
+			}
+			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				roomManager.RemoveFromQueue(p.ID)
+				return
+			}
+		}
+	}
+}
+
+func joinRoomAndPlay(h *Handler, conn Conn, ctx context.Context, userID uint, tgID int64, stake float64, room *game.Room, rawConn *websocket.Conn) {
+	if err := h.wallet.PlaceBet(ctx, userID, stake); err != nil {
+		if err == payment.ErrInsufficientFunds {
+			zap.L().Info("ws insufficient funds", zap.Uint("userID", userID), zap.Float64("stake", stake))
+			_ = rawConn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
+			return
+		}
+		zap.L().Error("ws PlaceBet failed", zap.Error(err))
 		return
 	}
+	h.HandleConnection(conn, userID, tgID, stake, room)
 }
 
 // HandleConnection обрабатывает уже открытое WebSocket соединение.
@@ -246,10 +244,10 @@ func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake flo
 	}()
 
 	// Reader: PlayerID = TgID (snake ID в игре), с rate limit
-	go h.runReader(conn, player.TgID, room, closeFn, &disconnectReason, newRateLimiter(wsRateLimitCount, wsRateLimitWindow))
+	go runReader(conn, player.TgID, room, closeFn, &disconnectReason, newRateLimiter(wsRateLimitCount, wsRateLimitWindow))
 
 	// Writer: читает из room.Broadcast (через broadcastCh) и отправляет в сокет
-	h.runWriter(conn, broadcastCh)
+	runWriter(conn, broadcastCh)
 }
 
 // Текстовое сообщение CASH_OUT — клиент запрашивает вывод накопленных монет и выход.
@@ -296,7 +294,7 @@ func (r *rateLimiter) allow() bool {
 }
 
 // runReader читает сообщения: текст CASH_OUT — закрытие; бинар — PlayerInput. Rate limit на спам.
-func (h *Handler) runReader(conn Conn, playerID uint64, room *game.Room, closeFn func(), reason *string, limiter *rateLimiter) {
+func runReader(conn Conn, playerID uint64, room *game.Room, closeFn func(), reason *string, limiter *rateLimiter) {
 	for {
 		messageType, data, err := conn.ReadMessage()
 		if err != nil {
@@ -342,7 +340,7 @@ func (h *Handler) runReader(conn Conn, playerID uint64, room *game.Room, closeFn
 }
 
 // runWriter читает бинарные данные из broadcastCh и отправляет в сокет.
-func (h *Handler) runWriter(conn Conn, broadcastCh <-chan []byte) {
+func runWriter(conn Conn, broadcastCh <-chan []byte) {
 	for data := range broadcastCh {
 		if err := conn.WriteMessage(websocketBinaryMessage, data); err != nil {
 			return
@@ -403,37 +401,6 @@ func (a *wsConnAdapter) SetPongHandler(h func(appData string) error) {
 
 func (a *wsConnAdapter) WriteControl(messageType int, data []byte, deadline time.Time) error {
 	return a.conn.WriteControl(messageType, data, deadline)
-}
-
-// checkOrigin — ALLOWED_ORIGINS (через запятую), * в dev, ngrok. Пусто = localhost + web.telegram.org.
-func checkOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		return true
-	}
-	allowed := os.Getenv("ALLOWED_ORIGINS")
-	if allowed == "*" || allowed == "all" {
-		return true // dev: разрешить все соединения
-	}
-	if strings.Contains(origin, ".ngrok-free.app") || strings.Contains(origin, ".ngrok-free.dev") {
-		return true // ngrok туннель
-	}
-	if allowed != "" {
-		for _, o := range strings.Split(allowed, ",") {
-			o = strings.TrimSpace(o)
-			if o != "" && (origin == o || strings.HasPrefix(origin, o)) {
-				return true
-			}
-		}
-		return false
-	}
-	// default: localhost + web.telegram.org + prod domain
-	return strings.HasPrefix(origin, "http://localhost") ||
-		strings.HasPrefix(origin, "https://localhost") ||
-		strings.HasPrefix(origin, "http://127.0.0.1") ||
-		strings.HasPrefix(origin, "https://127.0.0.1") ||
-		strings.HasPrefix(origin, "https://web.telegram.org") ||
-		strings.Contains(origin, "arrenasnake.net")
 }
 
 func parseStake(s string) (float64, error) {
