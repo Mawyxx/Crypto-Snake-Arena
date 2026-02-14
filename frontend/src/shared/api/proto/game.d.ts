@@ -132,6 +132,9 @@ export namespace game {
 
         /** Snake bodyLength */
         bodyLength?: (number|null);
+
+        /** Snake skinId */
+        skinId?: (number|null);
     }
 
     /** Represents a Snake. */
@@ -160,6 +163,9 @@ export namespace game {
 
         /** Snake bodyLength. */
         public bodyLength: number;
+
+        /** Snake skinId. */
+        public skinId: number;
 
         /**
          * Creates a new Snake instance using the specified properties.

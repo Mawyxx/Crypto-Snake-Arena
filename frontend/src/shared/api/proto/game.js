@@ -337,6 +337,7 @@ export const game = $root.game = (() => {
          * @property {number|null} [angle] Snake angle
          * @property {number|null} [score] Snake score
          * @property {number|null} [bodyLength] Snake bodyLength
+         * @property {number|null} [skinId] Snake skinId
          */
 
         /**
@@ -404,6 +405,14 @@ export const game = $root.game = (() => {
         Snake.prototype.bodyLength = 0;
 
         /**
+         * Snake skinId.
+         * @member {number} skinId
+         * @memberof game.Snake
+         * @instance
+         */
+        Snake.prototype.skinId = 0;
+
+        /**
          * Creates a new Snake instance using the specified properties.
          * @function create
          * @memberof game.Snake
@@ -440,6 +449,8 @@ export const game = $root.game = (() => {
                 writer.uint32(/* id 5, wireType 5 =*/45).float(message.score);
             if (message.bodyLength != null && Object.hasOwnProperty.call(message, "bodyLength"))
                 writer.uint32(/* id 6, wireType 0 =*/48).int32(message.bodyLength);
+            if (message.skinId != null && Object.hasOwnProperty.call(message, "skinId"))
+                writer.uint32(/* id 7, wireType 0 =*/56).int32(message.skinId);
             return writer;
         };
 
@@ -500,6 +511,10 @@ export const game = $root.game = (() => {
                     }
                 case 6: {
                         message.bodyLength = reader.int32();
+                        break;
+                    }
+                case 7: {
+                        message.skinId = reader.int32();
                         break;
                     }
                 default:
@@ -563,6 +578,9 @@ export const game = $root.game = (() => {
             if (message.bodyLength != null && message.hasOwnProperty("bodyLength"))
                 if (!$util.isInteger(message.bodyLength))
                     return "bodyLength: integer expected";
+            if (message.skinId != null && message.hasOwnProperty("skinId"))
+                if (!$util.isInteger(message.skinId))
+                    return "skinId: integer expected";
             return null;
         };
 
@@ -608,6 +626,8 @@ export const game = $root.game = (() => {
                 message.score = Number(object.score);
             if (object.bodyLength != null)
                 message.bodyLength = object.bodyLength | 0;
+            if (object.skinId != null)
+                message.skinId = object.skinId | 0;
             return message;
         };
 
@@ -636,6 +656,7 @@ export const game = $root.game = (() => {
                 object.angle = 0;
                 object.score = 0;
                 object.bodyLength = 0;
+                object.skinId = 0;
             }
             if (message.id != null && message.hasOwnProperty("id"))
                 if (typeof message.id === "number")
@@ -655,6 +676,8 @@ export const game = $root.game = (() => {
                 object.score = options.json && !isFinite(message.score) ? String(message.score) : message.score;
             if (message.bodyLength != null && message.hasOwnProperty("bodyLength"))
                 object.bodyLength = message.bodyLength;
+            if (message.skinId != null && message.hasOwnProperty("skinId"))
+                object.skinId = message.skinId;
             return object;
         };
 

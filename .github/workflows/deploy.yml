@@ -1,5 +1,7 @@
 # Автодеплой на Ubuntu сервер при push в main
-# Настрой: repository secrets → DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+# Настрой: Settings → Secrets and variables → Actions
+#   Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+#   Variables: VITE_TELEGRAM_BOT_USERNAME, VITE_WS_URL (опционально)
 
 name: Deploy
 
@@ -7,6 +9,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch: # Ручной запуск
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -37,13 +43,16 @@ jobs:
         run: |
           cd frontend
           npm ci
+          npm run proto:generate
           npm run build
         env:
           VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME || 'CryptoSnakeArena_Bot' }}
-          VITE_DEV_AUTO_CREDIT: 'true'
+          VITE_DEV_AUTO_CREDIT: ${{ vars.VITE_DEV_AUTO_CREDIT || 'false' }}
+          VITE_WS_URL: ${{ vars.VITE_WS_URL }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
 
       - name: Deploy to server
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}

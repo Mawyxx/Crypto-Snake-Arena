@@ -56,7 +56,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 В настройках репозитория: **Settings → Secrets and variables → Actions**
 
-Добавь секреты:
+**Secrets (обязательно):**
 
 | Секрет | Описание |
 |--------|----------|
@@ -64,6 +64,15 @@ sudo nginx -t && sudo systemctl reload nginx
 | `DEPLOY_USER` | SSH-пользователь (тот же, что в setup, например `deploy`) |
 | `DEPLOY_SSH_KEY` | Приватный SSH-ключ для доступа к серверу |
 | `ADD_BALANCE_SECRET` | Секрет для Add balance workflow (тот же, что ADD_BALANCE_SECRET в .env на сервере) |
+
+**Variables (опционально):**
+
+| Переменная | Описание | По умолчанию |
+|------------|----------|--------------|
+| `VITE_TELEGRAM_BOT_USERNAME` | Username бота | `CryptoSnakeArena_Bot` |
+| `VITE_WS_URL` | WebSocket URL (например `wss://arrenasnake.net/ws`) | берётся из `window.location` |
+| `VITE_API_URL` | API base URL | берётся из `VITE_WS_URL` или `window.location` |
+| `VITE_DEV_AUTO_CREDIT` | Dev-режим автокредита | `false` |
 
 **Создание SSH-ключа (если ещё нет):**
 

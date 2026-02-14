@@ -90,6 +90,7 @@ type Snake struct {
 	Angle         float32                `protobuf:"fixed32,4,opt,name=angle,proto3" json:"angle,omitempty"`
 	Score         float32                `protobuf:"fixed32,5,opt,name=score,proto3" json:"score,omitempty"`
 	BodyLength    int32                  `protobuf:"varint,6,opt,name=body_length,json=bodyLength,proto3" json:"body_length,omitempty"` // кол-во сегментов (head + tail). Нужно при body=[] для своей змеи
+	SkinId        int32                  `protobuf:"varint,7,opt,name=skin_id,json=skinId,proto3" json:"skin_id,omitempty"`             // индекс цвета/скина (0-8 для палитры Slither)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -162,6 +163,13 @@ func (x *Snake) GetScore() float32 {
 func (x *Snake) GetBodyLength() int32 {
 	if x != nil {
 		return x.BodyLength
+	}
+	return 0
+}
+
+func (x *Snake) GetSkinId() int32 {
+	if x != nil {
+		return x.SkinId
 	}
 	return 0
 }
@@ -340,7 +348,7 @@ const file_proto_game_proto_rawDesc = "" +
 	"\x04tick\x18\x01 \x01(\x04R\x04tick\x12#\n" +
 	"\x06snakes\x18\x02 \x03(\v2\v.game.SnakeR\x06snakes\x12 \n" +
 	"\x05coins\x18\x03 \x03(\v2\n" +
-	".game.CoinR\x05coins\"\xa6\x01\n" +
+	".game.CoinR\x05coins\"\xbf\x01\n" +
 	"\x05Snake\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1f\n" +
 	"\x04head\x18\x02 \x01(\v2\v.game.PointR\x04head\x12\x1f\n" +
@@ -348,7 +356,8 @@ const file_proto_game_proto_rawDesc = "" +
 	"\x05angle\x18\x04 \x01(\x02R\x05angle\x12\x14\n" +
 	"\x05score\x18\x05 \x01(\x02R\x05score\x12\x1f\n" +
 	"\vbody_length\x18\x06 \x01(\x05R\n" +
-	"bodyLength\"K\n" +
+	"bodyLength\x12\x17\n" +
+	"\askin_id\x18\a \x01(\x05R\x06skinId\"K\n" +
 	"\x04Coin\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\x03pos\x18\x02 \x01(\v2\v.game.PointR\x03pos\x12\x14\n" +

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"math"
+	"math/rand"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type Snake struct {
 	Tail       []float64 // [x1,y1, x2,y2, ...]
 	Boost      bool
 	Dead       bool // true после killSnake — претендент на награду снимается немедленно
+	SkinID     int32  // индекс цвета (0-8 для палитры Slither)
 
 	speed      float64 // units/sec
 	segmentLen float64
@@ -63,6 +65,7 @@ func NewSnakeAt(id uint64, headX, headY float64) *Snake {
 		CurrentAngle:  0,
 		Score:         0,
 		EntryFee:      0,
+		SkinID:        rand.Int31n(9), // 0-8 для палитры Slither
 		speed:         BaseSpeed,
 		segmentLen:    SegmentLen,
 		turnSpeed:     TurnSpeed,

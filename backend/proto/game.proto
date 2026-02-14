@@ -18,6 +18,7 @@ message Snake {
     float angle = 4;
     float score = 5;
     int32 body_length = 6;  // кол-во сегментов (head + tail). Нужно при body=[] для своей змеи
+    int32 skin_id = 7;      // индекс цвета/скина (0-8 для палитры Slither)
 }
 
 message Coin {

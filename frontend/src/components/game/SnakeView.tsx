@@ -1,23 +1,24 @@
 import React from 'react'
 import { PixiComponent } from '@pixi/react'
-import { Container, Graphics as PixiGraphics, BLEND_MODES } from 'pixi.js'
+import { Container, Graphics as PixiGraphics, BLEND_MODES, LINE_CAP, LINE_JOIN } from 'pixi.js'
 import type { InterpolatedSnake } from '@/hooks/useGameEngine'
 
-// slither.io-clone palette
+// slither.io palette (STYLE_REFERENCE.md)
 const SNAKE_COLORS = [
   0xc080ff, 0x9099ff, 0x80d0d0, 0x80ff80, 0xeeee70, 0xffa060, 0xff9090, 0xff4040, 0xe030e0,
 ]
 
-type SnakeId = number | { toNumber: () => number } | string | null | undefined
-
-function getSnakeColor(snakeId: SnakeId): number {
-  if (snakeId == null) return 0xc080ff
-  const id = typeof snakeId === 'object' && snakeId !== null && 'toNumber' in snakeId
-    ? (snakeId as { toNumber: () => number }).toNumber()
-    : typeof snakeId === 'string'
-      ? parseInt(snakeId, 10) || 0
-      : Number(snakeId)
+function getSnakeColor(skinIdOrSnakeId: number | null | undefined): number {
+  if (skinIdOrSnakeId == null) return 0xc080ff
+  const id = Number(skinIdOrSnakeId)
   return SNAKE_COLORS[Math.abs(id) % SNAKE_COLORS.length]
+}
+
+function lightenColor(hex: number, factor = 0.3): number {
+  const r = Math.min(255, ((hex >> 16) & 0xff) + 255 * factor)
+  const g = Math.min(255, ((hex >> 8) & 0xff) + 255 * factor)
+  const b = Math.min(255, (hex & 0xff) + 255 * factor)
+  return (r << 16) | (g << 8) | b
 }
 
 interface SnakeViewProps {
@@ -25,35 +26,46 @@ interface SnakeViewProps {
   isLocalPlayer: boolean
 }
 
-// slither.io-clone: preferredDistance = 17*scale = 10.2, SegmentLen 42 → 4 круга на сегмент
-const CIRCLES_PER_SEGMENT = 4
-
-// slither.io-clone: scale 0.6, sec.width*0.5 → radius ~19.2. Мир 2400, наш 2000 → radius 16
-const CLONE_CIRCLE_RADIUS = 19.2 * (2000 / 2400) // ≈16
-
-function expandBodyForRender(
+/** Build path from head to tail for stroke drawing. body[0] is head from server. */
+function buildBodyPath(
+  head: { x?: number | null; y?: number | null },
   body: { x?: number | null; y?: number | null }[]
 ): { x: number; y: number }[] {
-  if (body.length < 2) return body.map((p) => ({ x: p.x ?? 0, y: p.y ?? 0 }))
-  const result: { x: number; y: number }[] = []
-  for (let i = 0; i < body.length - 1; i++) {
-    const p0 = { x: body[i].x ?? 0, y: body[i].y ?? 0 }
-    const p1 = { x: body[i + 1].x ?? 0, y: body[i + 1].y ?? 0 }
-    result.push(p0)
-    for (let k = 1; k < CIRCLES_PER_SEGMENT; k++) {
-      const t = k / CIRCLES_PER_SEGMENT
-      result.push({
-        x: p0.x + (p1.x - p0.x) * t,
-        y: p0.y + (p1.y - p0.y) * t,
-      })
-    }
+  const hx = head?.x ?? 0
+  const hy = head?.y ?? 0
+  if (!body || body.length === 0) return [{ x: hx, y: hy }]
+  const path: { x: number; y: number }[] = [{ x: hx, y: hy }]
+  for (let i = 1; i < body.length; i++) {
+    const p = body[i]
+    path.push({ x: p?.x ?? 0, y: p?.y ?? 0 })
   }
-  result.push({ x: body[body.length - 1].x ?? 0, y: body[body.length - 1].y ?? 0 })
-  return result
+  return path
 }
 
-/** slither.io-clone: плоские круги circle.png, shadow под каждым, глаза */
-function drawSnakeAsCircles(
+/** Draw path on graphics with lineStyle. PixiJS strokes when lineTo is called with lineStyle set. */
+function drawPath(
+  g: PixiGraphics,
+  path: { x: number; y: number }[],
+  width: number,
+  color: number,
+  alpha: number
+) {
+  if (path.length < 2) return
+  g.lineStyle({
+    width,
+    color,
+    alpha,
+    cap: LINE_CAP.ROUND,
+    join: LINE_JOIN.ROUND,
+  })
+  g.moveTo(path[0].x, path[0].y)
+  for (let i = 1; i < path.length; i++) {
+    g.lineTo(path[i].x, path[i].y)
+  }
+}
+
+/** Slither-style: stroke path instead of circles. Layers: shadow, glow, main, highlight, eyes. */
+function drawSnake(
   g: PixiGraphics,
   glowG: PixiGraphics,
   shadowG: PixiGraphics,
@@ -63,74 +75,43 @@ function drawSnakeAsCircles(
   g.clear()
   glowG.clear()
   shadowG.clear()
-  const rawBody = snake.body ?? []
   const head = snake.head
   if (!head) return
 
-  const body = expandBodyForRender(rawBody)
-  const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
+  const rawBody = snake.body ?? []
+  const path = buildBodyPath(head, rawBody)
+  const color = isLocalPlayer ? 0xc080ff : getSnakeColor(Number(snake.skinId ?? snake.id ?? 0))
   const boost = snake.boost ?? false
 
-  // clone: scale 0.6, radius ~16. Голова и тело — одинаковый размер
-  const segRadius = CLONE_CIRCLE_RADIUS
-  const headR = segRadius
+  const bodyLen = path.length
+  const scale = Math.min(6, 1 + (bodyLen - 2) / 106)
+  const lsz = 29 * scale
 
   const hx = head.x ?? 0
   const hy = head.y ?? 0
   const angle = snake.angle ?? 0
 
-  // Shadow: clone darkTint 0xaaaaaa, под каждым кругом
-  const shadowColor = 0xaaaaaa
-  const shadowRadius = segRadius * 1.1
-  body.forEach((segment) => {
-    const sx = segment?.x ?? 0
-    const sy = segment?.y ?? 0
-    shadowG.beginFill(shadowColor, 0.5)
-    shadowG.drawCircle(sx, sy + 2, shadowRadius)
-    shadowG.endFill()
-  })
-  shadowG.beginFill(shadowColor, 0.5)
-  shadowG.drawCircle(hx, hy + 2, headR * 1.1)
-  shadowG.endFill()
+  if (path.length >= 2) {
+    // Layer 1: Shadow
+    drawPath(shadowG, path, lsz + 10, 0x000000, 0.3)
 
-  // Body: clone — плоские круги, без outline и объёма
-  body.forEach((segment) => {
-    const sx = segment?.x ?? 0
-    const sy = segment?.y ?? 0
-    g.beginFill(color)
-    g.drawCircle(sx, sy, segRadius)
-    g.endFill()
-  })
-
-  // Head
-  g.beginFill(color)
-  g.drawCircle(hx, hy, headR)
-  g.endFill()
-
-  // Boost glow (clone: shadow lightUp при space)
-  if (boost) {
-    const layers = [
-      { r: 4, a: 0.18 },
-      { r: 8, a: 0.1 },
-      { r: 12, a: 0.05 },
-    ]
-    body.forEach((segment) => {
-      const sx = segment?.x ?? 0
-      const sy = segment?.y ?? 0
-      for (const layer of layers) {
-        glowG.beginFill(color, layer.a)
-        glowG.drawCircle(sx, sy, segRadius + layer.r)
-        glowG.endFill()
-      }
-    })
-    for (const layer of layers) {
-      glowG.beginFill(color, layer.a)
-      glowG.drawCircle(hx, hy, headR + layer.r)
-      glowG.endFill()
+    // Layer 2: Glow (BLEND_MODES.ADD) — constant neon
+    drawPath(glowG, path, lsz + 20, color, 0.1)
+    if (boost) {
+      drawPath(glowG, path, lsz + 30, color, 0.2)
     }
+
+    // Layer 3: Main — outline then fill
+    drawPath(g, path, lsz + 5, 0x000000, 0.4)
+    drawPath(g, path, lsz, color, 0.8)
+
+    // Layer 4: Highlight (center line)
+    drawPath(g, path, lsz * 0.5, lightenColor(color), 0.6)
+    g.lineStyle(0) // flush last path
   }
 
-  // Eyes: clone eyePair — offset head.width*0.25, head.width*0.125
+  // Eyes — draw on top of head (use head radius from lsz)
+  const headR = lsz * 0.5
   const eyeOffsetX = headR * 0.5
   const eyeOffsetY = headR * 0.25
   const eyeR = headR * 0.2
@@ -140,6 +121,7 @@ function drawSnakeAsCircles(
   const rightEx = hx + eyeOffsetX
   const rightEy = hy - eyeOffsetY
 
+  g.lineStyle(0)
   g.beginFill(0xffffff)
   g.drawCircle(leftEx, leftEy, eyeR)
   g.endFill()
@@ -153,6 +135,14 @@ function drawSnakeAsCircles(
   g.beginFill(0x000000)
   g.drawCircle(rightEx + Math.cos(angle) * 2, rightEy + Math.sin(angle) * 2, pupilR)
   g.endFill()
+
+  // Fallback: single point (head only) — draw a circle
+  if (path.length < 2) {
+    g.lineStyle(0)
+    g.beginFill(color)
+    g.drawCircle(hx, hy, headR)
+    g.endFill()
+  }
 }
 
 const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer', {
@@ -188,7 +178,7 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
       __glowGraphics: PixiGraphics
       __shadowGraphics: PixiGraphics
     }
-    drawSnakeAsCircles(
+    drawSnake(
       ref.__graphics,
       ref.__glowGraphics,
       ref.__shadowGraphics,
@@ -203,6 +193,7 @@ function areSnakePropsEqual(prev: SnakeViewProps, next: SnakeViewProps): boolean
   const prevSnake = prev.snake
   const nextSnake = next.snake
   if (Number(prevSnake?.id) !== Number(nextSnake?.id)) return false
+  if (Number(prevSnake?.skinId ?? -1) !== Number(nextSnake?.skinId ?? -1)) return false
   if ((prevSnake?.boost ?? false) !== (nextSnake?.boost ?? false)) return false
   const prevHead = prevSnake?.head
   const nextHead = nextSnake?.head

@@ -22,6 +22,7 @@ func (r *Room) broadcastSnapshot() {
 			Angle:      float32(s.CurrentAngle),
 			Score:      float32(s.Score),
 			BodyLength: int32(len(body)),
+			SkinId:     s.SkinID,
 		})
 	}
 	coins := make([]*gamepb.Coin, 0, len(r.Coins))
@@ -70,6 +71,7 @@ func (r *Room) buildSnapshotForSubscriber(snakes []*gamepb.Snake, coins []*gamep
 			Angle:      s.Angle,
 			Score:      s.Score,
 			BodyLength: s.BodyLength,
+			SkinId:     s.SkinId,
 		}
 		if sub.snakeID != 0 && s.Id == sub.snakeID && !sub.firstSnapshot {
 			snake.Body = nil
