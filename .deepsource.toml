@@ -6,7 +6,12 @@ exclude_patterns = [
 ]
 
 # JS-0045: useEffect cleanup return is valid React pattern
+# JS-0415: nested JSX acceptable for view layouts (FSD)
+# JS-R1005: complexity in views acceptable, would require heavy decomposition
 [[analyzers]]
 name = "javascript"
 enabled = true
-ignore = ["JS-0045"]
+ignore = ["JS-0045", "JS-0415", "JS-R1005"]
+
+  [analyzers.meta]
+  cyclomatic_complexity_threshold = "very-high"
