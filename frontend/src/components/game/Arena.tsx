@@ -10,8 +10,8 @@ import { CoinView } from './CoinView'
 
 const WORLD_SIZE = 2000
 const ARENA_RADIUS = 1000 // круговая арена (Slither.io scale для SegmentLen 42)
-// Оригинал: змея ~1/4 экрана, не крошечная. 5 = сильно ближе
-const CAMERA_ZOOM_FACTOR = 5.0
+// slither.io-clone: 800x500 viewport, world 3x. Видно 800x500. factor 4 = zoom in как в клоне
+const CAMERA_ZOOM_FACTOR = 4.0
 
 export interface GameResult {
   status: 'win' | 'lose'
@@ -116,8 +116,8 @@ export const Arena = ({
     return () => cancelAnimationFrame(rafId)
   }, [getLocalSnakeScore, onScoreUpdate])
 
-  // Slither.io body background: #161c22
-  const bgColor = 0x161c22
+  // slither.io-clone: stage.backgroundColor '#444'
+  const bgColor = 0x444444
 
   return (
     <div
