@@ -22,7 +22,14 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
     try {
       const data = await apiGet<ProfileResponse>('/api/user/profile', initData)
       const balanceVal = typeof data.balance === 'number' ? data.balance : Number(data.balance) || 0
-      const tgId = typeof data.tg_id === 'number' ? data.tg_id : Number(data.tg_id) || 0
+      const rawTgId = data.tg_id
+      const tgId =
+        typeof rawTgId === 'number' && Number.isFinite(rawTgId)
+          ? rawTgId
+          : (() => {
+              const n = Number(rawTgId)
+              return Number.isFinite(n) ? n : 0
+            })()
       setBalance(balanceVal)
       const tgUser = getTelegramUserFromInitData()
       const hasNameFromClient = tgUser && (tgUser.first_name || tgUser.last_name)
@@ -57,6 +64,12 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {
         setBalance(0)
+        setProfile('', 0)
+        setReferralStats(0, 0)
+        setProfileStats(0, 0, 0)
+        setTotalProfit(0)
+        setRank(0)
+        setAdmin(false)
         return
       }
       console.warn('[useBalance]', e)

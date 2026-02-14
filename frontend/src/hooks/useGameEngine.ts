@@ -220,13 +220,20 @@ export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
     socket.current.send(data)
   }, [])
 
-  const closeSocket = useCallback(() => {
+  const closeSocket = useCallback((sendCashOut = false) => {
     intentionalClose.current = true
     if (reconnectTimeout.current) {
       clearTimeout(reconnectTimeout.current)
       reconnectTimeout.current = null
     }
     if (socket.current) {
+      if (sendCashOut && socket.current.readyState === WebSocket.OPEN) {
+        try {
+          socket.current.send('CASH_OUT')
+        } catch {
+          /* ignore */
+        }
+      }
       socket.current.close()
       socket.current = null
     }

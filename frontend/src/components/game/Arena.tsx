@@ -87,7 +87,7 @@ export const Arena = ({
     if (!cashOutRequested || !onGameEnd || cashOutHandled.current) return
     cashOutHandled.current = true
     const score = getLocalSnakeScore()
-    closeSocket()
+    closeSocket(true) // send CASH_OUT to backend before close
     onGameEnd({ status: 'win', score, reward: score })
   }, [cashOutRequested, onGameEnd, getLocalSnakeScore, closeSocket])
 

@@ -31,18 +31,17 @@ export function AppContent() {
 
   useEffect(() => {
     const tgUser = getTelegramUserFromInitData()
-    if (tgUser) {
-      let cached: string | null = null
-      try {
-        if (typeof localStorage !== 'undefined') {
-          cached = localStorage.getItem(`crypto_snake_dn_${tgUser.id}`)
-        }
-      } catch {
-        /* localStorage disabled */
+    if (!tgUser || !Number.isFinite(tgUser.id)) return
+    let cached: string | null = null
+    try {
+      if (typeof localStorage !== 'undefined') {
+        cached = localStorage.getItem(`crypto_snake_dn_${tgUser.id}`)
       }
-      const name = cached ?? getDisplayNameFromTelegramUser(tgUser)
-      setProfile(name, tgUser.id)
+    } catch {
+      /* localStorage disabled */
     }
+    const name = cached ?? getDisplayNameFromTelegramUser(tgUser)
+    setProfile(name || '', tgUser.id)
   }, [setProfile])
 
   if (prevScreenRef.current !== screen) {

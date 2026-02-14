@@ -420,12 +420,13 @@ func checkOrigin(r *http.Request) bool {
 		}
 		return false
 	}
-	// default: localhost + web.telegram.org
+	// default: localhost + web.telegram.org + prod domain
 	return strings.HasPrefix(origin, "http://localhost") ||
 		strings.HasPrefix(origin, "https://localhost") ||
 		strings.HasPrefix(origin, "http://127.0.0.1") ||
 		strings.HasPrefix(origin, "https://127.0.0.1") ||
-		strings.HasPrefix(origin, "https://web.telegram.org")
+		strings.HasPrefix(origin, "https://web.telegram.org") ||
+		strings.Contains(origin, "arrenasnake.net")
 }
 
 func parseStake(s string) (float64, error) {
