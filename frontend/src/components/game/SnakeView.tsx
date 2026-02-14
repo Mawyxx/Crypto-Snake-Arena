@@ -1,32 +1,7 @@
 import React from 'react'
 import { PixiComponent } from '@pixi/react'
-import {
-  Container,
-  Graphics as PixiGraphics,
-  SimpleRope,
-  Texture,
-  Point,
-} from 'pixi.js'
+import { Container, Graphics as PixiGraphics } from 'pixi.js'
 import type { InterpolatedSnake } from '@/hooks/useGameEngine'
-
-// Rope texture: vertical gradient for smooth body (height = rope thickness)
-function createRopeTexture(): Texture {
-  const canvas = document.createElement('canvas')
-  canvas.width = 8
-  canvas.height = 24
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, 24)
-    gradient.addColorStop(0, 'rgba(255,255,255,0.95)')
-    gradient.addColorStop(0.5, 'rgba(255,255,255,0.85)')
-    gradient.addColorStop(1, 'rgba(255,255,255,0.7)')
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, 8, 24)
-  }
-  return Texture.from(canvas)
-}
-
-const ROPE_TEXTURE = createRopeTexture()
 
 // Slither.io palette (first 9 colors)
 const SNAKE_COLORS = [
@@ -50,40 +25,51 @@ interface SnakeViewProps {
   isLocalPlayer: boolean
 }
 
-interface SnakeContainerData {
-  rope: SimpleRope
-  graphics: PixiGraphics
-  points: Point[]
-}
-
-function drawHeadAndEyes(
+/** Slither.io style: змейка полностью из кружков — body + head + глаза */
+function drawSnakeAsCircles(
   g: PixiGraphics,
   snake: InterpolatedSnake,
-  isLocalPlayer: boolean,
-  skipClear = false
+  isLocalPlayer: boolean
 ) {
-  if (!skipClear) g.clear()
-  if (!snake.head) return
+  g.clear()
+  const body = snake.body ?? []
+  const head = snake.head
+  if (!head) return
 
   const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
-  const headColor = isLocalPlayer ? 0xc080ff : color
-  const hx = snake.head.x ?? 0
-  const hy = snake.head.y ?? 0
+  const segRadius = isLocalPlayer ? 5.5 : 5
+  const headR = 9
+  const hx = head.x ?? 0
+  const hy = head.y ?? 0
   const angle = snake.angle ?? 0
-  const headR = 8
 
-  // Head outline
-  g.beginFill(0xffffff, isLocalPlayer ? 0.9 : 0.5)
+  // Body: хвост → голова, каждый сегмент — круг (как в Slither.io)
+  body.forEach((segment, index) => {
+    const sx = segment?.x ?? 0
+    const sy = segment?.y ?? 0
+    const distFromHead = index
+    const radius = segRadius * (distFromHead < 4 ? 1 + (4 - distFromHead) * 0.08 : 1)
+
+    g.beginFill(0xffffff, isLocalPlayer ? 0.4 : 0.25)
+    g.drawCircle(sx, sy, radius + 1.2)
+    g.endFill()
+    g.beginFill(color)
+    g.drawCircle(sx, sy, radius)
+    g.endFill()
+  })
+
+  // Голова — самый большой круг
+  g.beginFill(0xffffff, isLocalPlayer ? 0.5 : 0.3)
   g.drawCircle(hx, hy, headR + 1.5)
   g.endFill()
-  g.beginFill(headColor)
+  g.beginFill(color)
   g.drawCircle(hx, hy, headR)
   g.endFill()
 
-  // Eyes
-  const eyeDist = 5
-  const eyeR = 2.5
-  const pupilR = 1.2
+  // Глаза только на голове
+  const eyeDist = 5.5
+  const eyeR = 2.8
+  const pupilR = 1.3
   const leftEx = hx + Math.cos(angle - 0.45) * eyeDist
   const leftEy = hy + Math.sin(angle - 0.45) * eyeDist
   const rightEx = hx + Math.cos(angle + 0.45) * eyeDist
@@ -96,7 +82,7 @@ function drawHeadAndEyes(
   g.drawCircle(leftEx + Math.cos(angle) * 0.5, leftEy + Math.sin(angle) * 0.5, pupilR)
   g.endFill()
   g.beginFill(0xffffff, 0.9)
-  g.drawCircle(leftEx - 0.6, leftEy - 0.6, 0.4)
+  g.drawCircle(leftEx - 0.7, leftEy - 0.7, 0.5)
   g.endFill()
 
   g.beginFill(0xffffff)
@@ -106,93 +92,21 @@ function drawHeadAndEyes(
   g.drawCircle(rightEx + Math.cos(angle) * 0.5, rightEy + Math.sin(angle) * 0.5, pupilR)
   g.endFill()
   g.beginFill(0xffffff, 0.9)
-  g.drawCircle(rightEx - 0.6, rightEy - 0.6, 0.4)
+  g.drawCircle(rightEx - 0.7, rightEy - 0.7, 0.5)
   g.endFill()
-}
-
-/** Fallback: draw body as circles + head when body.length < 2 */
-function drawBodyAndHeadFallback(
-  g: PixiGraphics,
-  snake: InterpolatedSnake,
-  isLocalPlayer: boolean
-) {
-  g.clear()
-  const body = snake.body ?? []
-  const color = isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
-  const segRadius = isLocalPlayer ? 5 : 4.5
-
-  g.lineStyle(0)
-  body.forEach((segment, index) => {
-    const segmentX = segment?.x ?? 0
-    const segmentY = segment?.y ?? 0
-    const swell = index < 4 ? 1 + (4 - index) * 0.08 : 1
-    const radius = segRadius * swell
-    g.beginFill(color)
-    g.drawCircle(segmentX, segmentY, radius)
-    g.endFill()
-  })
-  drawHeadAndEyes(g, snake, isLocalPlayer, true)
 }
 
 const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer', {
   create: () => {
     const container = new Container()
-    const points = [new Point(0, 0), new Point(0, 0)]
-    const rope = new SimpleRope(ROPE_TEXTURE, points, 0.5)
-    rope.visible = false
     const graphics = new PixiGraphics()
-    container.addChild(rope)
     container.addChild(graphics)
-    ;(container as unknown as { __snakeData: SnakeContainerData }).__snakeData = {
-      rope,
-      graphics,
-      points,
-    }
+    ;(container as unknown as { __graphics: PixiGraphics }).__graphics = graphics
     return container
   },
   applyProps: (instance, _oldProps, newProps) => {
-    const data = (instance as unknown as { __snakeData: SnakeContainerData }).__snakeData
-    const { rope, graphics } = data
-    const snake = newProps.snake
-    const body = snake.body ?? []
-    const head = snake.head
-
-    if (!head) return
-
-    const color = newProps.isLocalPlayer ? 0xc080ff : getSnakeColor(snake.id)
-    rope.tint = color
-
-    if (body.length >= 2) {
-      // SimpleRope: points = [head, ...body]
-      const neededPoints = 1 + body.length
-      if (data.points.length !== neededPoints) {
-        instance.removeChild(rope)
-        rope.destroy()
-        const newPoints: Point[] = []
-        newPoints.push(new Point(head.x ?? 0, head.y ?? 0))
-        for (const segment of body) {
-          newPoints.push(new Point(segment?.x ?? 0, segment?.y ?? 0))
-        }
-        data.points = newPoints
-        const newRope = new SimpleRope(ROPE_TEXTURE, newPoints, 0.5)
-        newRope.tint = color
-        newRope.visible = true
-        data.rope = newRope
-        instance.addChildAt(newRope, 0)
-      } else {
-        data.points[0].x = head.x ?? 0
-        data.points[0].y = head.y ?? 0
-        body.forEach((segment, index) => {
-          data.points[index + 1].x = segment?.x ?? 0
-          data.points[index + 1].y = segment?.y ?? 0
-        })
-        rope.visible = true
-      }
-      drawHeadAndEyes(graphics, snake, newProps.isLocalPlayer)
-    } else {
-      rope.visible = false
-      drawBodyAndHeadFallback(graphics, snake, newProps.isLocalPlayer)
-    }
+    const graphics = (instance as unknown as { __graphics: PixiGraphics }).__graphics
+    drawSnakeAsCircles(graphics, newProps.snake, newProps.isLocalPlayer)
   },
 })
 

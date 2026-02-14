@@ -3,9 +3,9 @@ import { Graphics } from '@pixi/react'
 import type { Graphics as PixiGraphics } from 'pixi.js'
 import type { game } from '@/shared/api/proto/game'
 
-// Точная палитра slither.io (первые 9 цветов из per_color_imgs)
+// Slither.io: разноцветные светящиеся орбы (как на скрине)
 const ORB_COLORS = [
-  0xc080ff, 0x9099ff, 0x80d0d0, 0x80ff80, 0xeeee70, 0xffa060, 0xff9090, 0xff4040, 0xe030e0,
+  0xff4040, 0xff9060, 0xeeee70, 0x80ff80, 0x80d0ff, 0xc080ff, 0xff80c0, 0xffffff,
 ]
 
 interface CoinViewProps {
@@ -45,19 +45,19 @@ const CoinViewInner = ({ coin }: CoinViewProps) => {
       const radius = 4 + Math.min(value * 0.2, 2)
       const color = getOrbColor(coin.id ?? '')
 
-      // Slither.io: многослойное свечение как в оригинале
-      g.beginFill(color, 0.15)
-      g.drawCircle(x, y, radius + 8)
+      // Slither.io: светящиеся орбы с мягким ореолом
+      g.beginFill(color, 0.12)
+      g.drawCircle(x, y, radius + 10)
       g.endFill()
-      g.beginFill(color, 0.4)
-      g.drawCircle(x, y, radius + 4)
+      g.beginFill(color, 0.35)
+      g.drawCircle(x, y, radius + 5)
       g.endFill()
-      g.beginFill(color, 0.9)
+      g.beginFill(color, 0.95)
       g.drawCircle(x, y, radius)
       g.endFill()
-      // Блик сверху-слева
-      g.beginFill(0xffffff, 0.85)
-      g.drawCircle(x - radius * 0.25, y - radius * 0.25, radius * 0.35)
+      // Блик для объёма
+      g.beginFill(0xffffff, 0.7)
+      g.drawCircle(x - radius * 0.3, y - radius * 0.3, radius * 0.4)
       g.endFill()
     },
     [coin]

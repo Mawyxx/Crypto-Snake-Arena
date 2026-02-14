@@ -299,16 +299,48 @@ interface GameContentProps {
   viewportScale: number
 }
 
-// Фон арены: Slither.io-style #161c22 (без внешней текстуры — надёжный fallback)
+// Фон арены: тёмная сетка шестиугольников как в Slither.io
 const BG_PADDING = 500
 const BG_SIZE = WORLD_SIZE + BG_PADDING * 2
+const HEX_SIZE = 42
+const HEX_COLOR = 0x161c22
+const HEX_BORDER = 0x1a2332
 
 function ArenaBackground() {
   const draw = React.useCallback((g: import('pixi.js').Graphics) => {
     g.clear()
-    g.beginFill(0x161c22, 1)
+    g.beginFill(0x0f1419, 1)
     g.drawRect(-BG_PADDING, -BG_PADDING, BG_SIZE, BG_SIZE)
     g.endFill()
+
+    // Шестиугольная сетка (flat-top)
+    const h = HEX_SIZE * Math.sqrt(3)
+    const w = HEX_SIZE * 2
+    const startX = -BG_PADDING - w
+    const startY = -BG_PADDING - h
+    const cols = Math.ceil(BG_SIZE / (w * 0.75)) + 2
+    const rows = Math.ceil(BG_SIZE / h) + 2
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = startX + col * w * 0.75
+        const y = startY + row * h + (col % 2) * (h / 2)
+
+        const cx = x + w / 2
+        const cy = y + h / 2
+        const r = HEX_SIZE * 0.92
+        const points: number[] = []
+        for (let i = 0; i < 6; i++) {
+          const angle = Math.PI / 2 + (Math.PI / 3) * i
+          points.push(cx + r * Math.cos(angle), cy + r * Math.sin(angle))
+        }
+
+        g.lineStyle(1, HEX_BORDER, 0.6)
+        g.beginFill(HEX_COLOR, 0.95)
+        g.drawPolygon(points)
+        g.endFill()
+      }
+    }
   }, [])
   return <Graphics draw={draw} />
 }
