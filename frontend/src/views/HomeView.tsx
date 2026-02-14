@@ -84,16 +84,9 @@ export const HomeView = React.memo(function HomeView() {
 
   const handleAddFunds = async () => {
     impact('light')
-    const { DEV_AUTO_CREDIT } = await import('@/config/dev')
     if (!initData?.trim()) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
       if (tg?.showAlert) tg.showAlert('Нет initData')
-      setScreen('profile')
-      return
-    }
-    if (!DEV_AUTO_CREDIT) {
-      const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-      if (tg?.showAlert) tg.showAlert(t('common.deposit'))
       setScreen('profile')
       return
     }
@@ -106,12 +99,15 @@ export const HomeView = React.memo(function HomeView() {
       if (tg?.showAlert) tg.showAlert('+500 USDT')
     } catch (e) {
       const tg = (window as { Telegram?: { WebApp?: { showAlert?: (m: string) => void } } }).Telegram?.WebApp
-      const status = e && typeof e === 'object' && 'status' in e ? (e as { status: number }).status : 0
-      const msg = status === 404
-        ? 'DEV_AUTO_CREDIT=true в .env на сервере + systemctl restart crypto-snake-arena'
-        : status === 401
-          ? 'Ошибка авторизации'
-          : t('common.deposit')
+      const status = e && typeof e === 'object' && 'status' in e ? (e as { status: number }).status : null
+      const msg =
+        status === 404
+          ? 'Сервер: DEV_AUTO_CREDIT=true в .env + restart'
+          : status === 401
+            ? 'Ошибка авторизации'
+            : status != null
+              ? `Ошибка ${status}`
+              : `Сеть? ${e instanceof Error ? e.message : String(e)}`
       if (tg?.showAlert) tg.showAlert(msg)
     }
     setScreen('profile')
