@@ -10,6 +10,8 @@ import { CoinView } from './CoinView'
 
 const WORLD_SIZE = 2000
 const ARENA_RADIUS = 1000 // круговая арена (Slither.io scale для SegmentLen 42)
+// slither.io-clone: world 3x viewport, камера далеко. 0.5 = видно в 2x больше арены
+const ZOOM_OUT_FACTOR = 0.5
 
 export interface GameResult {
   status: 'win' | 'lose'
@@ -250,7 +252,7 @@ function GameLoop({
       : 0
     const slitherZoom = 0.64285 + 0.514285714 / Math.max(1, (bodyLen + 16) / 36)
     const baseScale = Math.min(containerWidth / WORLD_SIZE, containerHeight / WORLD_SIZE)
-    const scale = baseScale * slitherZoom
+    const scale = baseScale * slitherZoom * ZOOM_OUT_FACTOR
     const targetX = containerWidth / 2 - centerX * scale
     const targetY = containerHeight / 2 - centerY * scale
     targetViewportRef.current = { scale, x: targetX, y: targetY }
