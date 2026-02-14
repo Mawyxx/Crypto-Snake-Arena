@@ -10,9 +10,8 @@ import { CoinView } from './CoinView'
 
 const WORLD_SIZE = 2000
 const ARENA_RADIUS = 1000 // круговая арена (Slither.io scale для SegmentLen 42)
-// slither.io-clone: world 3x viewport, видно 800x500. "мега далеко" = видно много мира.
-// <1 = zoom out, >1 = zoom in. 0.5 = видно в 2x больше.
-const CAMERA_ZOOM_FACTOR = 0.5
+// Не показывать больше мира: scale >= baseScale → factor >= 1
+const CAMERA_ZOOM_FACTOR = 1.0
 
 export interface GameResult {
   status: 'win' | 'lose'
