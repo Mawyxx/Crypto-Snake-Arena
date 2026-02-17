@@ -176,6 +176,11 @@ body::-webkit-scrollbar {
   background: var(--bg-main);
 }
 
+[data-telegram='1'] .app {
+  padding-top: var(--tg-safe-area-inset-top, 20px);
+  box-sizing: border-box;
+}
+
 @media (min-width: 421px) {
   .app {
     min-height: 100dvh;

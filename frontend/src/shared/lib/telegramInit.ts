@@ -52,6 +52,8 @@ declare global {
         requestFullscreen?: () => void
         isVersionAtLeast?: (version: string) => boolean
         disableVerticalSwipes?: () => void
+        contentSafeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number }
+        safeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number }
       }
     }
   }
@@ -65,8 +67,12 @@ export async function initTelegram(): Promise<void> {
     document.documentElement.setAttribute('data-telegram', '1')
     document.body.setAttribute('data-telegram', '1')
     tg.ready?.()
-    tg.setHeaderColor?.('bg_color')
+    tg.expand?.()
+    tg.setHeaderColor?.(designTokens.bgMain)
     tg.setBackgroundColor?.(designTokens.bgMainAlt)
+    const inset = tg.contentSafeAreaInset ?? tg.safeAreaInset
+    const top = inset?.top ?? 0
+    document.documentElement.style.setProperty('--tg-safe-area-inset-top', `${top}px`)
     disableVerticalSwipesForScroll()
     if (typeof window !== 'undefined') {
       window.addEventListener('load', ensureDocumentIsScrollable)
