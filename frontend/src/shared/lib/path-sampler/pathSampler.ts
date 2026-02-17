@@ -101,3 +101,38 @@ export function resamplePathDense(
   }
   return result.length > 0 ? result : [path[0]]
 }
+
+/**
+ * Catmull-Rom spline for smooth curves through sparse points.
+ * path.length < 4 falls back to resamplePathDense.
+ */
+export function samplePathCatmullRom(
+  path: Point[],
+  numSamples: number
+): Point[] {
+  if (path.length < 4) {
+    return resamplePathDense(path, 8, Math.max(numSamples, 30))
+  }
+
+  const result: Point[] = []
+  const n = path.length - 1
+
+  for (let k = 0; k < numSamples; k++) {
+    const t = numSamples > 1 ? (k / (numSamples - 1)) * n : 0
+    const seg = Math.min(Math.floor(t), n - 1)
+    const localT = t - seg
+
+    const p0 = path[Math.max(0, seg - 1)]
+    const p1 = path[seg]
+    const p2 = path[seg + 1]
+    const p3 = path[Math.min(seg + 2, path.length - 1)]
+
+    const t2 = localT * localT
+    const t3 = t2 * localT
+    result.push({
+      x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * localT + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+      y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * localT + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3),
+    })
+  }
+  return result
+}

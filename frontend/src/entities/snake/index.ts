@@ -16,6 +16,7 @@ export {
 export { getSkinConfig, getSnakeColor, type SnakeSkinConfig } from './lib/skin-config'
 export {
   buildMeshPathFromBody,
+  buildMeshPathFromHeadPath,
   MESH_STEP_PX,
   MIN_MESH_POINTS,
 } from './lib/mesh-path'
