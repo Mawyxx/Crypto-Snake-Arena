@@ -12,6 +12,7 @@
     "proto:generate": "pbjs -t static-module -w es6 -o src/shared/api/proto/game.js ../backend/proto/game.proto && pbts -o src/shared/api/proto/game.d.ts src/shared/api/proto/game.js"
   },
   "dependencies": {
+    "@pixi/filter-glow": "^5.2.1",
     "@pixi/react": "^7.1.2",
     "@tailwindcss/vite": "^4.1.18",
     "@telegram-apps/sdk": "^3.11.8",
