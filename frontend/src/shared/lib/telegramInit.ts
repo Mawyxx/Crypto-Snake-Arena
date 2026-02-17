@@ -70,9 +70,12 @@ export async function initTelegram(): Promise<void> {
     tg.expand?.()
     tg.setHeaderColor?.(designTokens.bgMain)
     tg.setBackgroundColor?.(designTokens.bgMainAlt)
+    // Bot API 8.0+: contentSafeAreaInset. Иначе не задаём — CSS fallback 20px.
     const inset = tg.contentSafeAreaInset ?? tg.safeAreaInset
-    const top = inset?.top ?? 0
-    document.documentElement.style.setProperty('--tg-safe-area-inset-top', `${top}px`)
+    const top = inset?.top
+    if (typeof top === 'number' && top > 0) {
+      document.documentElement.style.setProperty('--tg-safe-area-inset-top', `${top}px`)
+    }
     disableVerticalSwipesForScroll()
     if (typeof window !== 'undefined') {
       window.addEventListener('load', ensureDocumentIsScrollable)
