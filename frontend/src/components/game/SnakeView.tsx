@@ -2,7 +2,12 @@ import React from 'react'
 import { PixiComponent } from '@pixi/react'
 import { Container } from 'pixi.js'
 import type { InterpolatedSnake } from '@/hooks/useGameEngine'
-import { createSnakeMeshRef, updateSnakeMesh, getSnakeColor } from '@/entities/snake'
+import {
+  createSnakeMeshRef,
+  updateSnakeMesh,
+  getSnakeColor,
+  buildMeshPathFromBody,
+} from '@/entities/snake'
 import type { SnakeMeshRef } from '@/entities/snake'
 
 interface SnakeViewProps {
@@ -10,22 +15,6 @@ interface SnakeViewProps {
   isLocalPlayer: boolean
   mouseWorld?: { x: number; y: number } | null
   growthFlash?: number
-}
-
-/** Build path from head to tail for mesh drawing. body[0] is head from server. */
-function buildBodyPath(
-  head: { x?: number | null; y?: number | null },
-  body: { x?: number | null; y?: number | null }[]
-): { x: number; y: number }[] {
-  const hx = head?.x ?? 0
-  const hy = head?.y ?? 0
-  if (!body || body.length === 0) return [{ x: hx, y: hy }]
-  const path: { x: number; y: number }[] = [{ x: hx, y: hy }]
-  for (let i = 1; i < body.length; i++) {
-    const p = body[i]
-    path.push({ x: p?.x ?? 0, y: p?.y ?? 0 })
-  }
-  return path
 }
 
 type SnakeContainerRef = SnakeMeshRef & {
@@ -47,7 +36,7 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
     if (!head) return
 
     const rawBody = newProps.snake?.body ?? []
-    const path = buildBodyPath(head, rawBody)
+    const path = buildMeshPathFromBody(head, rawBody)
     const skinId = Number(newProps.snake?.skinId ?? newProps.snake?.id ?? 0)
     const color = getSnakeColor(newProps.isLocalPlayer ? null : skinId) // local = preferred color
 

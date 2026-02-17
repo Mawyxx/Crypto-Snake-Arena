@@ -14,3 +14,8 @@ export {
   type SnakeMeshRef,
 } from './ui/SnakeMeshRenderer'
 export { getSkinConfig, getSnakeColor, type SnakeSkinConfig } from './lib/skin-config'
+export {
+  buildMeshPathFromBody,
+  MESH_STEP_PX,
+  MIN_MESH_POINTS,
+} from './lib/mesh-path'
