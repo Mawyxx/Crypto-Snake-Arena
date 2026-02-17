@@ -1,6 +1,7 @@
 /**
  * useBalance — загрузка баланса с GET /api/user/profile.
  * Вызывается при загрузке приложения и после экрана завершения игры.
+ * FSD: в features (зависит от store и auth).
  */
 import { useCallback, useEffect } from 'react'
 import { useGameStore } from '@/store'
@@ -11,7 +12,8 @@ import type { ProfileResponse } from '@/shared/api'
 
 export function useBalance(options?: { refetchOnMount?: boolean }) {
   const { initData } = useTelegram()
-  const { setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank, setAdmin } = useGameStore()
+  const { setBalance, setProfile, setReferralStats, setProfileStats, setTotalProfit, setRank, setAdmin } =
+    useGameStore()
   const refetchOnMount = options?.refetchOnMount ?? true
 
   const refetch = useCallback(async () => {
@@ -61,7 +63,9 @@ export function useBalance(options?: { refetchOnMount?: boolean }) {
       }
       const photoUrl = getPhotoUrlFromInitData()
       if (photoUrl) {
-        apiPatch('/api/user/profile', { photo_url: photoUrl }, initData).catch(() => { /* ignore */ })
+        apiPatch('/api/user/profile', { photo_url: photoUrl }, initData).catch(() => {
+          /* ignore */
+        })
       }
     } catch (e) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 404)) {

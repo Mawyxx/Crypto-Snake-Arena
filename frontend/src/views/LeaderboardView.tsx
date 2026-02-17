@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useGameStore } from '@/store'
 import { useHaptic } from '@/features/haptic'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
-import { useBalance } from '@/entities/balance'
+import { useBalance } from '@/hooks/useBalance'
 import { UserAvatar } from '@/entities/user'
 import { Icon } from '@/shared/ui'
 

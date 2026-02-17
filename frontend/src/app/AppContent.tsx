@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useGameStore, type Screen } from '@/store'
-import { useBalance } from '@/entities/balance'
+import { useBalance } from '@/hooks/useBalance'
 import { useConfig } from '@/hooks/useConfig'
 import { useStats } from '@/hooks/useStats'
 import { getTelegramUserFromInitData, getDisplayNameFromTelegramUser } from '@/shared/lib'

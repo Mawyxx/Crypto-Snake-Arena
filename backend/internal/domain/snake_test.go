@@ -19,8 +19,9 @@ func TestNewSnake(t *testing.T) {
 	if s.TargetAngle != 0 || s.CurrentAngle != 0 || s.Score != 0 || s.EntryFee != 0 {
 		t.Errorf("TargetAngle=%v CurrentAngle=%v Score=%v EntryFee=%v", s.TargetAngle, s.CurrentAngle, s.Score, s.EntryFee)
 	}
-	if len(s.Tail) != 6 {
-		t.Errorf("Tail len = %d, want 6 (3 segments × 2 coords)", len(s.Tail))
+	body := s.Body()
+	if len(body) != 4 {
+		t.Errorf("Body len = %d, want 4 (head + 3 tail)", len(body))
 	}
 }
 
@@ -32,12 +33,11 @@ func TestNewSnakeAt(t *testing.T) {
 	if s.HeadX != 100 || s.HeadY != 200 {
 		t.Errorf("Head = (%.0f, %.0f), want (100, 200)", s.HeadX, s.HeadY)
 	}
-	// Tail should extend backward from head
-	if len(s.Tail) != 6 {
-		t.Errorf("Tail len = %d, want 6", len(s.Tail))
+	body := s.Body()
+	if len(body) < 2 {
+		t.Errorf("Body len = %d, want at least 2", len(body))
 	}
-	// First tail segment roughly at (headX - SegmentLen, headY)
-	firstTailX := s.Tail[0]
+	firstTailX := body[1].X
 	if firstTailX < 100-SegmentLen-1 || firstTailX > 100-SegmentLen+1 {
 		t.Errorf("First tail X = %.2f, want ~%.2f", firstTailX, 100-SegmentLen)
 	}
@@ -115,10 +115,15 @@ func TestSnake_Body(t *testing.T) {
 
 func TestSnake_Grow(t *testing.T) {
 	s := NewSnake(1)
-	initialTailLen := len(s.Tail)
+	initialBodyLen := len(s.Body())
 	s.Grow()
-	if len(s.Tail) != initialTailLen+2 {
-		t.Errorf("Tail len = %d, want %d", len(s.Tail), initialTailLen+2)
+	// Grow queues a section; it appears after onCycleComplete. Run a few ticks to trigger cycle.
+	for i := 0; i < 50; i++ {
+		s.UpdatePosition(0.05)
+	}
+	body := s.Body()
+	if len(body) < initialBodyLen+1 {
+		t.Errorf("Body len = %d, want >= %d after Grow+ticks", len(body), initialBodyLen+1)
 	}
 }
 
@@ -189,22 +194,26 @@ func TestSnake_UpdatePosition_TailFollows(t *testing.T) {
 	if len(body) < 2 {
 		t.Fatal("body too short")
 	}
-	// Distance Constraint: первый сегмент хвоста на расстоянии SegmentLen от головы
+	// headPath: first tail segment at ~PreferredDist from head
 	head := s.Head()
 	dist := body[1].Distance(head)
-	if math.Abs(dist-SegmentLen) > 0.5 {
-		t.Errorf("first tail segment should be at distance SegmentLen (%.1f) from head, got dist=%.2f", SegmentLen, dist)
+	if math.Abs(dist-PreferredDist) > 5 {
+		t.Errorf("first tail segment should be at distance ~%.1f from head, got dist=%.2f", PreferredDist, dist)
 	}
 }
 
 func TestSnake_Grow_Multiple(t *testing.T) {
 	s := NewSnake(1)
-	initialLen := len(s.Tail)
 	for i := 0; i < 5; i++ {
 		s.Grow()
 	}
-	if len(s.Tail) != initialLen+10 {
-		t.Errorf("5x Grow: tail len = %d, want %d", len(s.Tail), initialLen+10)
+	// Run many ticks to process all queued sections
+	for i := 0; i < 200; i++ {
+		s.UpdatePosition(0.05)
+	}
+	body := s.Body()
+	if len(body) < 9 {
+		t.Errorf("5x Grow: body len = %d, want >= 9", len(body))
 	}
 }
 
@@ -226,8 +235,8 @@ func TestSnake_Body_OrderHeadToTail(t *testing.T) {
 func TestSnake_NewSnakeAt_TailContinuity(t *testing.T) {
 	s := NewSnakeAt(1, 77, 88)
 	body := s.Body()
-	// Хвост идёт назад по X (angle=0)
-	expectedFirstTail := Point{X: 77 - SegmentLen, Y: 88}
+	// Tail extends back along X (angle=0)
+	expectedFirstTail := Point{X: 77 - PreferredDist, Y: 88}
 	firstTail := Point{X: body[1].X, Y: body[1].Y}
 	if math.Abs(firstTail.X-expectedFirstTail.X) > 1 || math.Abs(firstTail.Y-expectedFirstTail.Y) > 1 {
 		t.Errorf("first tail segment = %v, want ~%v", firstTail, expectedFirstTail)

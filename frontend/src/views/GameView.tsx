@@ -5,7 +5,7 @@ import { Arena, DeathEffectOverlay, GameOverOverlay, VictoryOverlay, type GameRe
 import { useGameStore } from '@/store'
 import { getUserIdFromInitData } from '@/shared/lib'
 import { useHaptic } from '@/features/haptic'
-import { useBalance } from '@/entities/balance'
+import { useBalance } from '@/hooks/useBalance'
 
 const HOLD_EXIT_MS = 4000
 
