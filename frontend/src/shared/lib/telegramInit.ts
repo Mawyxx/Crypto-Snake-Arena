@@ -68,6 +68,7 @@ export async function initTelegram(): Promise<void> {
     document.body.setAttribute('data-telegram', '1')
     tg.ready?.()
     tg.expand?.()
+    tg.requestFullscreen?.()
     tg.setHeaderColor?.(designTokens.bgMain)
     tg.setBackgroundColor?.(designTokens.bgMainAlt)
     // Bot API 8.0+: contentSafeAreaInset. Иначе не задаём — CSS fallback 20px.

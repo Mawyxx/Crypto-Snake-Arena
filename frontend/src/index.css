@@ -177,7 +177,7 @@ body::-webkit-scrollbar {
 }
 
 [data-telegram='1'] .app {
-  padding-top: var(--tg-safe-area-inset-top, env(safe-area-inset-top, 20px));
+  padding-top: var(--tg-safe-area-inset-top, env(safe-area-inset-top, 48px));
   box-sizing: border-box;
 }
 
