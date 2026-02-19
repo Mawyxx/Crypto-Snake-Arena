@@ -32,14 +32,14 @@ type mockAuthUserProvider struct {
 	createErr error
 }
 
-func (m *mockAuthUserProvider) GetUserIDByTgID(ctx context.Context, tgID int64) (uint, error) {
+func (m *mockAuthUserProvider) GetUserIDByTgID(_ context.Context, _ int64) (uint, error) {
 	if m.getErr != nil {
 		return 0, m.getErr
 	}
 	return m.userID, nil
 }
 
-func (m *mockAuthUserProvider) GetOrCreateUser(ctx context.Context, tgID int64, username, displayName, startParam string) (*domain.User, error) {
+func (m *mockAuthUserProvider) GetOrCreateUser(_ context.Context, _ int64, _ string, _ string, _ string) (*domain.User, error) {
 	if m.createErr != nil {
 		return nil, m.createErr
 	}
@@ -50,7 +50,7 @@ func TestRequireAuth_MissingInitData(t *testing.T) {
 	validator := &mockValidator{validInitData: "valid", userInfo: &auth.UserInfo{ID: 1}}
 	provider := &mockAuthUserProvider{userID: 100}
 	mw := RequireAuth(validator, provider)
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	h := mw(next)
@@ -68,7 +68,7 @@ func TestRequireAuth_InvalidInitData(t *testing.T) {
 	validator := &mockValidator{validInitData: "valid", userInfo: &auth.UserInfo{ID: 1}}
 	provider := &mockAuthUserProvider{userID: 100}
 	mw := RequireAuth(validator, provider)
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	h := mw(next)
