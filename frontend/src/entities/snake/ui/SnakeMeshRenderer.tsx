@@ -235,26 +235,27 @@ function drawHead(
 
 function drawEyes(graphics: Graphics, head: XY, headRadius: number, angle: number, mouseWorld?: XY | null): void {
   graphics.clear()
-  const lookAngle = mouseWorld
-    ? Math.atan2(mouseWorld.y - head.y, mouseWorld.x - head.x)
-    : angle
-
-  const side = lookAngle + Math.PI / 2
+  // Глазницы привязаны к направлению движения (angle), не к мышке
+  const side = angle + Math.PI / 2
   const spread = headRadius * 0.4
   const forward = headRadius * 0.2
   const eyeRadius = Math.max(2.3, headRadius * 0.23)
   const pupilRadius = Math.max(1.2, eyeRadius * 0.45)
 
-  const lx = head.x + Math.cos(side) * spread + Math.cos(lookAngle) * forward
-  const ly = head.y + Math.sin(side) * spread + Math.sin(lookAngle) * forward
-  const rx = head.x - Math.cos(side) * spread + Math.cos(lookAngle) * forward
-  const ry = head.y - Math.sin(side) * spread + Math.sin(lookAngle) * forward
+  const lx = head.x + Math.cos(side) * spread + Math.cos(angle) * forward
+  const ly = head.y + Math.sin(side) * spread + Math.sin(angle) * forward
+  const rx = head.x - Math.cos(side) * spread + Math.cos(angle) * forward
+  const ry = head.y - Math.sin(side) * spread + Math.sin(angle) * forward
 
   graphics.beginFill(0xffffff, 0.98)
   graphics.drawCircle(lx, ly, eyeRadius)
   graphics.drawCircle(rx, ry, eyeRadius)
   graphics.endFill()
 
+  // Только зрачки поворачиваются на мышку
+  const lookAngle = mouseWorld
+    ? Math.atan2(mouseWorld.y - head.y, mouseWorld.x - head.x)
+    : angle
   const pupilShift = eyeRadius * 0.38
   const px = Math.cos(lookAngle) * pupilShift
   const py = Math.sin(lookAngle) * pupilShift
