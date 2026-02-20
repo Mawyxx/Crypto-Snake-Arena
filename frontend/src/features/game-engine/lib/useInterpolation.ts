@@ -5,7 +5,11 @@ import {
   extrapolateHead,
 } from '@/shared/lib/interpolation'
 import { RingSnapshotBuffer } from '@/shared/lib/snapshot-buffer'
-import { interpolateBodyAlongPath, updateClientHeadPath, buildMeshPathFromHeadPath } from '@/entities/snake'
+import {
+  interpolateBodyAlongPath,
+  updateClientHeadPath,
+  getBodyFromClientPath,
+} from '@/entities/snake'
 import type { ClientHeadPathState } from '@/entities/snake'
 import type { game } from '@/shared/api/proto/game'
 import type { InterpolatedSnake, InterpolatedWorldSnapshot } from '../types'
@@ -112,16 +116,13 @@ export const useInterpolation = (
       if (isLocal && localSnakePath) {
         const bodyLength = (snake.bodyLength ?? currBody.length) as number
         if (bodyLength > 0) {
-          // updateClientHeadPath мутирует объект, поэтому работаем с ним напрямую
           updateClientHeadPath(
             localSnakePath,
             displayHead,
             bodyLength
           )
-          displayBody = buildMeshPathFromHeadPath(
-            localSnakePath.headPath,
-            bodyLength
-          )
+          // Сегментные позиции (кругляшки) вместо плотного mesh
+          displayBody = getBodyFromClientPath(localSnakePath)
         } else {
           displayBody = []
         }

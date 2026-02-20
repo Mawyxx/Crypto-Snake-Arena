@@ -6,7 +6,6 @@ import {
   createSnakeMeshRef,
   updateSnakeMesh,
   getSnakeColor,
-  buildMeshPathFromBody,
 } from '@/entities/snake'
 import type { SnakeMeshRef } from '@/entities/snake'
 
@@ -66,11 +65,8 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
     if (!head) return
 
     const rawBody = newProps.snake?.body ?? []
-    // Локальная змея уже приходит плотным path из prediction/interpolation:
-    // не делаем вторичную агрессивную переработку.
-    const path = newProps.isLocalPlayer
-      ? normalizeLocalPath(head, rawBody)
-      : buildMeshPathFromBody(head, rawBody)
+    // Сегментные позиции (кругляшки) для обеих змей — как в slither.io
+    const path = normalizeLocalPath(head, rawBody)
     const skinId = Number(newProps.snake?.skinId ?? newProps.snake?.id ?? 0)
     const color = getSnakeColor(newProps.isLocalPlayer ? null : skinId) // local = preferred color
     const headPos = { x: head.x ?? 0, y: head.y ?? 0 }

@@ -38,8 +38,6 @@ export interface SnakeMeshRef {
 const MAX_TRAIL_POINTS = 24
 const TRAIL_STEP_SQ = 9
 const FLASH_MS = 180
-const BODY_TARGET_SPACING = 4.6
-const MAX_SUBDIV_SEGMENTS = 3
 const SHADOW_OFFSET = 5
 
 export function createSnakeMeshRef(): SnakeMeshRef {
@@ -92,7 +90,7 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
 
   drawTrail(ref.trailGraphics, props, skin.bodyColor)
   drawShadow(ref.shadowGraphics, props.path, headRadius)
-  drawBody(ref.bodyGraphics, props.path, skin.bodyColor, props.boost)
+  drawBody(ref.bodyGraphics, props.path, skin.bodyColor, props.boost, headRadius)
   drawHead(ref.headGraphics, ref.headSprite, head, headRadius, skin.bodyColor, props.boost)
   drawEyes(ref.eyesGraphics, head, headRadius, props.angle, props.mouseWorld)
   drawGrowthFlash(ref.flashGraphics, head, headRadius, props.growthFlash)
@@ -152,60 +150,32 @@ function drawShadow(graphics: Graphics, path: XY[], headRadius: number): void {
   }
 }
 
-function profileRadius(t: number): number {
-  // Neck bump + smooth tail taper for slither-like silhouette.
-  const neck = 1 + 0.14 * Math.exp(-((t - 0.11) * (t - 0.11)) / 0.012)
-  const tail = 1 - 0.7 * Math.pow(t, 1.5)
-  return Math.max(2.6, 9.4 * neck * tail)
-}
-
-function drawBody(graphics: Graphics, path: XY[], color: number, boost: boolean): void {
+/** Референс slither.io: тело — дискретные кругляшки, один круг на сегмент. */
+function drawBody(
+  graphics: Graphics,
+  path: XY[],
+  color: number,
+  _boost: boolean,
+  headRadius: number
+): void {
   graphics.clear()
-  const outerAlpha = boost ? 0.4 : 0.24
-  const coreAlpha = boost ? 0.96 : 0.92
   const n = path.length
   if (n === 0) return
 
-  for (let i = 0; i < n; i++) {
+  for (let i = n - 1; i >= 0; i--) {
     const p = path[i]
     const t = i / Math.max(1, n - 1)
-    const radius = profileRadius(t)
+    const isHead = i === 0
+    const radius = headRadius * (1 - t * 0.15)
+    const currentRad = isHead ? radius * 1.1 : radius
 
-    graphics.beginFill(color, outerAlpha * (1 - t * 0.32))
-    graphics.drawCircle(p.x, p.y, radius + (boost ? 2.4 : 1.2))
+    graphics.beginFill(color)
+    graphics.drawCircle(p.x, p.y, currentRad)
     graphics.endFill()
 
-    graphics.beginFill(color, coreAlpha)
-    graphics.drawCircle(p.x, p.y, radius)
-    graphics.endFill()
-  }
-
-  // Subdivide sparse segments so body always reads as continuous circles, not sticks.
-  for (let i = 0; i < n - 1; i++) {
-    const a = path[i]
-    const b = path[i + 1]
-    const dx = b.x - a.x
-    const dy = b.y - a.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    if (dist <= BODY_TARGET_SPACING) continue
-    const extra = Math.min(MAX_SUBDIV_SEGMENTS, Math.floor(dist / BODY_TARGET_SPACING))
-    if (extra <= 0) continue
-
-    for (let s = 1; s <= extra; s++) {
-      const k = s / (extra + 1)
-      const x = a.x + dx * k
-      const y = a.y + dy * k
-      const t = (i + k) / Math.max(1, n - 1)
-      const radius = profileRadius(t)
-
-      graphics.beginFill(color, outerAlpha * (1 - t * 0.32))
-      graphics.drawCircle(x, y, radius + (boost ? 2.2 : 1.05))
-      graphics.endFill()
-
-      graphics.beginFill(color, coreAlpha)
-      graphics.drawCircle(x, y, radius)
-      graphics.endFill()
-    }
+    graphics.lineStyle(1, 0x000000, 0.15)
+    graphics.drawCircle(p.x, p.y, currentRad)
+    graphics.lineStyle(0)
   }
 }
 
