@@ -8,6 +8,7 @@ import {
   BlurFilter,
 } from 'pixi.js'
 import { GlowFilter } from '@pixi/filter-glow'
+import { pointAtDistance, getPathLength } from '@/shared/lib/path-sampler'
 import { getSkinConfig } from '../lib/skin-config'
 
 const GROWTH_FLASH_MS = 200
@@ -43,6 +44,8 @@ export interface SnakeMeshRef {
 /**
  * Отрисовывает сегменты змеи как отдельные круги (Slither.io render_mode 2).
  * Отрисовывает от хвоста к голове для правильного наслоения.
+ * Каждый сегмент размещается на пути головы на определенном расстоянии от предыдущего,
+ * создавая эффект "следования" - каждый сегмент движется по пути предыдущего.
  */
 function drawSnakeSegments(
   graphics: Graphics,
@@ -56,31 +59,43 @@ function drawSnakeSegments(
   
   if (path.length === 0) return
   
+  // Вычисляем расстояние между сегментами для эффекта "следования"
+  // Диаметр круга * коэффициент перекрытия (~0.5-0.6 для плавного вида)
+  const OVERLAP_RATIO = 0.55 // ~55% перекрытия для плавного вида (как в Slither.io)
+  const segmentSpacing = segmentRadius * 2 * OVERLAP_RATIO
+  
+  // Вычисляем количество сегментов на основе длины пути
+  const pathLength = getPathLength(path)
+  const segmentCount = Math.max(1, Math.floor(pathLength / segmentSpacing) + 1)
+  
   // Отрисовываем от хвоста к голове для правильного наслоения
-  for (let i = path.length - 1; i >= 0; i--) {
-    const segment = path[i]
-    const distFromHead = path.length - 1 - i
+  for (let i = segmentCount - 1; i >= 0; i--) {
+    const distFromHead = i * segmentSpacing
+    const segmentPos = pointAtDistance(path, distFromHead)
+    
+    if (!segmentPos) continue
     
     // Swell для первых 4 сегментов (как в оригинале Slither.io)
     let radius = segmentRadius
-    if (distFromHead < 4) {
-      radius = segmentRadius * (1 + (4 - distFromHead) * 0.08)
+    const segmentIndex = segmentCount - 1 - i // индекс от головы (0 = голова)
+    if (segmentIndex < 4) {
+      radius = segmentRadius * (1 + (4 - segmentIndex) * 0.08)
     }
     
     if (isShadow) {
       // Тень: чёрный круг с увеличенным радиусом
       graphics.beginFill(0x000000, boost ? 0.5 : 0.3)
-      graphics.drawCircle(segment.x, segment.y, radius + 5)
+      graphics.drawCircle(segmentPos.x, segmentPos.y, radius + 5)
       graphics.endFill()
     } else {
       // Тело: цветной круг
       graphics.beginFill(color, 0.95)
-      graphics.drawCircle(segment.x, segment.y, radius)
+      graphics.drawCircle(segmentPos.x, segmentPos.y, radius)
       graphics.endFill()
       
       // Обводка: чёрная с alpha 0.4 (как в оригинале Slither.io)
       graphics.lineStyle(2, 0x000000, 0.4)
-      graphics.drawCircle(segment.x, segment.y, radius)
+      graphics.drawCircle(segmentPos.x, segmentPos.y, radius)
       graphics.lineStyle(0) // сброс
     }
   }
