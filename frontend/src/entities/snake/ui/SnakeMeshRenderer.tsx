@@ -60,9 +60,10 @@ function drawSnakeSegments(
   if (path.length === 0) return
   
   // Вычисляем расстояние между сегментами для эффекта "следования"
-  // Диаметр круга * коэффициент перекрытия (~0.5-0.6 для плавного вида)
-  const OVERLAP_RATIO = 0.55 // ~55% перекрытия для плавного вида (как в Slither.io)
-  const segmentSpacing = segmentRadius * 2 * OVERLAP_RATIO
+  // В оригинале Slither.io: minSegmentSpacing = 4.5px (или 3px для WebGL)
+  // Для плотного перекрытия кругов используем ~5-6px между центрами при диаметре 29px
+  // Это создает перекрытие ~80-85% для плавного вида без видимых промежутков
+  const segmentSpacing = Math.max(5, segmentRadius * 0.35) // ~5px при radius=14.5px для плотного перекрытия
   
   // Вычисляем количество сегментов на основе длины пути
   const pathLength = getPathLength(path)
