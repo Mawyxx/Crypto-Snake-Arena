@@ -14,14 +14,20 @@ const GROWTH_FLASH_MS = 200
 const TRAIL_LENGTH = 18
 const TRAIL_POSITION_THRESHOLD = 2
 
-// Константы для улучшенной визуализации
-const BASE_RADIUS = 14.5 // Базовый радиус сегмента
-const SPACING_RATIO = 0.25 // Коэффициент наслоения (расстояние между сегментами = radius * SPACING_RATIO)
-const TAIL_TAPER_SEGMENTS = 20 // Количество сегментов хвоста для сужения
-const HEAD_SWELL_SEGMENTS = 4 // Количество сегментов головы для увеличения
-const HEAD_SWELL_FACTOR = 0.08 // Фактор увеличения головы
-const HIGHLIGHT_RATIO = 0.85 // Радиус блика относительно основного круга (85%)
-const HIGHLIGHT_BRIGHTNESS = 1.2 // Яркость блика (на 20% ярче)
+const BASE_RADIUS = 8.8
+const GROWTH_SQRT_FACTOR = 0.62
+const MAX_RADIUS_SCALE = 2.8
+const TAIL_TAPER_SEGMENTS = 20
+const TAIL_MIN_RADIUS_SCALE = 0.14
+const HEAD_SWELL_SEGMENTS = 4
+const HEAD_SWELL_FACTOR = 0.08
+const SHADOW_PADDING = 4.5
+const HIGHLIGHT_RATIO = 0.88
+const HIGHLIGHT_ALPHA = 0.34
+const HIGHLIGHT_BRIGHTNESS = 1.15
+const OUTLINE_ALPHA = 0.4
+const OUTLINE_WIDTH = 2
+const DEBUG_LOG_INTERVAL_MS = 450
 
 export interface SnakeMeshRendererProps {
   path: { x: number; y: number }[]
@@ -49,9 +55,14 @@ export interface SnakeMeshRef {
   trailGraphics: Graphics
 }
 
-/**
- * Вычисляет яркость цвета для блика (делает цвет светлее).
- */
+type SnakeDebugGlobal = typeof globalThis & { __SNAKE_RENDER_DEBUG__?: boolean }
+
+interface RenderSegment {
+  x: number
+  y: number
+  radius: number
+}
+
 function brightenColor(color: number, factor: number): number {
   const r = ((color >> 16) & 0xff) * factor
   const g = ((color >> 8) & 0xff) * factor
@@ -63,23 +74,51 @@ function brightenColor(color: number, factor: number): number {
   )
 }
 
-/**
- * Вычисляет расстояние между двумя точками.
- */
 function getDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {
   const dx = p2.x - p1.x
   const dy = p2.y - p1.y
   return Math.sqrt(dx * dx + dy * dy)
 }
 
+let lastDebugLogTs = 0
+
+function isRenderDebugEnabled(): boolean {
+  if (!import.meta.env.DEV) return false
+  const g = globalThis as SnakeDebugGlobal
+  return g.__SNAKE_RENDER_DEBUG__ === true
+}
+
+function buildRenderSegments(path: { x: number; y: number }[], baseSegmentRadius: number): RenderSegment[] {
+  const totalPoints = path.length
+  if (totalPoints === 0) return []
+
+  const segments: RenderSegment[] = []
+
+  // От хвоста к голове — как в Slither, чтобы слои ложились корректно.
+  for (let i = totalPoints - 1; i >= 0; i--) {
+    const point = path[i]
+    const indexFromHead = i
+    const indexFromTail = totalPoints - 1 - i
+
+    let radius = baseSegmentRadius
+
+    if (indexFromHead < HEAD_SWELL_SEGMENTS) {
+      radius *= 1 + (HEAD_SWELL_SEGMENTS - indexFromHead) * HEAD_SWELL_FACTOR
+    } else if (indexFromTail < TAIL_TAPER_SEGMENTS) {
+      const tailT = indexFromTail / TAIL_TAPER_SEGMENTS
+      const tailScale = TAIL_MIN_RADIUS_SCALE + tailT * (1 - TAIL_MIN_RADIUS_SCALE)
+      radius *= tailScale
+    }
+
+    segments.push({ x: point.x, y: point.y, radius })
+  }
+
+  return segments
+}
+
 /**
- * Отрисовывает сегменты змеи с улучшенной визуализацией (Slither.io style).
- * 
- * Особенности:
- * - Адаптивный spacing: сегменты рисуются только когда расстояние превышает порог
- * - Круг в круге: внешний круг + внутренний блик для объема
- * - Сужение хвоста: плавное уменьшение радиуса последних сегментов
- * - Оптимизация: группировка похожих сегментов
+ * Рендерит тело змеи пассами, близкими к Slither mode 2:
+ * shadow -> body -> highlight -> outline.
  */
 function drawSnakeSegments(
   graphics: Graphics,
@@ -90,69 +129,62 @@ function drawSnakeSegments(
   boost: boolean
 ): void {
   graphics.clear()
-  
+
   if (path.length === 0) return
-  
-  // path[0] - голова, path[path.length-1] - хвост
-  const totalSegments = path.length
-  let lastDrawnPos: { x: number; y: number } | null = null
-  const minSpacing = baseSegmentRadius * SPACING_RATIO
-  
-  // Итерируемся от хвоста к голове для правильного наслоения
-  for (let i = path.length - 1; i >= 0; i--) {
-    const point = path[i]
-    const segmentIndexFromHead = i // 0 = голова, totalSegments-1 = хвост
-    const segmentIndexFromTail = totalSegments - 1 - i // 0 = хвост, totalSegments-1 = голова
-    
-    // Адаптивный spacing: проверяем расстояние от последнего нарисованного сегмента
-    if (lastDrawnPos !== null) {
-      const dist = getDistance(lastDrawnPos, point)
-      if (dist < minSpacing) {
-        continue // Пропускаем этот сегмент, слишком близко к предыдущему
+
+  const segments = buildRenderSegments(path, baseSegmentRadius)
+  if (segments.length === 0) return
+
+  if (isRenderDebugEnabled()) {
+    const now = Date.now()
+    if (now - lastDebugLogTs > DEBUG_LOG_INTERVAL_MS) {
+      let sum = 0
+      for (let i = 1; i < segments.length; i++) {
+        sum += getDistance(segments[i - 1], segments[i])
       }
+      const avgSpacing = segments.length > 1 ? sum / (segments.length - 1) : 0
+      console.debug('[snake-render]', {
+        pathPoints: path.length,
+        drawnSegments: segments.length,
+        baseRadius: Number(baseSegmentRadius.toFixed(2)),
+        avgSpacing: Number(avgSpacing.toFixed(2)),
+      })
+      lastDebugLogTs = now
     }
-    
-    // Вычисляем радиус с учетом позиции сегмента
-    let radius = baseSegmentRadius
-    
-    // Swell для головы (первые HEAD_SWELL_SEGMENTS сегментов)
-    if (segmentIndexFromHead < HEAD_SWELL_SEGMENTS) {
-      radius = baseSegmentRadius * (1 + (HEAD_SWELL_SEGMENTS - segmentIndexFromHead) * HEAD_SWELL_FACTOR)
-    }
-    // Сужение хвоста (последние TAIL_TAPER_SEGMENTS сегментов)
-    else if (segmentIndexFromTail < TAIL_TAPER_SEGMENTS) {
-      const taperFactor = segmentIndexFromTail / TAIL_TAPER_SEGMENTS
-      // Плавное уменьшение от baseSegmentRadius до baseSegmentRadius * 0.3
-      radius = baseSegmentRadius * (0.3 + taperFactor * 0.7)
-    }
-    
-    if (isShadow) {
-      // Тень: чёрный круг с увеличенным радиусом
-      graphics.beginFill(0x000000, boost ? 0.5 : 0.3)
-      graphics.drawCircle(point.x, point.y, radius + 5)
-      graphics.endFill()
-    } else {
-      // Тело: внешний круг с основным цветом
-      graphics.beginFill(color, 0.95)
-      graphics.drawCircle(point.x, point.y, radius)
-      graphics.endFill()
-      
-      // Блик: внутренний круг чуть меньшего радиуса с более светлым оттенком
-      const highlightRadius = radius * HIGHLIGHT_RATIO
-      const highlightColor = brightenColor(color, HIGHLIGHT_BRIGHTNESS)
-      graphics.beginFill(highlightColor, 0.6)
-      graphics.drawCircle(point.x, point.y, highlightRadius)
-      graphics.endFill()
-      
-      // Обводка: чёрная с alpha 0.4 (как в оригинале Slither.io)
-      graphics.lineStyle(2, 0x000000, 0.4)
-      graphics.drawCircle(point.x, point.y, radius)
-      graphics.lineStyle(0) // сброс
-    }
-    
-    // Обновляем позицию последнего нарисованного сегмента
-    lastDrawnPos = point
   }
+
+  if (isShadow) {
+    graphics.beginFill(0x000000, boost ? 0.45 : 0.28)
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]
+      graphics.drawCircle(seg.x, seg.y, seg.radius + SHADOW_PADDING)
+    }
+    graphics.endFill()
+    return
+  }
+
+  graphics.beginFill(color, 0.95)
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+    graphics.drawCircle(seg.x, seg.y, seg.radius)
+  }
+  graphics.endFill()
+
+  const highlightColor = brightenColor(color, HIGHLIGHT_BRIGHTNESS)
+  graphics.beginFill(highlightColor, HIGHLIGHT_ALPHA)
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+    const hlr = seg.radius * HIGHLIGHT_RATIO
+    graphics.drawCircle(seg.x - seg.radius * 0.2, seg.y - seg.radius * 0.22, hlr)
+  }
+  graphics.endFill()
+
+  graphics.lineStyle(OUTLINE_WIDTH, 0x000000, OUTLINE_ALPHA)
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+    graphics.drawCircle(seg.x, seg.y, seg.radius)
+  }
+  graphics.lineStyle(0)
 }
 
 function updateHeadTrail(
@@ -208,11 +240,9 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
   const skin = getSkinConfig(skinId, isLocalPlayer)
   const bodyLen = path.length
   
-  // Нелинейный рост (жирность): логарифмическая зависимость от массы
-  // Используем формулу: BASE_RADIUS * (1 + sqrt(bodyLen) / коэффициент)
-  // Это дает ощутимый рост толщины с увеличением длины
-  const growthFactor = 1 + Math.sqrt(bodyLen) / 15
-  const baseRadius = BASE_RADIUS * Math.min(growthFactor, 3.5) // Ограничиваем максимальный рост
+  // Нелинейный рост толщины: заметно жирнее при росте длины, но без взрывного масштаба.
+  const growthFactor = 1 + Math.sqrt(bodyLen) * GROWTH_SQRT_FACTOR / 10
+  const baseRadius = BASE_RADIUS * Math.min(growthFactor, MAX_RADIUS_SCALE)
   
   // Для совместимости с существующим кодом вычисляем lsz и headR
   const scale = Math.min(6, 1 + (bodyLen - 2) / 106)
@@ -286,15 +316,14 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
   ref.headGraphics.drawCircle(hx, hy, headR)
 
   // Eyes
-  const eyeOffsetX = headR * 0.5
-  const eyeOffsetY = headR * 0.25
-  const eyeR = headR * 0.2
-  const pupilR = headR * 0.1
+  const eyeOrbit = headR * 0.58
+  const eyeR = headR * 0.22
+  const pupilR = headR * 0.11
   const maxPupilOffset = pupilR * 0.8
-  const leftEx = hx - eyeOffsetX
-  const leftEy = hy - eyeOffsetY
-  const rightEx = hx + eyeOffsetX
-  const rightEy = hy - eyeOffsetY
+  const leftEx = hx + Math.cos(angle + 0.8) * eyeOrbit
+  const leftEy = hy + Math.sin(angle + 0.8) * eyeOrbit
+  const rightEx = hx + Math.cos(angle - 0.8) * eyeOrbit
+  const rightEy = hy + Math.sin(angle - 0.8) * eyeOrbit
 
   const pupilOffset = (eyeX: number, eyeY: number) => {
     if (isLocalPlayer && mouseWorld) {

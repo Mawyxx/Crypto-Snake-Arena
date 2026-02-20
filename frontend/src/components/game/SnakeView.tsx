@@ -29,6 +29,22 @@ type SnakeContainerRef = SnakeMeshRef & {
 // WeakMap для хранения custom refs без расширения Container
 const containerRefs = new WeakMap<Container, SnakeContainerRef>()
 
+function normalizeLocalPath(
+  head: { x?: number | null; y?: number | null },
+  body: { x?: number | null; y?: number | null }[]
+): { x: number; y: number }[] {
+  const hx = head.x ?? 0
+  const hy = head.y ?? 0
+  if (body.length === 0) return [{ x: hx, y: hy }]
+
+  const normalized = body.map((p) => ({ x: p.x ?? 0, y: p.y ?? 0 }))
+  const first = normalized[0]
+  const dx = first.x - hx
+  const dy = first.y - hy
+  if (dx * dx + dy * dy < 0.001) return normalized
+  return [{ x: hx, y: hy }, ...normalized]
+}
+
 const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer', {
   create: () => {
     const container = new Container()
@@ -48,7 +64,11 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
     if (!head) return
 
     const rawBody = newProps.snake?.body ?? []
-    const path = buildMeshPathFromBody(head, rawBody)
+    // Локальная змея уже приходит плотным path из prediction/interpolation:
+    // не делаем вторичную агрессивную переработку.
+    const path = newProps.isLocalPlayer
+      ? normalizeLocalPath(head, rawBody)
+      : buildMeshPathFromBody(head, rawBody)
     const skinId = Number(newProps.snake?.skinId ?? newProps.snake?.id ?? 0)
     const color = getSnakeColor(newProps.isLocalPlayer ? null : skinId) // local = preferred color
 

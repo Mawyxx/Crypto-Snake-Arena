@@ -12,13 +12,53 @@ import {
 } from '@/shared/lib/path-sampler'
 import { PREFERRED_DIST } from '../types'
 
-export const MESH_STEP_PX = 4
-export const MIN_MESH_POINTS = 100
+// Ближе к референсу: плотные точки тела с коротким шагом (segment distance vibe).
+export const MESH_STEP_PX = 3
+export const MIN_MESH_POINTS = 24
 
 type PointLike = { x?: number | null; y?: number | null }
 
 function toPoint(p: PointLike): Point {
   return { x: p?.x ?? 0, y: p?.y ?? 0 }
+}
+
+function distance(a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+function trimPathToLength(path: Point[], maxLen: number): Point[] {
+  if (path.length === 0) return []
+  if (path.length === 1 || maxLen <= 0) return [{ ...path[0] }]
+
+  let acc = 0
+  const out: Point[] = [{ ...path[0] }]
+
+  for (let i = 1; i < path.length; i++) {
+    const prev = path[i - 1]
+    const curr = path[i]
+    const segLen = distance(prev, curr)
+    const nextAcc = acc + segLen
+
+    if (nextAcc <= maxLen) {
+      out.push({ ...curr })
+      acc = nextAcc
+      continue
+    }
+
+    const remaining = maxLen - acc
+    if (remaining > 0 && segLen > 1e-6) {
+      const t = remaining / segLen
+      out.push({
+        x: prev.x + (curr.x - prev.x) * t,
+        y: prev.y + (curr.y - prev.y) * t,
+      })
+    }
+    break
+  }
+
+  return out
 }
 
 /**
@@ -32,49 +72,21 @@ export function buildMeshPathFromHeadPath(
   if (headPath.length === 0) return []
   if (headPath.length === 1 || snakeLength <= 1) return [{ ...headPath[0] }]
 
-  // Для локальной змейки headPath уже dense после reconcile, используем напрямую
-  // Ограничиваем длину до snakeLength сегментов
+  // Ограничиваем path длиной змеи в мировых единицах.
   const maxDist = Math.max(0, (snakeLength - 1) * PREFERRED_DIST)
-  const pathLen = getPathLength(headPath)
-  const targetLen = Math.min(pathLen, maxDist)
+  const trimmed = trimPathToLength(headPath, maxDist)
+  if (trimmed.length < 2) return trimmed.length > 0 ? trimmed : [{ ...headPath[0] }]
 
-  // Если path достаточно dense, используем напрямую
-  if (headPath.length >= MIN_MESH_POINTS) {
-    // Обрезаем path до targetLen
-    let accumulated = 0
-    const result: Point[] = [headPath[0]]
-    for (let i = 1; i < headPath.length; i++) {
-      const dist = Math.sqrt(
-        Math.pow(headPath[i].x - headPath[i - 1].x, 2) +
-        Math.pow(headPath[i].y - headPath[i - 1].y, 2)
-      )
-      accumulated += dist
-      if (accumulated <= targetLen) {
-        result.push(headPath[i])
-      } else {
-        // Интерполируем последнюю точку
-        const t = (targetLen - (accumulated - dist)) / dist
-        result.push({
-          x: headPath[i - 1].x + (headPath[i].x - headPath[i - 1].x) * t,
-          y: headPath[i - 1].y + (headPath[i].y - headPath[i - 1].y) * t,
-        })
-        break
-      }
-    }
-    return result.length > 0 ? result : [{ ...headPath[0] }]
+  // Для match с референсом всегда получаем равномерный плотный path (без дыр по расстоянию).
+  const totalLen = getPathLength(trimmed)
+  const targetPoints = Math.max(MIN_MESH_POINTS, Math.ceil(totalLen / MESH_STEP_PX) + 1)
+  const out: Point[] = []
+  for (let i = 0; i < targetPoints; i++) {
+    const t = targetPoints > 1 ? i / (targetPoints - 1) : 0
+    const pt = pointAtDistance(trimmed, totalLen * t)
+    if (pt) out.push(pt)
   }
-
-  // Fallback: если path sparse, делаем resample
-  const stepPx = MESH_STEP_PX
-  const targetCount = Math.max(MIN_MESH_POINTS, Math.ceil(targetLen / stepPx) + 1)
-  const result: Point[] = []
-  for (let i = 0; i < targetCount; i++) {
-    const t = targetCount > 1 ? i / (targetCount - 1) : 0
-    const dist = t * targetLen
-    const pt = pointAtDistance(headPath, dist)
-    if (pt) result.push(pt)
-  }
-  return result.length > 0 ? result : [{ ...headPath[0] }]
+  return out.length > 0 ? out : trimmed
 }
 
 const SPARSE_BODY_THRESHOLD = 25
@@ -90,14 +102,17 @@ export function buildMeshPathFromBody(
   _options?: { useCatmullRom?: boolean }
 ): Point[] {
   const h = toPoint(head)
-  const tail = body.length > 1 ? body.slice(1).map(toPoint) : []
-  const sparsePath = buildPathFromBody(h, tail)
+  const bodyPoints = body.map(toPoint)
+  const hasDuplicateHead = bodyPoints.length > 0 && distance(h, bodyPoints[0]) < 0.001
+  const sparsePath = buildPathFromBody(h, hasDuplicateHead ? bodyPoints.slice(1) : bodyPoints)
 
-  // Для sparse body используем Catmull-Rom, иначе path как есть
+  // Для sparse body сначала сглаживаем кривую, затем делаем один ресемпл.
   if (sparsePath.length < SPARSE_BODY_THRESHOLD) {
-    const smoothed = samplePathCatmullRom(sparsePath, MIN_MESH_POINTS)
-    return resamplePathDense(smoothed, MESH_STEP_PX, MIN_MESH_POINTS)
+    const sampleCount = Math.max(MIN_MESH_POINTS, sparsePath.length * 4)
+    const smoothed = samplePathCatmullRom(sparsePath, sampleCount)
+    return resamplePathDense(smoothed, MESH_STEP_PX, Math.max(MIN_MESH_POINTS, sparsePath.length))
   }
-  // Для dense body используем path напрямую (уже достаточно точек)
-  return resamplePathDense(sparsePath, MESH_STEP_PX, MIN_MESH_POINTS)
+
+  // Для удалённых змей тоже принудительно выравниваем spacing до плотного шага.
+  return resamplePathDense(sparsePath, MESH_STEP_PX, Math.max(MIN_MESH_POINTS, sparsePath.length * 2))
 }
