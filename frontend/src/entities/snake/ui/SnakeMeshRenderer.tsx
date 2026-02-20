@@ -1,46 +1,25 @@
 /**
- * SnakeMeshRenderer — segmented circle-based snake rendering (Slither.io style).
+ * SnakeMeshRenderer — slither-like layered snake rendering.
  */
-import {
-  Container,
-  Graphics,
-  BLEND_MODES,
-  BlurFilter,
-} from 'pixi.js'
-import { GlowFilter } from '@pixi/filter-glow'
+import { Container, Graphics, Sprite } from 'pixi.js'
+import { BODY_TEXTURE_HEIGHT } from '@/shared/lib/snake-textures/createBodyTexture'
+import { createHeadTexture } from '@/shared/lib/snake-textures/createHeadTexture'
 import { getSkinConfig } from '../lib/skin-config'
 
-const GROWTH_FLASH_MS = 200
-const TRAIL_LENGTH = 18
-const TRAIL_POSITION_THRESHOLD = 2
-
-const BASE_RADIUS = 8.8
-const GROWTH_SQRT_FACTOR = 0.62
-const MAX_RADIUS_SCALE = 2.8
-const TAIL_TAPER_SEGMENTS = 20
-const TAIL_MIN_RADIUS_SCALE = 0.14
-const HEAD_SWELL_SEGMENTS = 4
-const HEAD_SWELL_FACTOR = 0.08
-const SHADOW_PADDING = 4.5
-const HIGHLIGHT_RATIO = 0.88
-const HIGHLIGHT_ALPHA = 0.34
-const HIGHLIGHT_BRIGHTNESS = 1.15
-const OUTLINE_ALPHA = 0.4
-const OUTLINE_WIDTH = 2
-const DEBUG_LOG_INTERVAL_MS = 450
+type XY = { x: number; y: number }
 
 export interface SnakeMeshRendererProps {
-  path: { x: number; y: number }[]
+  path: XY[]
   color: number
   skinId?: number
   isLocalPlayer: boolean
   angle: number
   boost: boolean
-  mouseWorld?: { x: number; y: number } | null
+  mouseWorld?: XY | null
   growthFlash?: number
   trailState?: {
-    buffer: { x: number; y: number }[]
-    lastHead: { x: number; y: number } | null
+    buffer: XY[]
+    lastHead: XY | null
   }
 }
 
@@ -53,172 +32,27 @@ export interface SnakeMeshRef {
   eyesGraphics: Graphics
   flashGraphics: Graphics
   trailGraphics: Graphics
+  headSprite: Sprite
 }
 
-type SnakeDebugGlobal = typeof globalThis & { __SNAKE_RENDER_DEBUG__?: boolean }
-
-interface RenderSegment {
-  x: number
-  y: number
-  radius: number
-}
-
-function brightenColor(color: number, factor: number): number {
-  const r = ((color >> 16) & 0xff) * factor
-  const g = ((color >> 8) & 0xff) * factor
-  const b = (color & 0xff) * factor
-  return (
-    (Math.min(255, r) << 16) |
-    (Math.min(255, g) << 8) |
-    Math.min(255, b)
-  )
-}
-
-function getDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {
-  const dx = p2.x - p1.x
-  const dy = p2.y - p1.y
-  return Math.sqrt(dx * dx + dy * dy)
-}
-
-let lastDebugLogTs = 0
-
-function isRenderDebugEnabled(): boolean {
-  if (!import.meta.env.DEV) return false
-  const g = globalThis as SnakeDebugGlobal
-  return g.__SNAKE_RENDER_DEBUG__ === true
-}
-
-function buildRenderSegments(path: { x: number; y: number }[], baseSegmentRadius: number): RenderSegment[] {
-  const totalPoints = path.length
-  if (totalPoints === 0) return []
-
-  const segments: RenderSegment[] = []
-
-  // От хвоста к голове — как в Slither, чтобы слои ложились корректно.
-  for (let i = totalPoints - 1; i >= 0; i--) {
-    const point = path[i]
-    const indexFromHead = i
-    const indexFromTail = totalPoints - 1 - i
-
-    let radius = baseSegmentRadius
-
-    if (indexFromHead < HEAD_SWELL_SEGMENTS) {
-      radius *= 1 + (HEAD_SWELL_SEGMENTS - indexFromHead) * HEAD_SWELL_FACTOR
-    } else if (indexFromTail < TAIL_TAPER_SEGMENTS) {
-      const tailT = indexFromTail / TAIL_TAPER_SEGMENTS
-      const tailScale = TAIL_MIN_RADIUS_SCALE + tailT * (1 - TAIL_MIN_RADIUS_SCALE)
-      radius *= tailScale
-    }
-
-    segments.push({ x: point.x, y: point.y, radius })
-  }
-
-  return segments
-}
-
-/**
- * Рендерит тело змеи пассами, близкими к Slither mode 2:
- * shadow -> body -> highlight -> outline.
- */
-function drawSnakeSegments(
-  graphics: Graphics,
-  path: { x: number; y: number }[],
-  baseSegmentRadius: number,
-  color: number,
-  isShadow: boolean,
-  boost: boolean
-): void {
-  graphics.clear()
-
-  if (path.length === 0) return
-
-  const segments = buildRenderSegments(path, baseSegmentRadius)
-  if (segments.length === 0) return
-
-  if (isRenderDebugEnabled()) {
-    const now = Date.now()
-    if (now - lastDebugLogTs > DEBUG_LOG_INTERVAL_MS) {
-      let sum = 0
-      for (let i = 1; i < segments.length; i++) {
-        sum += getDistance(segments[i - 1], segments[i])
-      }
-      const avgSpacing = segments.length > 1 ? sum / (segments.length - 1) : 0
-      console.debug('[snake-render]', {
-        pathPoints: path.length,
-        drawnSegments: segments.length,
-        baseRadius: Number(baseSegmentRadius.toFixed(2)),
-        avgSpacing: Number(avgSpacing.toFixed(2)),
-      })
-      lastDebugLogTs = now
-    }
-  }
-
-  if (isShadow) {
-    graphics.beginFill(0x000000, boost ? 0.45 : 0.28)
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i]
-      graphics.drawCircle(seg.x, seg.y, seg.radius + SHADOW_PADDING)
-    }
-    graphics.endFill()
-    return
-  }
-
-  graphics.beginFill(color, 0.95)
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]
-    graphics.drawCircle(seg.x, seg.y, seg.radius)
-  }
-  graphics.endFill()
-
-  const highlightColor = brightenColor(color, HIGHLIGHT_BRIGHTNESS)
-  graphics.beginFill(highlightColor, HIGHLIGHT_ALPHA)
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]
-    const hlr = seg.radius * HIGHLIGHT_RATIO
-    graphics.drawCircle(seg.x - seg.radius * 0.2, seg.y - seg.radius * 0.22, hlr)
-  }
-  graphics.endFill()
-
-  graphics.lineStyle(OUTLINE_WIDTH, 0x000000, OUTLINE_ALPHA)
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]
-    graphics.drawCircle(seg.x, seg.y, seg.radius)
-  }
-  graphics.lineStyle(0)
-}
-
-function updateHeadTrail(
-  buffer: { x: number; y: number }[],
-  lastHead: { x: number; y: number } | null,
-  head: { x: number; y: number }
-): void {
-  const dx = head.x - (lastHead?.x ?? head.x - 1)
-  const dy = head.y - (lastHead?.y ?? head.y - 1)
-  if (lastHead && dx * dx + dy * dy < TRAIL_POSITION_THRESHOLD * TRAIL_POSITION_THRESHOLD) {
-    return
-  }
-  buffer.push({ x: head.x, y: head.y })
-  if (buffer.length > TRAIL_LENGTH) buffer.shift()
-}
+const MAX_TRAIL_POINTS = 24
+const TRAIL_STEP_SQ = 9
+const FLASH_MS = 180
 
 export function createSnakeMeshRef(): SnakeMeshRef {
   const shadowContainer = new Container()
-  shadowContainer.x = 2
-  shadowContainer.y = 4
-
   const shadowGraphics = new Graphics()
-  shadowGraphics.filters = [new BlurFilter(4, 2)]
-  shadowContainer.addChild(shadowGraphics)
-
   const bodyContainer = new Container()
   const bodyGraphics = new Graphics()
-  bodyContainer.addChild(bodyGraphics)
-
   const headGraphics = new Graphics()
   const eyesGraphics = new Graphics()
   const flashGraphics = new Graphics()
   const trailGraphics = new Graphics()
-  trailGraphics.blendMode = BLEND_MODES.ADD
+  const headSprite = new Sprite(createHeadTexture())
+  headSprite.anchor.set(0.5)
+
+  shadowContainer.addChild(shadowGraphics)
+  bodyContainer.addChild(bodyGraphics)
 
   return {
     shadowContainer,
@@ -229,163 +63,173 @@ export function createSnakeMeshRef(): SnakeMeshRef {
     eyesGraphics,
     flashGraphics,
     trailGraphics,
+    headSprite,
   }
 }
 
 export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: SnakeMeshRendererProps): void {
-  const { path, color, skinId = 0, isLocalPlayer, angle, boost, mouseWorld, growthFlash, trailState } = props
-
-  if (path.length === 0) return
-
-  const skin = getSkinConfig(skinId, isLocalPlayer)
-  const bodyLen = path.length
-  
-  // Нелинейный рост толщины: заметно жирнее при росте длины, но без взрывного масштаба.
-  const growthFactor = 1 + Math.sqrt(bodyLen) * GROWTH_SQRT_FACTOR / 10
-  const baseRadius = BASE_RADIUS * Math.min(growthFactor, MAX_RADIUS_SCALE)
-  
-  // Для совместимости с существующим кодом вычисляем lsz и headR
-  const scale = Math.min(6, 1 + (bodyLen - 2) / 106)
-  const lsz = 29 * scale
-  const headR = baseRadius // Используем baseRadius для головы
-  const hx = path[0].x
-  const hy = path[0].y
-
-  // Trail (boost, local only)
-  if (trailState) {
-    if (boost && isLocalPlayer && path.length >= 2) {
-      updateHeadTrail(trailState.buffer, trailState.lastHead, { x: hx, y: hy })
-      trailState.lastHead = { x: hx, y: hy }
-      if (trailState.buffer.length >= 2) {
-        ref.trailGraphics.clear()
-        const buf = trailState.buffer
-        const n = buf.length - 1
-        for (let i = 0; i < n; i++) {
-          const alpha = 0.3 * (i + 1) / n
-          ref.trailGraphics.lineStyle(lsz * 0.6, color, alpha)
-          ref.trailGraphics.moveTo(buf[i].x, buf[i].y)
-          ref.trailGraphics.lineTo(buf[i + 1].x, buf[i + 1].y)
-        }
-        ref.trailGraphics.visible = true
-      }
-    } else {
-      trailState.buffer.length = 0
-      trailState.lastHead = null
-      ref.trailGraphics.clear()
-      ref.trailGraphics.visible = false
-    }
+  if (container.children.length === 0) {
+    container.addChild(ref.trailGraphics)
+    container.addChild(ref.shadowContainer)
+    container.addChild(ref.bodyContainer)
+    container.addChild(ref.headSprite)
+    container.addChild(ref.headGraphics)
+    container.addChild(ref.eyesGraphics)
+    container.addChild(ref.flashGraphics)
   }
 
-  // Shadow layer - отрисовка теней сегментов
-  if (path.length >= 2) {
-    drawSnakeSegments(ref.shadowGraphics, path, baseRadius, 0, true, boost)
-    ref.shadowGraphics.visible = true
-  } else {
-    ref.shadowGraphics.visible = false
+  if (props.path.length === 0) {
+    clearMesh(ref)
+    return
   }
 
-  // Body segments - отрисовка сегментов тела с улучшенной визуализацией
-  if (path.length >= 2) {
-    drawSnakeSegments(ref.bodyGraphics, path, baseRadius, skin.bodyColor, false, boost)
-    ref.bodyGraphics.visible = true
+  const skin = getSkinConfig(props.skinId ?? 0, props.isLocalPlayer)
+  const head = props.path[0]
+  const headRadius = Math.max(8, BODY_TEXTURE_HEIGHT * 0.56)
 
-    // Glow filter для boost эффекта
-    let glowFilter = ref.bodyContainer.filters?.[0] as GlowFilter | undefined
-    if (!glowFilter) {
-      glowFilter = new GlowFilter({
-        distance: skin.glowDistance,
-        outerStrength: skin.glowOuterStrength,
-        color: skin.glowColor,
-        quality: 0.3,
-      })
-      ref.bodyContainer.filters = [glowFilter]
-    }
-    glowFilter.outerStrength = boost ? skin.boostGlowOuterStrength : skin.glowOuterStrength
-    glowFilter.color = skin.glowColor
-  } else {
-    ref.bodyGraphics.visible = false
-    ref.bodyContainer.filters = []
-  }
+  drawTrail(ref.trailGraphics, props, skin.bodyColor)
+  drawShadow(ref.shadowGraphics, props.path, headRadius)
+  drawBody(ref.bodyGraphics, props.path, skin.bodyColor, props.boost)
+  drawHead(ref.headGraphics, ref.headSprite, head, headRadius, skin.bodyColor, props.boost)
+  drawEyes(ref.eyesGraphics, head, headRadius, props.angle, props.mouseWorld)
+  drawGrowthFlash(ref.flashGraphics, head, headRadius, props.growthFlash)
+}
 
-  // Head
+function clearMesh(ref: SnakeMeshRef): void {
+  ref.shadowGraphics.clear()
+  ref.bodyGraphics.clear()
   ref.headGraphics.clear()
-  ref.headGraphics.beginFill(skin.bodyColor, 0.95)
-  ref.headGraphics.drawCircle(hx, hy, headR)
-  ref.headGraphics.endFill()
-  ref.headGraphics.lineStyle(2, 0x000000, 0.4)
-  ref.headGraphics.drawCircle(hx, hy, headR)
+  ref.eyesGraphics.clear()
+  ref.flashGraphics.clear()
+  ref.trailGraphics.clear()
+  ref.headSprite.visible = false
+}
 
-  // Eyes
-  const eyeOrbit = headR * 0.58
-  const eyeR = headR * 0.22
-  const pupilR = headR * 0.11
-  const maxPupilOffset = pupilR * 0.8
-  const leftEx = hx + Math.cos(angle + 0.8) * eyeOrbit
-  const leftEy = hy + Math.sin(angle + 0.8) * eyeOrbit
-  const rightEx = hx + Math.cos(angle - 0.8) * eyeOrbit
-  const rightEy = hy + Math.sin(angle - 0.8) * eyeOrbit
+function drawTrail(graphics: Graphics, props: SnakeMeshRendererProps, color: number): void {
+  graphics.clear()
+  const trailState = props.trailState
+  if (!trailState || props.path.length === 0) return
 
-  const pupilOffset = (eyeX: number, eyeY: number) => {
-    if (isLocalPlayer && mouseWorld) {
-      const dx = mouseWorld.x - eyeX
-      const dy = mouseWorld.y - eyeY
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      if (dist > 0.01) {
-        const s = Math.min(1, maxPupilOffset / dist)
-        return { x: dx * s, y: dy * s }
+  const head = props.path[0]
+  const last = trailState.lastHead
+  if (!last) {
+    trailState.lastHead = { x: head.x, y: head.y }
+  } else {
+    const dx = head.x - last.x
+    const dy = head.y - last.y
+    if ((dx * dx + dy * dy) >= TRAIL_STEP_SQ) {
+      trailState.buffer.push({ x: head.x, y: head.y })
+      trailState.lastHead = { x: head.x, y: head.y }
+      if (trailState.buffer.length > MAX_TRAIL_POINTS) {
+        trailState.buffer.shift()
       }
     }
-    return { x: Math.cos(angle) * 2, y: Math.sin(angle) * 2 }
   }
 
-  const leftPupil = pupilOffset(leftEx, leftEy)
-  const rightPupil = pupilOffset(rightEx, rightEy)
-
-  ref.eyesGraphics.clear()
-  ref.eyesGraphics.beginFill(0xffffff)
-  ref.eyesGraphics.drawCircle(leftEx, leftEy, eyeR)
-  ref.eyesGraphics.endFill()
-  ref.eyesGraphics.beginFill(0x000000)
-  ref.eyesGraphics.drawCircle(leftEx + leftPupil.x, leftEy + leftPupil.y, pupilR)
-  ref.eyesGraphics.endFill()
-  ref.eyesGraphics.beginFill(0xffffff)
-  ref.eyesGraphics.drawCircle(rightEx, rightEy, eyeR)
-  ref.eyesGraphics.endFill()
-  ref.eyesGraphics.beginFill(0x000000)
-  ref.eyesGraphics.drawCircle(rightEx + rightPupil.x, rightEy + rightPupil.y, pupilR)
-  ref.eyesGraphics.endFill()
-
-  // Growth flash
-  ref.flashGraphics.clear()
-  if (growthFlash && growthFlash > 0) {
-    const elapsed = Date.now() - growthFlash
-    if (elapsed < GROWTH_FLASH_MS) {
-      const alpha = 0.8 * (1 - elapsed / GROWTH_FLASH_MS)
-      ref.flashGraphics.beginFill(0xffffff, alpha)
-      ref.flashGraphics.drawCircle(hx, hy, headR * 1.5)
-      ref.flashGraphics.endFill()
-      ref.flashGraphics.visible = true
-    } else {
-      ref.flashGraphics.visible = false
-    }
-  } else {
-    ref.flashGraphics.visible = false
+  const n = trailState.buffer.length
+  for (let i = 0; i < n; i++) {
+    const p = trailState.buffer[i]
+    const t = i / Math.max(1, n - 1)
+    graphics.beginFill(color, t * 0.18)
+    graphics.drawCircle(p.x, p.y, 1 + t * 4)
+    graphics.endFill()
   }
+}
 
-  // Fallback: head only
-  if (path.length < 2) {
-    ref.headGraphics.clear()
-    ref.headGraphics.beginFill(skin.bodyColor, 0.95)
-    ref.headGraphics.drawCircle(hx, hy, headR)
-    ref.headGraphics.endFill()
+function drawShadow(graphics: Graphics, path: XY[], headRadius: number): void {
+  graphics.clear()
+  for (let i = path.length - 1; i >= 0; i--) {
+    const p = path[i]
+    const t = i / Math.max(1, path.length - 1)
+    const r = Math.max(3, headRadius * (0.55 - 0.3 * t))
+    graphics.beginFill(0x000000, 0.16 * (1 - t))
+    graphics.drawCircle(p.x + 6, p.y + 6, r)
+    graphics.endFill()
   }
+}
 
-  // Assemble container (order: trail, shadow, body, head, eyes, flash)
-  container.removeChildren()
-  container.addChild(ref.trailGraphics)
-  container.addChild(ref.shadowContainer)
-  container.addChild(ref.bodyContainer)
-  container.addChild(ref.headGraphics)
-  container.addChild(ref.eyesGraphics)
-  container.addChild(ref.flashGraphics)
+function drawBody(graphics: Graphics, path: XY[], color: number, boost: boolean): void {
+  graphics.clear()
+  const outerAlpha = boost ? 0.42 : 0.24
+  const coreAlpha = boost ? 0.98 : 0.92
+
+  for (let i = path.length - 1; i >= 0; i--) {
+    const p = path[i]
+    const t = i / Math.max(1, path.length - 1)
+    const radius = Math.max(3, 10 - t * 4.6)
+    graphics.beginFill(color, outerAlpha * (1 - t * 0.5))
+    graphics.drawCircle(p.x, p.y, radius + (boost ? 2.2 : 1.2))
+    graphics.endFill()
+
+    graphics.beginFill(color, coreAlpha)
+    graphics.drawCircle(p.x, p.y, radius)
+    graphics.endFill()
+  }
+}
+
+function drawHead(
+  graphics: Graphics,
+  headSprite: Sprite,
+  head: XY,
+  headRadius: number,
+  color: number,
+  boost: boolean
+): void {
+  graphics.clear()
+  headSprite.visible = true
+  headSprite.position.set(head.x, head.y)
+  headSprite.width = headRadius * 2.15
+  headSprite.height = headRadius * 2.15
+  headSprite.tint = color
+  headSprite.alpha = 0.96
+
+  if (boost) {
+    graphics.beginFill(color, 0.22)
+    graphics.drawCircle(head.x, head.y, headRadius + 7)
+    graphics.endFill()
+  }
+}
+
+function drawEyes(graphics: Graphics, head: XY, headRadius: number, angle: number, mouseWorld?: XY | null): void {
+  graphics.clear()
+  const lookAngle = mouseWorld
+    ? Math.atan2(mouseWorld.y - head.y, mouseWorld.x - head.x)
+    : angle
+
+  const side = lookAngle + Math.PI / 2
+  const spread = headRadius * 0.42
+  const forward = headRadius * 0.22
+  const eyeRadius = Math.max(2.6, headRadius * 0.26)
+  const pupilRadius = Math.max(1.2, eyeRadius * 0.45)
+
+  const lx = head.x + Math.cos(side) * spread + Math.cos(lookAngle) * forward
+  const ly = head.y + Math.sin(side) * spread + Math.sin(lookAngle) * forward
+  const rx = head.x - Math.cos(side) * spread + Math.cos(lookAngle) * forward
+  const ry = head.y - Math.sin(side) * spread + Math.sin(lookAngle) * forward
+
+  graphics.beginFill(0xffffff, 0.98)
+  graphics.drawCircle(lx, ly, eyeRadius)
+  graphics.drawCircle(rx, ry, eyeRadius)
+  graphics.endFill()
+
+  const pupilShift = eyeRadius * 0.38
+  const px = Math.cos(lookAngle) * pupilShift
+  const py = Math.sin(lookAngle) * pupilShift
+
+  graphics.beginFill(0x101214, 0.95)
+  graphics.drawCircle(lx + px, ly + py, pupilRadius)
+  graphics.drawCircle(rx + px, ry + py, pupilRadius)
+  graphics.endFill()
+}
+
+function drawGrowthFlash(graphics: Graphics, head: XY, headRadius: number, growthFlash?: number): void {
+  graphics.clear()
+  if (!growthFlash) return
+  const ageMs = Date.now() - growthFlash
+  if (ageMs < 0 || ageMs > FLASH_MS) return
+
+  const t = ageMs / FLASH_MS
+  graphics.beginFill(0xffffff, 0.35 * (1 - t))
+  graphics.drawCircle(head.x, head.y, headRadius + 10 * t)
+  graphics.endFill()
 }

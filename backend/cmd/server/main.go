@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -130,14 +132,21 @@ func setupHandlers(log *zap.Logger, db *gorm.DB, rdb *redis.Client, procCtx cont
 	txManager := payment.NewTxManager(db, adminRepo)
 	pendingRewardRepo := repository.NewPendingRewardRepository(db)
 	rewardService := usecase.NewRewardService(txManager, pendingRewardRepo, log)
+	gameManager := usecase.NewGameManager(rewardService)
 	userResolver := repository.NewUserResolverDB(db)
 
 	rewardService.StartProcessor(procCtx)
 
 	roomManager := game.NewRoomManager(rewardService, txManager, txManager, txManager)
+	if maxPlayersRaw := os.Getenv("ROOM_MAX_PLAYERS"); maxPlayersRaw != "" {
+		if maxPlayers, err := strconv.Atoi(maxPlayersRaw); err == nil && maxPlayers > 0 {
+			game.SetRoomMaxPlayers(maxPlayers)
+			log.Info("room capacity configured", zap.Int("roomMaxPlayers", maxPlayers))
+		}
+	}
 	log.Info("room manager started")
 
-	wsHandler := ws.NewHandler(rewardService, validator, userResolver)
+	wsHandler := ws.NewHandler(rewardService, gameManager, validator, userResolver)
 
 	presenceStore := presence.NewRedisStore(rdb)
 
@@ -160,6 +169,23 @@ func setupHandlers(log *zap.Logger, db *gorm.DB, rdb *redis.Client, procCtx cont
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/metrics/runtime", func(w http.ResponseWriter, r *http.Request) {
+		stats := roomManager.Stats()
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		payload := map[string]interface{}{
+			"rooms":        stats.ActiveRooms,
+			"queue":        stats.QueuedUsers,
+			"goroutines":   runtime.NumGoroutine(),
+			"heap_alloc":   mem.HeapAlloc,
+			"heap_objects": mem.HeapObjects,
+			"gc_pause_ns":  mem.PauseTotalNs,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(payload); err != nil {
+			log.Warn("runtime metrics encode failed", zap.Error(err))
+		}
 	})
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		wsHandler.UpgradeAndHandle(w, r, roomManager)

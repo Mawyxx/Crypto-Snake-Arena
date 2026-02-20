@@ -7,6 +7,38 @@ const MAX_AGE_MS = 300
 export class RingSnapshotBuffer implements ISnapshotBuffer {
   private frames: SnapshotFrame[] = []
 
+  private trimOldFrames(renderTime: number): void {
+    const cutoff = renderTime - MAX_AGE_MS
+    let keepFrom = 0
+    const n = this.frames.length
+    while (keepFrom < n && this.frames[keepFrom].timestamp < cutoff) {
+      keepFrom++
+    }
+    if (keepFrom > 0) {
+      this.frames.splice(0, keepFrom)
+    }
+  }
+
+  private pickPair(renderTime: number): { prev: SnapshotFrame; curr: SnapshotFrame } | null {
+    const n = this.frames.length
+    if (n === 0) return null
+    if (n === 1) return { prev: this.frames[0], curr: this.frames[0] }
+
+    let prev = this.frames[0]
+    let curr = this.frames[1]
+    for (let i = 1; i < n; i++) {
+      const candidate = this.frames[i]
+      if (candidate.timestamp <= renderTime) {
+        prev = candidate
+        curr = i + 1 < n ? this.frames[i + 1] : candidate
+      } else {
+        curr = candidate
+        break
+      }
+    }
+    return { prev, curr }
+  }
+
   push(frame: SnapshotFrame): void {
     this.frames.push(frame)
     if (this.frames.length > MAX_FRAMES) {
@@ -15,19 +47,11 @@ export class RingSnapshotBuffer implements ISnapshotBuffer {
   }
 
   getInterpolated(renderTime: number): SnapshotFrame | null {
-    const cutoff = renderTime - MAX_AGE_MS
-    this.frames = this.frames.filter((f) => f.timestamp >= cutoff)
-    if (this.frames.length === 0) return null
-    if (this.frames.length === 1) return this.frames[0]
-
-    let prev = this.frames[0]
-    let curr = this.frames[0]
-    for (let i = 0; i < this.frames.length - 1; i++) {
-      if (this.frames[i + 1].timestamp <= renderTime) {
-        prev = this.frames[i]
-        curr = this.frames[i + 1]
-      }
-    }
+    this.trimOldFrames(renderTime)
+    const pair = this.pickPair(renderTime)
+    if (!pair) return null
+    const prev = pair.prev
+    const curr = pair.curr
     if (curr.timestamp <= renderTime) {
       return curr
     }
@@ -77,17 +101,12 @@ export class RingSnapshotBuffer implements ISnapshotBuffer {
   }
 
   getInterpolationInput(renderTime: number): import('./types').InterpolationInput | null {
-    const cutoff = renderTime - MAX_AGE_MS
-    this.frames = this.frames.filter((f) => f.timestamp >= cutoff)
+    this.trimOldFrames(renderTime)
     if (this.frames.length < 2) return null
-    let prev = this.frames[0]
-    let curr = this.frames[0]
-    for (let i = 0; i < this.frames.length - 1; i++) {
-      if (this.frames[i + 1].timestamp <= renderTime) {
-        prev = this.frames[i]
-        curr = this.frames[i + 1]
-      }
-    }
+    const pair = this.pickPair(renderTime)
+    if (!pair) return null
+    const prev = pair.prev
+    const curr = pair.curr
     if (curr.timestamp <= renderTime) {
       const last = this.frames[this.frames.length - 1]
       const secondLast = this.frames[this.frames.length - 2]

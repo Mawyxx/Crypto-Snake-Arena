@@ -7,7 +7,7 @@ import {
 } from '@/shared/api/types'
 import { RingSnapshotBuffer } from '@/shared/lib/snapshot-buffer'
 import type { game } from '@/shared/api/proto/game'
-import type { ConnectionStatus, GameEngineOptions } from '../types'
+import type { ConnectionStatus } from '../types'
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000]
 const MAX_RECONNECT_ATTEMPTS = 3
@@ -61,6 +61,14 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
   const reconnectAttempt = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intentionalClose = useRef(false)
+  const reconnectTokenRef = useRef<string | null>(null)
+
+  const buildWsUrl = useCallback((): string => {
+    const token = reconnectTokenRef.current
+    if (!token) return wsUrl
+    const separator = wsUrl.includes('?') ? '&' : '?'
+    return `${wsUrl}${separator}reconnect_token=${encodeURIComponent(token)}`
+  }, [wsUrl])
 
   const connect = useCallback(async () => {
     if (!enabled || !wsUrl) return
@@ -84,7 +92,7 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
       }
     }
 
-    socket.current = new WebSocket(wsUrl)
+    socket.current = new WebSocket(buildWsUrl())
     socket.current.binaryType = 'arraybuffer'
 
     socket.current.onopen = () => {
@@ -100,6 +108,17 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
 
           if (isWebSocketQueueMessage(parsed)) {
             setStatus('queued')
+            return
+          }
+          if (
+            parsed &&
+            typeof parsed === 'object' &&
+            (parsed as { type?: string }).type === 'session'
+          ) {
+            const token = (parsed as { reconnect_token?: string }).reconnect_token
+            if (token && typeof token === 'string') {
+              reconnectTokenRef.current = token
+            }
             return
           }
 
@@ -201,11 +220,12 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
     }
 
     socket.current.onerror = () => {}
-  }, [wsUrl, localSnakeId, enabled])
+  }, [buildWsUrl, localSnakeId, enabled, wsUrl])
 
   useEffect(() => {
     if (!enabled) {
       setStatus('closed')
+      reconnectTokenRef.current = null
       return
     }
     connect()
@@ -232,6 +252,7 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
 
   const closeSocket = useCallback((sendCashOut = false) => {
     intentionalClose.current = true
+    reconnectTokenRef.current = null
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null

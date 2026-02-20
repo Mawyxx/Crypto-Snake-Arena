@@ -17,7 +17,19 @@ const (
 	DropLifeTime = 5000 * time.Millisecond
 )
 
-const MaxPlayers = 20
+var roomMaxPlayers = 20
+
+// SetRoomMaxPlayers конфигурирует лимит игроков в комнате.
+func SetRoomMaxPlayers(max int) {
+	if max > 0 {
+		roomMaxPlayers = max
+	}
+}
+
+// RoomMaxPlayers возвращает текущий лимит.
+func RoomMaxPlayers() int {
+	return roomMaxPlayers
+}
 
 // Минимальный Score (масса), при котором разрешён boost; иначе сервер принудительно выключает.
 const MinScoreForBoost = 0.5
@@ -130,7 +142,17 @@ func (r *Room) Run() {
 				dt = MaxDt
 			}
 			r.CurrentTick++
+			tickStart := time.Now()
 			r.updateGameState(dt)
+			tickDur := time.Since(tickStart)
+			if tickDur > 40*time.Millisecond {
+				zap.L().Warn("room tick slow",
+					zap.String("roomID", r.ID),
+					zap.Duration("tickDuration", tickDur),
+					zap.Int("players", len(r.Snakes)),
+					zap.Int("coins", len(r.Coins)),
+				)
+			}
 			go r.broadcastSnapshot()
 		}
 	}
@@ -240,7 +262,7 @@ func (r *Room) PlayerCount() int {
 
 // CanJoin проверяет, есть ли место в комнате.
 func (r *Room) CanJoin() bool {
-	return r.PlayerCount() < MaxPlayers
+	return r.PlayerCount() < roomMaxPlayers
 }
 
 // AverageStake — среднее арифметическое актуальных ставок (CurrentScore) всех игроков в комнате.

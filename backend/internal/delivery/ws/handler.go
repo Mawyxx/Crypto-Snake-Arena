@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/auth"
 	"github.com/crypto-snake-arena/server/internal/infrastructure/payment"
+	"github.com/crypto-snake-arena/server/internal/usecase"
 	gamepb "github.com/crypto-snake-arena/server/proto"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -28,6 +29,7 @@ const (
 	// Rate limit: max сообщений в окне. При превышении — CloseConnection.
 	wsRateLimitCount  = 50  // игровых пакетов (PlayerInput)
 	wsRateLimitWindow = 1   // секунда
+	reconnectGraceTTL = 12 * time.Second
 )
 
 // GameWallet — списание ставки и возврат при ошибке входа.
@@ -55,17 +57,21 @@ type Conn interface {
 // Handler — WebSocket: байты -> Protobuf -> Room.
 type Handler struct {
 	wallet       GameWallet
+	gameManager  *usecase.GameManager
 	validator    *auth.Validator
 	userResolver UserResolver
 	upgrader     websocket.Upgrader
+	reconnect    *reconnectRegistry
 }
 
 // NewHandler создаёт WebSocket handler.
-func NewHandler(wallet GameWallet, validator *auth.Validator, userResolver UserResolver) *Handler {
+func NewHandler(wallet GameWallet, gameManager *usecase.GameManager, validator *auth.Validator, userResolver UserResolver) *Handler {
 	return &Handler{
 		wallet:       wallet,
+		gameManager:  gameManager,
 		validator:    validator,
 		userResolver: userResolver,
+		reconnect:    newReconnectRegistry(),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -125,6 +131,14 @@ func (h *Handler) UpgradeAndHandle(w http.ResponseWriter, r *http.Request, roomM
 	wsConn := &wsConnAdapter{conn: conn}
 	stopHeartbeat := setupHeartbeat(wsConn)
 	defer stopHeartbeat()
+
+	if reconnectToken := strings.TrimSpace(r.URL.Query().Get("reconnect_token")); reconnectToken != "" {
+		if session, ok := h.reconnect.Resume(reconnectToken, userID, uint64(userInfo.ID)); ok {
+			zap.L().Info("ws resumed session", zap.Uint("userID", userID), zap.String("roomID", session.room.ID))
+			h.HandleConnection(wsConn, userID, userInfo.ID, session.stake, session.room, true, reconnectToken)
+			return
+		}
+	}
 
 	room, queued := roomManager.GetOrCreateRoom(stake)
 	if room != nil {
@@ -192,7 +206,11 @@ func runQueueTicker(conn *websocket.Conn, roomManager RoomProvider, p *game.Queu
 }
 
 func joinRoomAndPlay(h *Handler, conn Conn, ctx context.Context, userID uint, tgID int64, stake float64, room *game.Room, rawConn *websocket.Conn) {
-	if err := h.wallet.PlaceBet(ctx, userID, stake); err != nil {
+	if err := h.gameManager.JoinRoom(ctx, userID, stake, room); err != nil {
+		if err == usecase.ErrRoomFull {
+			_ = rawConn.WriteMessage(websocket.TextMessage, []byte(`{"error":"room is full"}`))
+			return
+		}
 		if err == payment.ErrInsufficientFunds {
 			zap.L().Info("ws insufficient funds", zap.Uint("userID", userID), zap.Float64("stake", stake))
 			_ = rawConn.WriteMessage(websocket.TextMessage, []byte(`{"error":"insufficient funds"}`))
@@ -201,28 +219,35 @@ func joinRoomAndPlay(h *Handler, conn Conn, ctx context.Context, userID uint, tg
 		zap.L().Error("ws PlaceBet failed", zap.Error(err))
 		return
 	}
-	h.HandleConnection(conn, userID, tgID, stake, room)
+	token := uuid.New().String()
+	h.HandleConnection(conn, userID, tgID, stake, room, false, token)
 }
 
 // HandleConnection обрабатывает уже открытое WebSocket соединение.
 // userID — внутренний DB ID (для кошелька), tgID — Telegram ID (snake ID в Protobuf).
-func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake float64, room *game.Room) {
+func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake float64, room *game.Room, resume bool, reconnectToken string) {
 	player := &game.Player{TgID: uint64(tgID), UserID: userID, EntryFee: stake}
 
-	select {
-	case room.Register <- player:
-		// OK
-	default:
-		refID := "refund:room_full:" + strconv.FormatUint(uint64(userID), 10) + ":" + uuid.New().String()
-		_ = h.wallet.AddGameReward(context.Background(), userID, stake, refID) // refund: комната полна
-		_ = conn.Close()
-		zap.L().Warn("ws room full, refunded", zap.Uint("userID", userID), zap.String("roomID", room.ID))
-		return
+	if !resume {
+		select {
+		case room.Register <- player:
+			// OK
+		default:
+			_ = h.gameManager.RefundFailedJoin(context.Background(), userID, stake, "room_full")
+			_ = conn.Close()
+			zap.L().Warn("ws room full, refunded", zap.Uint("userID", userID), zap.String("roomID", room.ID))
+			return
+		}
 	}
 
 	broadcastCh, closeCh := room.Subscribe(player.TgID)
 	closeFn := sync.OnceFunc(closeCh)
 	var disconnectReason string
+
+	if reconnectToken == "" {
+		reconnectToken = uuid.New().String()
+	}
+	_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"session","reconnect_token":"`+reconnectToken+`","room_id":"`+room.ID+`"}`))
 
 	// Cleanup: closeFn (Unsubscribe+close), Unregister, Close. stopHeartbeat — в defer UpgradeAndHandle.
 	defer func() {
@@ -235,10 +260,24 @@ func (h *Handler) HandleConnection(conn Conn, userID uint, tgID int64, stake flo
 			zap.String("roomID", room.ID),
 			zap.String("reason", disconnectReason))
 		closeFn()
-		select {
-		case room.Unregister <- player:
-		default:
-			// Room уже остановлена
+		if disconnectReason == "cash_out" || disconnectReason == "closed" {
+			select {
+			case room.Unregister <- player:
+			default:
+				// Room already stopping
+			}
+		} else {
+			h.reconnect.Schedule(reconnectToken, reconnectSession{
+				userID: userID,
+				tgID:   uint64(tgID),
+				stake:  stake,
+				room:   room,
+			}, reconnectGraceTTL, func(s reconnectSession) {
+				select {
+				case s.room.Unregister <- player:
+				default:
+				}
+			})
 		}
 		_ = conn.Close()
 	}()
@@ -279,17 +318,18 @@ func (r *rateLimiter) allow() bool {
 	defer r.mu.Unlock()
 	now := time.Now()
 	cutoff := now.Add(-r.window)
-	var valid []time.Time
-	for _, t := range r.counts {
-		if t.After(cutoff) {
-			valid = append(valid, t)
+	writeIdx := 0
+	for i := 0; i < len(r.counts); i++ {
+		if r.counts[i].After(cutoff) {
+			r.counts[writeIdx] = r.counts[i]
+			writeIdx++
 		}
 	}
-	if len(valid) >= r.max {
+	r.counts = r.counts[:writeIdx]
+	if len(r.counts) >= r.max {
 		return false
 	}
-	valid = append(valid, now)
-	r.counts = valid
+	r.counts = append(r.counts, now)
 	return true
 }
 

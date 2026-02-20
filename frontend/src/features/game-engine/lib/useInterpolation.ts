@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import {
   interpolatePosition,
   interpolateAngle,
@@ -34,6 +34,7 @@ export const useInterpolation = (
     getLastSentBoost,
     getLocalSnakePath,
   } = options
+  const prevSnakeIndexRef = useRef<Map<number, game.ISnake>>(new Map())
 
   const getInterpolatedState = useCallback((): InterpolatedWorldSnapshot | null => {
     // Вызываем геттеры каждый кадр для получения свежих значений
@@ -60,9 +61,16 @@ export const useInterpolation = (
 
     const extrapolationSec = Math.min(INTERPOLATION_DELAY_MS / 1000, 0.1)
 
-    const interpolatedSnakes: InterpolatedSnake[] = (
-      currFrame.snakes ?? []
-    ).map((snake: game.ISnake) => {
+    const prevSnakeIndex = prevSnakeIndexRef.current
+    prevSnakeIndex.clear()
+    const prevSnakes = prevFrame?.snakes ?? []
+    for (let i = 0; i < prevSnakes.length; i++) {
+      const prev = prevSnakes[i]
+      prevSnakeIndex.set(Number(prev.id), prev)
+    }
+
+    const currSnakes = currFrame.snakes ?? []
+    const interpolatedSnakes: InterpolatedSnake[] = currSnakes.map((snake: game.ISnake) => {
       const head = snake.head as { x: number; y: number }
       if (!head) {
         return {
@@ -75,9 +83,7 @@ export const useInterpolation = (
 
       const isLocal =
         localSnakeId != null && Number(snake.id) === Number(localSnakeId)
-      const prevSnake = prevFrame?.snakes?.find(
-        (s) => Number(s.id) === Number(snake.id)
-      )
+      const prevSnake = prevSnakeIndex.get(Number(snake.id))
       const prevHead = prevSnake?.head as { x: number; y: number } | undefined
       const currBody = (snake.body ?? []) as { x: number; y: number }[]
 

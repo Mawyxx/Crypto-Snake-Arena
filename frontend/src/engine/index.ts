@@ -1,5 +1,3 @@
-export { SnakeObject, CoinObject, ArenaObject } from './objects'
-export type { SnakeRenderState, CoinRenderState } from './objects'
 export { lerp, interpolateSnake, InputHandler } from './systems'
 export type { InterpolatedState, InputState } from './systems'
 export {

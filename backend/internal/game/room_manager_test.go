@@ -74,7 +74,7 @@ func TestRoomManager_QueuedWhenAllFull(t *testing.T) {
 	}
 
 	// Fill room to max (20 players)
-	for i := 1; i <= MaxPlayers; i++ {
+	for i := 1; i <= RoomMaxPlayers(); i++ {
 		tgID := uint64(i)
 		go func(id uint64) {
 			room.Register <- &Player{TgID: id, UserID: uint(id), EntryFee: 0.5}
@@ -82,13 +82,13 @@ func TestRoomManager_QueuedWhenAllFull(t *testing.T) {
 	}
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if room.PlayerCount() >= MaxPlayers {
+		if room.PlayerCount() >= RoomMaxPlayers() {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if room.PlayerCount() < MaxPlayers {
-		t.Fatalf("room has %d players, need %d", room.PlayerCount(), MaxPlayers)
+	if room.PlayerCount() < RoomMaxPlayers() {
+		t.Fatalf("room has %d players, need %d", room.PlayerCount(), RoomMaxPlayers())
 	}
 
 	// Next player should be queued
@@ -141,13 +141,13 @@ func TestRoomManager_QueueFIFO_OnSlotFreed(t *testing.T) {
 	defer mgr.Stop()
 
 	room, _ := mgr.GetOrCreateRoom(0.5)
-	for i := 1; i <= MaxPlayers; i++ {
+	for i := 1; i <= RoomMaxPlayers(); i++ {
 		id := uint64(i)
 		go func(pid uint64) {
 			room.Register <- &Player{TgID: pid, UserID: uint(pid), EntryFee: 0.5}
 		}(id)
 	}
-	waitForPlayersTimeout(t, room, MaxPlayers, 3*time.Second)
+	waitForPlayersTimeout(t, room, RoomMaxPlayers(), 3*time.Second)
 
 	// Все заняты — следующий в очередь
 	_, queued := mgr.GetOrCreateRoom(1.0)
@@ -194,13 +194,13 @@ func TestRoomManager_QueueFIFO_TwoCreatesRoom(t *testing.T) {
 	defer mgr.Stop()
 
 	room, _ := mgr.GetOrCreateRoom(0.5)
-	for i := 1; i <= MaxPlayers; i++ {
+	for i := 1; i <= RoomMaxPlayers(); i++ {
 		id := uint64(i)
 		go func(pid uint64) {
 			room.Register <- &Player{TgID: pid, UserID: uint(pid), EntryFee: 0.5}
 		}(id)
 	}
-	waitForPlayersTimeout(t, room, MaxPlayers, 3*time.Second)
+	waitForPlayersTimeout(t, room, RoomMaxPlayers(), 3*time.Second)
 
 	_, queued := mgr.GetOrCreateRoom(1.0)
 	if !queued {

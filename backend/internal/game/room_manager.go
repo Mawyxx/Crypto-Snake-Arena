@@ -31,6 +31,11 @@ type RoomManager struct {
 	resultRecorder      GameResultRecorder
 }
 
+type RoomManagerStats struct {
+	ActiveRooms int `json:"active_rooms"`
+	QueuedUsers int `json:"queued_users"`
+}
+
 // NewRoomManager создаёт менеджер комнат.
 func NewRoomManager(rewardCreditor RewardCreditor, deathHandler DeathHandler, expiredCoinsHandler ExpiredCoinsHandler, resultRecorder GameResultRecorder) *RoomManager {
 	return &RoomManager{
@@ -200,5 +205,15 @@ func (m *RoomManager) Stop() {
 	m.mu.Unlock()
 	for _, room := range snapshot {
 		room.Stop()
+	}
+}
+
+// Stats возвращает текущие агрегированные метрики RoomManager.
+func (m *RoomManager) Stats() RoomManagerStats {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return RoomManagerStats{
+		ActiveRooms: len(m.rooms),
+		QueuedUsers: len(m.queue),
 	}
 }

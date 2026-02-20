@@ -259,7 +259,11 @@ function GameLoop({
   const targetViewportRef = useRef({ x: 0, y: 0, scale: 1 })
   const mouseWorldRef = useRef<{ x: number; y: number } | null>(null)
   const [, forceUpdate] = useState(0)
+  const [lowPerfMode, setLowPerfMode] = useState(false)
   const CAMERA_LERP = 0.15
+  const perfLastTsRef = useRef(typeof performance !== 'undefined' ? performance.now() : Date.now())
+  const perfAccumRef = useRef(0)
+  const perfFramesRef = useRef(0)
 
   useEffect(() => {
     const el = containerRef?.current
@@ -286,6 +290,27 @@ function GameLoop({
   }, [containerRef])
 
   useTick((delta) => {
+    const nowPerf = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const frameMs = Math.max(1, nowPerf - perfLastTsRef.current)
+    perfLastTsRef.current = nowPerf
+    perfAccumRef.current += frameMs
+    perfFramesRef.current += 1
+    if (perfAccumRef.current >= 1000) {
+      const avgFrame = perfAccumRef.current / Math.max(1, perfFramesRef.current)
+      const fps = 1000 / avgFrame
+      const heap = (performance as Performance & { memory?: { usedJSHeapSize?: number } }).memory?.usedJSHeapSize ?? 0
+      ;(window as Window & { __snakePerf?: Record<string, number | string> }).__snakePerf = {
+        fps: Number(fps.toFixed(1)),
+        frameMs: Number(avgFrame.toFixed(2)),
+        heapUsedMb: Number((heap / (1024 * 1024)).toFixed(2)),
+        ts: Date.now(),
+      }
+      const shouldLowPerf = fps < 35
+      setLowPerfMode((prev) => (prev === shouldLowPerf ? prev : shouldLowPerf))
+      perfAccumRef.current = 0
+      perfFramesRef.current = 0
+    }
+
     const state = getInterpolatedState()
     stateRef.current = state
 
@@ -350,6 +375,7 @@ function GameLoop({
       viewportScale={vp.scale}
       mouseWorld={mouseWorldRef.current}
       lastGrowAt={lastGrowAt}
+      lowPerfMode={lowPerfMode}
     />
   )
 }
@@ -362,6 +388,7 @@ interface GameContentProps {
   viewportScale: number
   mouseWorld: { x: number; y: number } | null
   lastGrowAt: number
+  lowPerfMode: boolean
 }
 
 /** Круговая граница арены — смерть при пересечении */
@@ -390,6 +417,7 @@ function GameContent({
   viewportScale,
   mouseWorld,
   lastGrowAt,
+  lowPerfMode,
 }: GameContentProps) {
   const localSnake = state && localSnakeId != null
     ? state.snakes?.find((s) => Number(s.id) === Number(localSnakeId))
@@ -398,7 +426,7 @@ function GameContent({
 
   return (
     <>
-      <Container position={[viewportX, viewportY]} scale={viewportScale} filters={[BLOOM_FILTER]}>
+      <Container position={[viewportX, viewportY]} scale={viewportScale} filters={lowPerfMode ? [] : [BLOOM_FILTER]}>
         <ArenaBoundary />
       {state?.snakes?.map((snake) => (
         <SnakeView

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"sort"
+
 	gamepb "github.com/crypto-snake-arena/server/proto"
 	"google.golang.org/protobuf/proto"
 )
@@ -9,7 +11,13 @@ import (
 func (r *Room) broadcastSnapshot() {
 	r.Mu.RLock()
 	snakes := make([]*gamepb.Snake, 0, len(r.Snakes))
-	for id, s := range r.Snakes {
+	snakeIDs := make([]uint64, 0, len(r.Snakes))
+	for id := range r.Snakes {
+		snakeIDs = append(snakeIDs, id)
+	}
+	sort.Slice(snakeIDs, func(i, j int) bool { return snakeIDs[i] < snakeIDs[j] })
+	for _, id := range snakeIDs {
+		s := r.Snakes[id]
 		body := s.Body()
 		pbBody := make([]*gamepb.Point, 0, len(body))
 		for _, p := range body {
@@ -26,7 +34,13 @@ func (r *Room) broadcastSnapshot() {
 		})
 	}
 	coins := make([]*gamepb.Coin, 0, len(r.Coins))
-	for id, c := range r.Coins {
+	coinIDs := make([]string, 0, len(r.Coins))
+	for id := range r.Coins {
+		coinIDs = append(coinIDs, id)
+	}
+	sort.Strings(coinIDs)
+	for _, id := range coinIDs {
+		c := r.Coins[id]
 		coin := &gamepb.Coin{
 			Id:    id,
 			Pos:   &gamepb.Point{X: float32(c.X), Y: float32(c.Y)},

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useWebSocket } from '../lib/useWebSocket'
 import { usePrediction } from '../lib/usePrediction'
 import { useInterpolation } from '../lib/useInterpolation'
-import type { GameEngineOptions, InterpolatedWorldSnapshot, ConnectionStatus } from '../types'
+import type { GameEngineOptions } from '../types'
 
 export const useGameEngine = (wsUrl: string, options?: GameEngineOptions) => {
   const { localSnakeId, onDeath, onDeathDetected, onGrow, onCashOut, enabled = true } =
