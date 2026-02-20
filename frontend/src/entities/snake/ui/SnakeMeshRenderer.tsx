@@ -1,22 +1,18 @@
 /**
- * SnakeMeshRenderer — mesh-based snake rendering (SimpleRope, GlowFilter, shadow).
+ * SnakeMeshRenderer — segmented circle-based snake rendering (Slither.io style).
  */
 import {
   Container,
   Graphics,
-  SimpleRope,
-  Point,
   BLEND_MODES,
   BlurFilter,
 } from 'pixi.js'
 import { GlowFilter } from '@pixi/filter-glow'
-import { createBodyTexture, createShadowTexture } from '@/shared/lib/snake-textures'
 import { getSkinConfig } from '../lib/skin-config'
 
 const GROWTH_FLASH_MS = 200
 const TRAIL_LENGTH = 18
 const TRAIL_POSITION_THRESHOLD = 2
-const TEXTURE_SCALE = 0.5
 
 export interface SnakeMeshRendererProps {
   path: { x: number; y: number }[]
@@ -35,40 +31,59 @@ export interface SnakeMeshRendererProps {
 
 export interface SnakeMeshRef {
   shadowContainer: Container
-  shadowRope: SimpleRope | null
-  bodyRope: SimpleRope | null
+  shadowGraphics: Graphics
+  bodyGraphics: Graphics
   bodyContainer: Container
   headGraphics: Graphics
   eyesGraphics: Graphics
   flashGraphics: Graphics
   trailGraphics: Graphics
-  ropePoints: Point[]
-  shadowPoints: Point[]
-  maxRopePoints: number // максимальное количество точек для предвыделения пула
 }
 
 /**
- * Обновляет координаты точек из path (zero alloc для существующих точек).
- * Предвыделяет пул точек если нужно.
+ * Отрисовывает сегменты змеи как отдельные круги (Slither.io render_mode 2).
+ * Отрисовывает от хвоста к голове для правильного наслоения.
  */
-function updatePointsFromSoA(
-  ropePoints: Point[],
+function drawSnakeSegments(
+  graphics: Graphics,
   path: { x: number; y: number }[],
-  maxPoints: number
-): Point[] {
-  const length = path.length
-  // Обеспечить достаточное количество точек в пуле (предвыделение)
-  while (ropePoints.length < length && ropePoints.length < maxPoints) {
-    ropePoints.push(new Point(0, 0))
-  }
-  // Обрезать до нужной длины
-  ropePoints.length = Math.min(length, maxPoints)
+  segmentRadius: number,
+  color: number,
+  isShadow: boolean,
+  boost: boolean
+): void {
+  graphics.clear()
   
-  // Обновить координаты существующих точек (zero alloc)
-  for (let i = 0; i < ropePoints.length; i++) {
-    ropePoints[i].set(path[i].x, path[i].y)
+  if (path.length === 0) return
+  
+  // Отрисовываем от хвоста к голове для правильного наслоения
+  for (let i = path.length - 1; i >= 0; i--) {
+    const segment = path[i]
+    const distFromHead = path.length - 1 - i
+    
+    // Swell для первых 4 сегментов (как в оригинале Slither.io)
+    let radius = segmentRadius
+    if (distFromHead < 4) {
+      radius = segmentRadius * (1 + (4 - distFromHead) * 0.08)
+    }
+    
+    if (isShadow) {
+      // Тень: чёрный круг с увеличенным радиусом
+      graphics.beginFill(0x000000, boost ? 0.5 : 0.3)
+      graphics.drawCircle(segment.x, segment.y, radius + 5)
+      graphics.endFill()
+    } else {
+      // Тело: цветной круг
+      graphics.beginFill(color, 0.95)
+      graphics.drawCircle(segment.x, segment.y, radius)
+      graphics.endFill()
+      
+      // Обводка: чёрная с alpha 0.4 (как в оригинале Slither.io)
+      graphics.lineStyle(2, 0x000000, 0.4)
+      graphics.drawCircle(segment.x, segment.y, radius)
+      graphics.lineStyle(0) // сброс
+    }
   }
-  return ropePoints
 }
 
 function updateHeadTrail(
@@ -85,42 +100,34 @@ function updateHeadTrail(
   if (buffer.length > TRAIL_LENGTH) buffer.shift()
 }
 
-const MAX_POOL_POINTS = 200 // максимальное количество точек для предвыделения пула
-
 export function createSnakeMeshRef(): SnakeMeshRef {
   const shadowContainer = new Container()
   shadowContainer.x = 2
   shadowContainer.y = 4
 
-  const shadowRope: SimpleRope | null = null
-  const bodyRope: SimpleRope | null = null
+  const shadowGraphics = new Graphics()
+  shadowGraphics.filters = [new BlurFilter(4, 2)]
+  shadowContainer.addChild(shadowGraphics)
+
   const bodyContainer = new Container()
+  const bodyGraphics = new Graphics()
+  bodyContainer.addChild(bodyGraphics)
+
   const headGraphics = new Graphics()
   const eyesGraphics = new Graphics()
   const flashGraphics = new Graphics()
   const trailGraphics = new Graphics()
   trailGraphics.blendMode = BLEND_MODES.ADD
 
-  // Предвыделить пул точек для zero alloc
-  const ropePoints: Point[] = []
-  const shadowPoints: Point[] = []
-  for (let i = 0; i < MAX_POOL_POINTS; i++) {
-    ropePoints.push(new Point(0, 0))
-    shadowPoints.push(new Point(0, 0))
-  }
-
   return {
     shadowContainer,
-    shadowRope,
-    bodyRope,
+    shadowGraphics,
+    bodyGraphics,
     bodyContainer,
     headGraphics,
     eyesGraphics,
     flashGraphics,
     trailGraphics,
-    ropePoints,
-    shadowPoints,
-    maxRopePoints: MAX_POOL_POINTS,
   }
 }
 
@@ -162,35 +169,22 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
     }
   }
 
-  // Shadow layer
+  // Shadow layer - отрисовка теней сегментов
   if (path.length >= 2) {
-    ref.shadowPoints = updatePointsFromSoA(ref.shadowPoints, path, ref.maxRopePoints)
-    if (!ref.shadowRope) {
-      const shadowTexture = createShadowTexture()
-      ref.shadowRope = new SimpleRope(shadowTexture, ref.shadowPoints, TEXTURE_SCALE)
-      ref.shadowRope.filters = [new BlurFilter(4, 2)]
-      ref.shadowContainer.addChild(ref.shadowRope)
-    }
-    ref.shadowRope.scale.set((lsz + 10) / ref.shadowRope.texture.height)
-    ref.shadowRope.alpha = boost ? 0.5 : 0.3
-    ref.shadowRope.tint = boost ? 0xaa3333 : 0x000000
-    ref.shadowRope.visible = true
+    const segmentRadius = lsz * 0.5
+    drawSnakeSegments(ref.shadowGraphics, path, segmentRadius, 0, true, boost)
+    ref.shadowGraphics.visible = true
   } else {
-    if (ref.shadowRope) ref.shadowRope.visible = false
+    ref.shadowGraphics.visible = false
   }
 
-  // Body rope
+  // Body segments - отрисовка сегментов тела
   if (path.length >= 2) {
-    const bodyTexture = createBodyTexture(skin.bodyColor)
-    ref.ropePoints = updatePointsFromSoA(ref.ropePoints, path, ref.maxRopePoints)
-    if (!ref.bodyRope) {
-      ref.bodyRope = new SimpleRope(bodyTexture, ref.ropePoints, TEXTURE_SCALE)
-      ref.bodyContainer.addChild(ref.bodyRope)
-    }
-    ref.bodyRope.scale.set(lsz / bodyTexture.height)
-    ref.bodyRope.tint = skin.bodyColor
-    ref.bodyRope.visible = true
+    const segmentRadius = lsz * 0.5
+    drawSnakeSegments(ref.bodyGraphics, path, segmentRadius, skin.bodyColor, false, boost)
+    ref.bodyGraphics.visible = true
 
+    // Glow filter для boost эффекта
     let glowFilter = ref.bodyContainer.filters?.[0] as GlowFilter | undefined
     if (!glowFilter) {
       glowFilter = new GlowFilter({
@@ -204,7 +198,7 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
     glowFilter.outerStrength = boost ? skin.boostGlowOuterStrength : skin.glowOuterStrength
     glowFilter.color = skin.glowColor
   } else {
-    if (ref.bodyRope) ref.bodyRope.visible = false
+    ref.bodyGraphics.visible = false
     ref.bodyContainer.filters = []
   }
 
