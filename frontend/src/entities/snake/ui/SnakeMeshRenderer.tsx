@@ -62,17 +62,43 @@ function drawSnakeSegments(
   // Вычисляем расстояние между сегментами для эффекта "следования"
   // В оригинале Slither.io: minSegmentSpacing = 4.5px (или 3px для WebGL)
   // Для плотного перекрытия кругов используем ~5-6px между центрами при диаметре 29px
-  // Это создает перекрытие ~80-85% для плавного вида без видимых промежутков
   const segmentSpacing = Math.max(5, segmentRadius * 0.35) // ~5px при radius=14.5px для плотного перекрытия
   
-  // Вычисляем количество сегментов на основе длины пути
+  // Если путь достаточно плотный (много точек), используем точки напрямую с шагом
+  // Иначе используем pointAtDistance для интерполяции
   const pathLength = getPathLength(path)
-  const segmentCount = Math.max(1, Math.floor(pathLength / segmentSpacing) + 1)
+  const isDensePath = path.length > 50 // путь считается плотным, если больше 50 точек
+  
+  let segmentCount: number
+  let getSegmentPos: (index: number) => { x: number; y: number } | null
+  
+  if (isDensePath) {
+    // Для плотного пути используем точки напрямую с шагом
+    // Вычисляем шаг так, чтобы получить примерно нужное количество сегментов
+    const targetSegments = Math.max(20, Math.floor(pathLength / segmentSpacing))
+    const step = Math.max(1, Math.floor(path.length / targetSegments))
+    segmentCount = Math.floor(path.length / step)
+    getSegmentPos = (i: number) => {
+      // i идет от segmentCount-1 до 0 (от хвоста к голове)
+      // path[0] - голова, path[path.length-1] - хвост
+      const segmentIndexFromHead = segmentCount - 1 - i // 0 = голова, segmentCount-1 = хвост
+      const pathIndex = segmentIndexFromHead * step
+      return pathIndex < path.length ? path[pathIndex] : null
+    }
+  } else {
+    // Для разреженного пути используем pointAtDistance
+    const minSegments = Math.max(20, Math.floor(path.length * 0.8))
+    const calculatedSegments = pathLength > 0 ? Math.floor(pathLength / segmentSpacing) + 1 : minSegments
+    segmentCount = Math.max(minSegments, calculatedSegments)
+    getSegmentPos = (i: number) => {
+      const distFromHead = Math.min(i * segmentSpacing, pathLength)
+      return pointAtDistance(path, distFromHead)
+    }
+  }
   
   // Отрисовываем от хвоста к голове для правильного наслоения
   for (let i = segmentCount - 1; i >= 0; i--) {
-    const distFromHead = i * segmentSpacing
-    const segmentPos = pointAtDistance(path, distFromHead)
+    const segmentPos = getSegmentPos(i)
     
     if (!segmentPos) continue
     
