@@ -41,7 +41,7 @@ type Snake struct {
 const (
 	BaseSpeed           = 71.0
 	BoostSpeed          = 180.0
-	TurnSpeed           = 2.0
+	TurnSpeed           = 1.35 // лимит угла поворота за тик (меньше = плавнее, не крутится резко за курсором)
 	SegmentLen          = 12.0
 	PreferredDist       = 12.0  // preferredDistance between segments (SegmentLen)
 	Spangdv             = 4.8

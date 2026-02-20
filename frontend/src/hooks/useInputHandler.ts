@@ -4,7 +4,7 @@ const FIXED_RATE_MS = 50
 const INPUT_DEADZONE_PX = 14
 const SMOOTH_ALPHA = 0.36
 const MIN_SEND_DELTA_RAD = 0.012
-const MAX_STEP_RAD = 0.42
+const MAX_STEP_RAD = 0.28 // лимит угла поворота за шаг (голова не догоняет курсор резко)
 
 interface UseInputHandlerOptions {
   /** Ref контейнера игры — угол считается от его центра. Без ref — от центра окна. */

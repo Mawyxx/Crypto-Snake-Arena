@@ -140,18 +140,7 @@ func CheckCollisions(snakes map[uint64]*domain.Snake, grid *domain.SpatialGrid, 
 				break
 			}
 		}
-		if dead {
-			continue
-		}
-
-		body := snake.Body()
-		for i := 1; i < len(body); i++ {
-			if edge.Distance(body[i]) < domain.SnakeRadius {
-				moreToDelete = append(moreToDelete, snake.ID)
-				dead = true
-				break
-			}
-		}
+		// Коллизия с собой отключена — змея не умирает при пересечении собственного тела
 	}
 	return moreToDelete
 }
