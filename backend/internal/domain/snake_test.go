@@ -20,8 +20,8 @@ func TestNewSnake(t *testing.T) {
 		t.Errorf("TargetAngle=%v CurrentAngle=%v Score=%v EntryFee=%v", s.TargetAngle, s.CurrentAngle, s.Score, s.EntryFee)
 	}
 	body := s.Body()
-	if len(body) != 4 {
-		t.Errorf("Body len = %d, want 4 (head + 3 tail)", len(body))
+	if len(body) != 60 {
+		t.Errorf("Body len = %d, want 60", len(body))
 	}
 }
 
@@ -116,7 +116,7 @@ func TestSnake_Body(t *testing.T) {
 func TestSnake_Grow(t *testing.T) {
 	s := NewSnake(1)
 	initialBodyLen := len(s.Body())
-	s.Grow()
+	s.Grow(1)
 	// Grow queues a section; it appears after onCycleComplete. Run a few ticks to trigger cycle.
 	for i := 0; i < 50; i++ {
 		s.UpdatePosition(0.05)
@@ -205,15 +205,15 @@ func TestSnake_UpdatePosition_TailFollows(t *testing.T) {
 func TestSnake_Grow_Multiple(t *testing.T) {
 	s := NewSnake(1)
 	for i := 0; i < 5; i++ {
-		s.Grow()
+		s.Grow(1)
 	}
 	// Run many ticks to process all queued sections
 	for i := 0; i < 200; i++ {
 		s.UpdatePosition(0.05)
 	}
 	body := s.Body()
-	if len(body) < 9 {
-		t.Errorf("5x Grow: body len = %d, want >= 9", len(body))
+	if len(body) < 65 {
+		t.Errorf("5x Grow: body len = %d, want >= 65", len(body))
 	}
 }
 

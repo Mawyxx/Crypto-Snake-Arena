@@ -3,5 +3,5 @@ export interface Point {
   y: number
 }
 
-export const PREFERRED_DIST = 42
-export const MAX_HEAD_PATH_LEN = 1200
+export const PREFERRED_DIST = 12
+export const MAX_HEAD_PATH_LEN = 2000

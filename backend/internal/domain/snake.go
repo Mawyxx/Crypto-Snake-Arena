@@ -42,11 +42,11 @@ const (
 	BaseSpeed           = 71.0
 	BoostSpeed          = 180.0
 	TurnSpeed           = 2.0
-	SegmentLen          = 42.0
-	PreferredDist       = 42.0  // preferredDistance between segments (SegmentLen)
+	SegmentLen          = 12.0
+	PreferredDist       = 12.0  // preferredDistance between segments (SegmentLen)
 	Spangdv             = 4.8
-	InitialLength       = 15    // head + 14 tail segments (slither.io-like start)
-	MaxHeadPathLen      = 1200
+	InitialLength       = 60    // head + 59 tail segments (slither.io-like start)
+	MaxHeadPathLen      = 2000
 	HeadPathSampleDist  = 2.5   // add headPath point every ~2.5px for smooth curve
 	minDist             = 1e-6
 )
@@ -301,9 +301,9 @@ func (s *Snake) Body() []Point {
 	return s.BodyFromHeadPath()
 }
 
-// Grow queues a new segment (added on next cycle complete).
-func (s *Snake) Grow() {
-	s.queuedSections++
+// Grow queues new segments (added on next cycle complete).
+func (s *Snake) Grow(count int) {
+	s.queuedSections += count
 }
 
 // AddScore adds coin value.

@@ -12,8 +12,8 @@ import {
 } from '@/shared/lib/path-sampler'
 import { PREFERRED_DIST } from '../types'
 
-export const MESH_STEP_PX = 8
-export const MIN_MESH_POINTS = 30
+export const MESH_STEP_PX = 4
+export const MIN_MESH_POINTS = 100
 
 type PointLike = { x?: number | null; y?: number | null }
 
@@ -77,7 +77,7 @@ export function buildMeshPathFromHeadPath(
   return result.length > 0 ? result : [{ ...headPath[0] }]
 }
 
-const SPARSE_BODY_THRESHOLD = 15
+const SPARSE_BODY_THRESHOLD = 25
 
 /**
  * Builds a dense path for SimpleRope from sparse head + body (remote snakes only).

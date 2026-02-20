@@ -52,7 +52,7 @@ func ConsumeCoins(
 		coin.Y += dy * consumeLerpFactor
 		coinPos := domain.Point{X: coin.X, Y: coin.Y}
 		if coinPos.Distance(head) < consumeCompleteDist {
-			snake.Grow()
+			snake.Grow(3)
 			snake.AddScore(coin.Value)
 			toDeleteCoins = append(toDeleteCoins, coin.ID)
 			consumedInTick[coin.ID] = true
