@@ -218,12 +218,8 @@ function drawHead(
   boost: boolean
 ): void {
   graphics.clear()
-  headSprite.visible = true
-  headSprite.position.set(head.x, head.y)
-  headSprite.width = headRadius * 2.18
-  headSprite.height = headRadius * 2.18
-  headSprite.tint = color
-  headSprite.alpha = 0.98
+  // Голова = тот же кругляшок, что и первый сегмент тела (path[0] уже нарисован в drawBody)
+  headSprite.visible = false
 
   if (boost) {
     const pulse = 1 + Math.sin(Date.now() * 0.03) * 0.08
