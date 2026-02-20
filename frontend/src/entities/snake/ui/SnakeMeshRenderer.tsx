@@ -38,6 +38,9 @@ export interface SnakeMeshRef {
 const MAX_TRAIL_POINTS = 24
 const TRAIL_STEP_SQ = 9
 const FLASH_MS = 180
+const BODY_TARGET_SPACING = 4.6
+const MAX_SUBDIV_SEGMENTS = 3
+const SHADOW_OFFSET = 5
 
 export function createSnakeMeshRef(): SnakeMeshRef {
   const shadowContainer = new Container()
@@ -127,11 +130,12 @@ function drawTrail(graphics: Graphics, props: SnakeMeshRendererProps, color: num
   }
 
   const n = trailState.buffer.length
+  const boostAlpha = props.boost ? 1.35 : 1
   for (let i = 0; i < n; i++) {
     const p = trailState.buffer[i]
     const t = i / Math.max(1, n - 1)
-    graphics.beginFill(color, t * 0.18)
-    graphics.drawCircle(p.x, p.y, 1 + t * 4)
+    graphics.beginFill(color, Math.min(0.28, t * 0.16 * boostAlpha))
+    graphics.drawCircle(p.x, p.y, 1 + t * (props.boost ? 4.8 : 3.6))
     graphics.endFill()
   }
 }
@@ -142,34 +146,66 @@ function drawShadow(graphics: Graphics, path: XY[], headRadius: number): void {
     const p = path[i]
     const t = i / Math.max(1, path.length - 1)
     const r = Math.max(3, headRadius * (0.55 - 0.3 * t))
-    graphics.beginFill(0x000000, 0.16 * (1 - t))
-    graphics.drawCircle(p.x + 6, p.y + 6, r)
+    graphics.beginFill(0x000000, 0.12 * (1 - t))
+    graphics.drawCircle(p.x + SHADOW_OFFSET, p.y + SHADOW_OFFSET, r)
     graphics.endFill()
   }
 }
 
+function profileRadius(t: number): number {
+  // Neck bump + smooth tail taper for slither-like silhouette.
+  const neck = 1 + 0.14 * Math.exp(-((t - 0.11) * (t - 0.11)) / 0.012)
+  const tail = 1 - 0.7 * Math.pow(t, 1.5)
+  return Math.max(2.6, 9.4 * neck * tail)
+}
+
 function drawBody(graphics: Graphics, path: XY[], color: number, boost: boolean): void {
   graphics.clear()
-  const outerAlpha = boost ? 0.42 : 0.24
-  const coreAlpha = boost ? 0.98 : 0.92
+  const outerAlpha = boost ? 0.4 : 0.24
+  const coreAlpha = boost ? 0.96 : 0.92
+  const n = path.length
+  if (n === 0) return
 
-  for (let i = path.length - 1; i >= 0; i--) {
+  for (let i = 0; i < n; i++) {
     const p = path[i]
-    const prev = i > 0 ? path[i - 1] : null
-    const dx = prev ? p.x - prev.x : 0
-    const dy = prev ? p.y - prev.y : 0
-    const step = prev ? Math.sqrt(dx * dx + dy * dy) : 0
-    // Compensate sparse path spacing so body stays continuous, not "sticks".
-    const gapComp = Math.min(8, Math.max(0, step * 0.45))
-    const t = i / Math.max(1, path.length - 1)
-    const radius = Math.max(3, 10 - t * 4.6)
-    graphics.beginFill(color, outerAlpha * (1 - t * 0.5))
-    graphics.drawCircle(p.x, p.y, radius + (boost ? 2.2 : 1.2) + gapComp)
+    const t = i / Math.max(1, n - 1)
+    const radius = profileRadius(t)
+
+    graphics.beginFill(color, outerAlpha * (1 - t * 0.32))
+    graphics.drawCircle(p.x, p.y, radius + (boost ? 2.4 : 1.2))
     graphics.endFill()
 
     graphics.beginFill(color, coreAlpha)
-    graphics.drawCircle(p.x, p.y, radius + gapComp * 0.5)
+    graphics.drawCircle(p.x, p.y, radius)
     graphics.endFill()
+  }
+
+  // Subdivide sparse segments so body always reads as continuous circles, not sticks.
+  for (let i = 0; i < n - 1; i++) {
+    const a = path[i]
+    const b = path[i + 1]
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist <= BODY_TARGET_SPACING) continue
+    const extra = Math.min(MAX_SUBDIV_SEGMENTS, Math.floor(dist / BODY_TARGET_SPACING))
+    if (extra <= 0) continue
+
+    for (let s = 1; s <= extra; s++) {
+      const k = s / (extra + 1)
+      const x = a.x + dx * k
+      const y = a.y + dy * k
+      const t = (i + k) / Math.max(1, n - 1)
+      const radius = profileRadius(t)
+
+      graphics.beginFill(color, outerAlpha * (1 - t * 0.32))
+      graphics.drawCircle(x, y, radius + (boost ? 2.2 : 1.05))
+      graphics.endFill()
+
+      graphics.beginFill(color, coreAlpha)
+      graphics.drawCircle(x, y, radius)
+      graphics.endFill()
+    }
   }
 }
 
@@ -184,14 +220,15 @@ function drawHead(
   graphics.clear()
   headSprite.visible = true
   headSprite.position.set(head.x, head.y)
-  headSprite.width = headRadius * 2.15
-  headSprite.height = headRadius * 2.15
+  headSprite.width = headRadius * 2.18
+  headSprite.height = headRadius * 2.18
   headSprite.tint = color
-  headSprite.alpha = 0.96
+  headSprite.alpha = 0.98
 
   if (boost) {
-    graphics.beginFill(color, 0.22)
-    graphics.drawCircle(head.x, head.y, headRadius + 7)
+    const pulse = 1 + Math.sin(Date.now() * 0.03) * 0.08
+    graphics.beginFill(color, 0.2)
+    graphics.drawCircle(head.x, head.y, (headRadius + 7) * pulse)
     graphics.endFill()
   }
 }
@@ -203,9 +240,9 @@ function drawEyes(graphics: Graphics, head: XY, headRadius: number, angle: numbe
     : angle
 
   const side = lookAngle + Math.PI / 2
-  const spread = headRadius * 0.42
-  const forward = headRadius * 0.22
-  const eyeRadius = Math.max(2.6, headRadius * 0.26)
+  const spread = headRadius * 0.4
+  const forward = headRadius * 0.2
+  const eyeRadius = Math.max(2.3, headRadius * 0.23)
   const pupilRadius = Math.max(1.2, eyeRadius * 0.45)
 
   const lx = head.x + Math.cos(side) * spread + Math.cos(lookAngle) * forward

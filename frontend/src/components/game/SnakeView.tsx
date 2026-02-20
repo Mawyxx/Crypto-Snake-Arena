@@ -24,6 +24,7 @@ interface TrailState {
 
 type SnakeContainerRef = SnakeMeshRef & {
   __trailState: TrailState
+  __lookAhead: { x: number; y: number } | null
 }
 
 // WeakMap для хранения custom refs без расширения Container
@@ -52,6 +53,7 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
     const ref: SnakeContainerRef = {
       ...meshRef,
       __trailState: { buffer: [], lastHead: null },
+      __lookAhead: null,
     }
     containerRefs.set(container, ref)
     return container
@@ -71,15 +73,28 @@ const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer'
       : buildMeshPathFromBody(head, rawBody)
     const skinId = Number(newProps.snake?.skinId ?? newProps.snake?.id ?? 0)
     const color = getSnakeColor(newProps.isLocalPlayer ? null : skinId) // local = preferred color
+    const headPos = { x: head.x ?? 0, y: head.y ?? 0 }
+    const baseAngle = newProps.snake?.angle ?? 0
+    const targetLook = newProps.mouseWorld ?? {
+      x: headPos.x + Math.cos(baseAngle) * 34,
+      y: headPos.y + Math.sin(baseAngle) * 34,
+    }
+    if (!ref.__lookAhead) {
+      ref.__lookAhead = { x: targetLook.x, y: targetLook.y }
+    } else {
+      const follow = newProps.snake?.boost ? 0.24 : 0.18
+      ref.__lookAhead.x += (targetLook.x - ref.__lookAhead.x) * follow
+      ref.__lookAhead.y += (targetLook.y - ref.__lookAhead.y) * follow
+    }
 
     updateSnakeMesh(instance, ref, {
       path,
       color,
       skinId,
       isLocalPlayer: newProps.isLocalPlayer,
-      angle: newProps.snake?.angle ?? 0,
+      angle: baseAngle,
       boost: newProps.snake?.boost ?? false,
-      mouseWorld: newProps.mouseWorld ?? null,
+      mouseWorld: ref.__lookAhead,
       growthFlash: newProps.growthFlash,
       trailState: ref.__trailState,
     })

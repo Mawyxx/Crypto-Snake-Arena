@@ -146,14 +146,19 @@ export const Arena = ({
       {/* Статичный фон — HTML-слой, не следует за камерой */}
       <div
         style={{
-          position: 'absolute',
-          inset: 0,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
           zIndex: 0,
           backgroundImage: 'url(/bg54.jpg)',
           backgroundRepeat: 'repeat',
           backgroundSize: '599px 519px',
-          backgroundPosition: '0 0',
+          backgroundPosition: 'center center',
+          backgroundAttachment: 'fixed',
           backgroundColor: '#161c22',
+          pointerEvents: 'none',
         }}
         aria-hidden
       />
@@ -260,10 +265,13 @@ function GameLoop({
   const mouseWorldRef = useRef<{ x: number; y: number } | null>(null)
   const [, forceUpdate] = useState(0)
   const [lowPerfMode, setLowPerfMode] = useState(false)
-  const CAMERA_LERP = 0.15
+  const CAMERA_BASE_LERP = 0.105
+  const CAMERA_BOOST_LERP = 0.16
   const perfLastTsRef = useRef(typeof performance !== 'undefined' ? performance.now() : Date.now())
   const perfAccumRef = useRef(0)
   const perfFramesRef = useRef(0)
+  const cameraScaleRef = useRef(1)
+  const headVelocityRef = useRef(0)
 
   useEffect(() => {
     const el = containerRef?.current
@@ -315,10 +323,17 @@ function GameLoop({
     stateRef.current = state
 
     let head = snakeHeadRef.current
+    let mySnake: InterpolatedSnake | undefined
     if (state?.snakes && localSnakeId != null) {
-      const mySnake = state.snakes.find((snake) => Number(snake.id) === Number(localSnakeId))
+      mySnake = state.snakes.find((snake) => Number(snake.id) === Number(localSnakeId))
       if (mySnake?.head) {
         head = { x: mySnake.head.x ?? 0, y: mySnake.head.y ?? 0 }
+        const prev = snakeHeadRef.current
+        if (prev) {
+          const dx = head.x - prev.x
+          const dy = head.y - prev.y
+          headVelocityRef.current = headVelocityRef.current * 0.75 + Math.sqrt(dx * dx + dy * dy) * 0.25
+        }
         snakeHeadRef.current = head
       }
     } else {
@@ -327,19 +342,21 @@ function GameLoop({
 
     const centerX = head?.x ?? WORLD_SIZE / 2
     const centerY = head?.y ?? WORLD_SIZE / 2
-    const bodyLen = state?.snakes && localSnakeId != null
-      ? (state.snakes.find((s) => Number(s.id) === Number(localSnakeId))?.body?.length ?? 0)
-      : 0
+    const bodyLen = mySnake?.body?.length ?? 0
     const slitherZoom = 0.64285 + 0.514285714 / Math.max(1, (bodyLen + 16) / 36)
     const baseScale = Math.min(containerWidth / WORLD_SIZE, containerHeight / WORLD_SIZE)
-    const scale = baseScale * slitherZoom * CAMERA_ZOOM_FACTOR
+    const desiredScale = baseScale * slitherZoom * CAMERA_ZOOM_FACTOR
+    cameraScaleRef.current += (desiredScale - cameraScaleRef.current) * 0.09
+    const scale = cameraScaleRef.current
     const targetX = containerWidth / 2 - centerX * scale
     const targetY = containerHeight / 2 - centerY * scale
     targetViewportRef.current = { scale, x: targetX, y: targetY }
 
     const viewport = viewportRef.current
     const targetViewport = targetViewportRef.current
-    const lerpFactor = Math.min(1, CAMERA_LERP * (typeof delta === 'number' ? delta : 1))
+    const turnBoost = Math.min(0.045, headVelocityRef.current * 0.0022)
+    const boostLerp = mySnake?.boost ? CAMERA_BOOST_LERP : CAMERA_BASE_LERP
+    const lerpFactor = Math.min(1, (boostLerp + turnBoost) * (typeof delta === 'number' ? delta : 1))
     viewportRef.current = {
       scale: viewport.scale + (targetViewport.scale - viewport.scale) * lerpFactor,
       x: viewport.x + (targetViewport.x - viewport.x) * lerpFactor,
