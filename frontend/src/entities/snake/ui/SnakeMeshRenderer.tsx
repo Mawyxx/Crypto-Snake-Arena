@@ -8,12 +8,20 @@ import {
   BlurFilter,
 } from 'pixi.js'
 import { GlowFilter } from '@pixi/filter-glow'
-import { pointAtDistance, getPathLength } from '@/shared/lib/path-sampler'
 import { getSkinConfig } from '../lib/skin-config'
 
 const GROWTH_FLASH_MS = 200
 const TRAIL_LENGTH = 18
 const TRAIL_POSITION_THRESHOLD = 2
+
+// Константы для улучшенной визуализации
+const BASE_RADIUS = 14.5 // Базовый радиус сегмента
+const SPACING_RATIO = 0.25 // Коэффициент наслоения (расстояние между сегментами = radius * SPACING_RATIO)
+const TAIL_TAPER_SEGMENTS = 20 // Количество сегментов хвоста для сужения
+const HEAD_SWELL_SEGMENTS = 4 // Количество сегментов головы для увеличения
+const HEAD_SWELL_FACTOR = 0.08 // Фактор увеличения головы
+const HIGHLIGHT_RATIO = 0.85 // Радиус блика относительно основного круга (85%)
+const HIGHLIGHT_BRIGHTNESS = 1.2 // Яркость блика (на 20% ярче)
 
 export interface SnakeMeshRendererProps {
   path: { x: number; y: number }[]
@@ -42,15 +50,41 @@ export interface SnakeMeshRef {
 }
 
 /**
- * Отрисовывает сегменты змеи как отдельные круги (Slither.io render_mode 2).
- * Отрисовывает от хвоста к голове для правильного наслоения.
- * Каждый сегмент размещается на пути головы на определенном расстоянии от предыдущего,
- * создавая эффект "следования" - каждый сегмент движется по пути предыдущего.
+ * Вычисляет яркость цвета для блика (делает цвет светлее).
+ */
+function brightenColor(color: number, factor: number): number {
+  const r = ((color >> 16) & 0xff) * factor
+  const g = ((color >> 8) & 0xff) * factor
+  const b = (color & 0xff) * factor
+  return (
+    (Math.min(255, r) << 16) |
+    (Math.min(255, g) << 8) |
+    Math.min(255, b)
+  )
+}
+
+/**
+ * Вычисляет расстояние между двумя точками.
+ */
+function getDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {
+  const dx = p2.x - p1.x
+  const dy = p2.y - p1.y
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+/**
+ * Отрисовывает сегменты змеи с улучшенной визуализацией (Slither.io style).
+ * 
+ * Особенности:
+ * - Адаптивный spacing: сегменты рисуются только когда расстояние превышает порог
+ * - Круг в круге: внешний круг + внутренний блик для объема
+ * - Сужение хвоста: плавное уменьшение радиуса последних сегментов
+ * - Оптимизация: группировка похожих сегментов
  */
 function drawSnakeSegments(
   graphics: Graphics,
   path: { x: number; y: number }[],
-  segmentRadius: number,
+  baseSegmentRadius: number,
   color: number,
   isShadow: boolean,
   boost: boolean
@@ -59,56 +93,65 @@ function drawSnakeSegments(
   
   if (path.length === 0) return
   
-  // ВАЖНО: ВСЕГДА рисуем круги по всей длине пути!
-  // Расстояние между центрами кругов для плотного перекрытия (~80-85%)
-  // В оригинале Slither.io: minSegmentSpacing = 4.5px (или 3px для WebGL)
-  const segmentSpacing = Math.max(4, segmentRadius * 0.3) // ~4-5px при radius=14.5px для ОЧЕНЬ плотного перекрытия
+  // path[0] - голова, path[path.length-1] - хвост
+  const totalSegments = path.length
+  let lastDrawnPos: { x: number; y: number } | null = null
+  const minSpacing = baseSegmentRadius * SPACING_RATIO
   
-  const pathLength = getPathLength(path)
-  
-  // Вычисляем количество сегментов на основе длины пути
-  // Гарантируем минимум 30 сегментов для визуальной плавности
-  const calculatedSegments = pathLength > 0 ? Math.ceil(pathLength / segmentSpacing) : path.length
-  const segmentCount = Math.max(30, Math.max(calculatedSegments, path.length))
-  
-  // Отрисовываем от хвоста к голове для правильного наслоения
-  for (let i = segmentCount - 1; i >= 0; i--) {
-    // Вычисляем расстояние от головы для этого сегмента
-    const distFromHead = (segmentCount - 1 - i) * segmentSpacing
+  // Итерируемся от хвоста к голове для правильного наслоения
+  for (let i = path.length - 1; i >= 0; i--) {
+    const point = path[i]
+    const segmentIndexFromHead = i // 0 = голова, totalSegments-1 = хвост
+    const segmentIndexFromTail = totalSegments - 1 - i // 0 = хвост, totalSegments-1 = голова
     
-    // Если расстояние превышает длину пути, используем последнюю точку пути
-    let segmentPos: { x: number; y: number } | null
-    if (distFromHead >= pathLength) {
-      segmentPos = path[path.length - 1] // хвост
-    } else {
-      segmentPos = pointAtDistance(path, distFromHead)
+    // Адаптивный spacing: проверяем расстояние от последнего нарисованного сегмента
+    if (lastDrawnPos !== null) {
+      const dist = getDistance(lastDrawnPos, point)
+      if (dist < minSpacing) {
+        continue // Пропускаем этот сегмент, слишком близко к предыдущему
+      }
     }
     
-    if (!segmentPos) continue
+    // Вычисляем радиус с учетом позиции сегмента
+    let radius = baseSegmentRadius
     
-    // Swell для первых 4 сегментов (как в оригинале Slither.io)
-    let radius = segmentRadius
-    const segmentIndex = segmentCount - 1 - i // индекс от головы (0 = голова)
-    if (segmentIndex < 4) {
-      radius = segmentRadius * (1 + (4 - segmentIndex) * 0.08)
+    // Swell для головы (первые HEAD_SWELL_SEGMENTS сегментов)
+    if (segmentIndexFromHead < HEAD_SWELL_SEGMENTS) {
+      radius = baseSegmentRadius * (1 + (HEAD_SWELL_SEGMENTS - segmentIndexFromHead) * HEAD_SWELL_FACTOR)
+    }
+    // Сужение хвоста (последние TAIL_TAPER_SEGMENTS сегментов)
+    else if (segmentIndexFromTail < TAIL_TAPER_SEGMENTS) {
+      const taperFactor = segmentIndexFromTail / TAIL_TAPER_SEGMENTS
+      // Плавное уменьшение от baseSegmentRadius до baseSegmentRadius * 0.3
+      radius = baseSegmentRadius * (0.3 + taperFactor * 0.7)
     }
     
     if (isShadow) {
       // Тень: чёрный круг с увеличенным радиусом
       graphics.beginFill(0x000000, boost ? 0.5 : 0.3)
-      graphics.drawCircle(segmentPos.x, segmentPos.y, radius + 5)
+      graphics.drawCircle(point.x, point.y, radius + 5)
       graphics.endFill()
     } else {
-      // Тело: цветной круг
+      // Тело: внешний круг с основным цветом
       graphics.beginFill(color, 0.95)
-      graphics.drawCircle(segmentPos.x, segmentPos.y, radius)
+      graphics.drawCircle(point.x, point.y, radius)
+      graphics.endFill()
+      
+      // Блик: внутренний круг чуть меньшего радиуса с более светлым оттенком
+      const highlightRadius = radius * HIGHLIGHT_RATIO
+      const highlightColor = brightenColor(color, HIGHLIGHT_BRIGHTNESS)
+      graphics.beginFill(highlightColor, 0.6)
+      graphics.drawCircle(point.x, point.y, highlightRadius)
       graphics.endFill()
       
       // Обводка: чёрная с alpha 0.4 (как в оригинале Slither.io)
       graphics.lineStyle(2, 0x000000, 0.4)
-      graphics.drawCircle(segmentPos.x, segmentPos.y, radius)
+      graphics.drawCircle(point.x, point.y, radius)
       graphics.lineStyle(0) // сброс
     }
+    
+    // Обновляем позицию последнего нарисованного сегмента
+    lastDrawnPos = point
   }
 }
 
@@ -164,9 +207,17 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
 
   const skin = getSkinConfig(skinId, isLocalPlayer)
   const bodyLen = path.length
+  
+  // Нелинейный рост (жирность): логарифмическая зависимость от массы
+  // Используем формулу: BASE_RADIUS * (1 + sqrt(bodyLen) / коэффициент)
+  // Это дает ощутимый рост толщины с увеличением длины
+  const growthFactor = 1 + Math.sqrt(bodyLen) / 15
+  const baseRadius = BASE_RADIUS * Math.min(growthFactor, 3.5) // Ограничиваем максимальный рост
+  
+  // Для совместимости с существующим кодом вычисляем lsz и headR
   const scale = Math.min(6, 1 + (bodyLen - 2) / 106)
   const lsz = 29 * scale
-  const headR = lsz * 0.5
+  const headR = baseRadius // Используем baseRadius для головы
   const hx = path[0].x
   const hy = path[0].y
 
@@ -197,17 +248,15 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
 
   // Shadow layer - отрисовка теней сегментов
   if (path.length >= 2) {
-    const segmentRadius = lsz * 0.5
-    drawSnakeSegments(ref.shadowGraphics, path, segmentRadius, 0, true, boost)
+    drawSnakeSegments(ref.shadowGraphics, path, baseRadius, 0, true, boost)
     ref.shadowGraphics.visible = true
   } else {
     ref.shadowGraphics.visible = false
   }
 
-  // Body segments - отрисовка сегментов тела
+  // Body segments - отрисовка сегментов тела с улучшенной визуализацией
   if (path.length >= 2) {
-    const segmentRadius = lsz * 0.5
-    drawSnakeSegments(ref.bodyGraphics, path, segmentRadius, skin.bodyColor, false, boost)
+    drawSnakeSegments(ref.bodyGraphics, path, baseRadius, skin.bodyColor, false, boost)
     ref.bodyGraphics.visible = true
 
     // Glow filter для boost эффекта
