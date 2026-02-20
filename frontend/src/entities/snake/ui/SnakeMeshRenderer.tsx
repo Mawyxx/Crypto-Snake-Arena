@@ -155,14 +155,20 @@ function drawBody(graphics: Graphics, path: XY[], color: number, boost: boolean)
 
   for (let i = path.length - 1; i >= 0; i--) {
     const p = path[i]
+    const prev = i > 0 ? path[i - 1] : null
+    const dx = prev ? p.x - prev.x : 0
+    const dy = prev ? p.y - prev.y : 0
+    const step = prev ? Math.sqrt(dx * dx + dy * dy) : 0
+    // Compensate sparse path spacing so body stays continuous, not "sticks".
+    const gapComp = Math.min(8, Math.max(0, step * 0.45))
     const t = i / Math.max(1, path.length - 1)
     const radius = Math.max(3, 10 - t * 4.6)
     graphics.beginFill(color, outerAlpha * (1 - t * 0.5))
-    graphics.drawCircle(p.x, p.y, radius + (boost ? 2.2 : 1.2))
+    graphics.drawCircle(p.x, p.y, radius + (boost ? 2.2 : 1.2) + gapComp)
     graphics.endFill()
 
     graphics.beginFill(color, coreAlpha)
-    graphics.drawCircle(p.x, p.y, radius)
+    graphics.drawCircle(p.x, p.y, radius + gapComp * 0.5)
     graphics.endFill()
   }
 }
