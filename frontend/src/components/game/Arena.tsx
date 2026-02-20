@@ -1,6 +1,7 @@
 import { Stage, Container, useTick, useApp, Text, Graphics } from '@pixi/react'
 import { TextStyle, ColorMatrixFilter } from 'pixi.js'
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { game } from '@/shared/api/proto/game'
 import { useGameEngine, type InterpolatedWorldSnapshot, type InterpolatedSnake } from '@/hooks/useGameEngine'
@@ -128,6 +129,28 @@ export const Arena = ({
     return () => cancelAnimationFrame(rafId)
   }, [getLocalSnakeScore, onScoreUpdate])
 
+  // Фон рендерим в body через Portal — железно фиксирован, без transform-предков
+  const bgStyles = {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100vw',
+    height: '100vh',
+    zIndex: -1,
+    backgroundImage: 'url(/bg54.jpg)',
+    backgroundRepeat: 'repeat',
+    backgroundSize: '599px 519px',
+    backgroundPosition: 'center center',
+    backgroundColor: '#161c22',
+    pointerEvents: 'none' as const,
+  }
+  const bgPortal = createPortal(
+    <div style={bgStyles} aria-hidden />,
+    document.body
+  )
+
   return (
     <div
       ref={containerRef}
@@ -143,25 +166,7 @@ export const Arena = ({
         cursor: 'default',
       }}
     >
-      {/* Статичный фон — HTML-слой, не следует за камерой */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          zIndex: 0,
-          backgroundImage: 'url(/bg54.jpg)',
-          backgroundRepeat: 'repeat',
-          backgroundSize: '599px 519px',
-          backgroundPosition: 'center center',
-          backgroundAttachment: 'fixed',
-          backgroundColor: '#161c22',
-          pointerEvents: 'none',
-        }}
-        aria-hidden
-      />
+      {bgPortal}
       {(status === 'reconnecting' || status === 'connecting') && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <span className="text-white font-medium">

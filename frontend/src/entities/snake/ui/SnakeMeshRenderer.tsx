@@ -39,6 +39,8 @@ const MAX_TRAIL_POINTS = 24
 const TRAIL_STEP_SQ = 9
 const FLASH_MS = 180
 const SHADOW_OFFSET = 5
+/** Референс slither.io SEGMENT_INDEX_STEP: рендерить каждый N-й сегмент, чтобы круги не слипались в полоску */
+const DISPLAY_SEGMENT_STEP = 4
 
 export function createSnakeMeshRef(): SnakeMeshRef {
   const shadowContainer = new Container()
@@ -150,7 +152,7 @@ function drawShadow(graphics: Graphics, path: XY[], headRadius: number): void {
   }
 }
 
-/** Референс slither.io: тело — дискретные кругляшки, один круг на сегмент. */
+/** Референс slither.io: дискретные кругляшки — рисуем каждый DISPLAY_SEGMENT_STEP сегмент. */
 function drawBody(
   graphics: Graphics,
   path: XY[],
@@ -162,7 +164,14 @@ function drawBody(
   const n = path.length
   if (n === 0) return
 
-  for (let i = n - 1; i >= 0; i--) {
+  const indices: number[] = [0]
+  for (let i = DISPLAY_SEGMENT_STEP; i < n - 1; i += DISPLAY_SEGMENT_STEP) {
+    indices.push(i)
+  }
+  if (n > 1) indices.push(n - 1)
+
+  for (let k = indices.length - 1; k >= 0; k--) {
+    const i = indices[k]
     const p = path[i]
     const t = i / Math.max(1, n - 1)
     const isHead = i === 0
