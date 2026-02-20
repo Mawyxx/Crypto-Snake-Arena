@@ -6,13 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// Coin — логика монеты. Выпадение, TTL 5 сек.
+// Coin — логика монеты. Выпадение, TTL 5 сек. Consuming — притягивание к голове (slither-clone).
 type Coin struct {
-	ID        string
-	X         float64
-	Y         float64
-	Value     float64
-	ExpiresAt time.Time
+	ID               string
+	X                float64
+	Y                float64
+	Value            float64
+	ExpiresAt        time.Time
+	ConsumingSnakeID uint64 // 0 = not consuming; when set, coin moves toward snake head
 }
 
 // Position возвращает точку монеты для SpatialGrid.

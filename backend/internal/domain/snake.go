@@ -7,7 +7,7 @@ import (
 )
 
 // Snake — модель змейки. headPath + findNextPointIndex (slither-clone style).
-// DOD: headPathBuf — ring buffer (no alloc in addHeadPathPoint); bodyCache — cached until UpdatePosition.
+// DOD: SoA (headPathX/Y) — Structure of Arrays для лучшей cache locality; bodyCache — cached until UpdatePosition.
 type Snake struct {
 	ID         uint64
 	UserID     int64
@@ -26,12 +26,13 @@ type Snake struct {
 	speed            float64
 	segmentLen       float64
 	turnSpeed        float64
-	headPathBuf      []Point // ring buffer, preallocated in NewSnakeAt (no alloc in hot path)
-	headPathLen      int     // number of valid points
-	headPathIdx      int     // index of newest (logical 0)
-	snakeLength      int     // head + tail segments
+	headPathX        []float64 // SoA: ring buffer X coordinates, preallocated (no alloc in hot path)
+	headPathY        []float64 // SoA: ring buffer Y coordinates, preallocated (no alloc in hot path)
+	headPathLen      int        // number of valid points
+	headPathIdx      int        // index of newest (logical 0)
+	snakeLength      int        // head + tail segments
 	queuedSections   int
-	lastHeadPosition Point
+	distanceTraveled float64 // accumulated distance since last cycleComplete
 
 	bodyCache      []Point // cached until next UpdatePosition
 	bodyCacheValid bool
@@ -44,7 +45,7 @@ const (
 	SegmentLen          = 42.0
 	PreferredDist       = 42.0  // preferredDistance between segments (SegmentLen)
 	Spangdv             = 4.8
-	InitialLength       = 4     // head + 3 tail segments
+	InitialLength       = 15    // head + 14 tail segments (slither.io-like start)
 	MaxHeadPathLen      = 1200
 	HeadPathSampleDist  = 2.5   // add headPath point every ~2.5px for smooth curve
 	minDist             = 1e-6
@@ -61,6 +62,7 @@ func NewSnake(id uint64) *Snake {
 }
 
 // NewSnakeAt creates a snake with headPath initialized (head + tail points going back).
+// Points are spaced by HeadPathSampleDist for consistent direct index access.
 func NewSnakeAt(id uint64, headX, headY float64) *Snake {
 	s := &Snake{
 		ID:               id,
@@ -75,18 +77,30 @@ func NewSnakeAt(id uint64, headX, headY float64) *Snake {
 		segmentLen:       SegmentLen,
 		turnSpeed:        TurnSpeed,
 		snakeLength:      InitialLength,
-		lastHeadPosition: Point{X: headX, Y: headY},
-		headPathBuf:      make([]Point, MaxHeadPathLen),
-		headPathLen:      InitialLength,
+		distanceTraveled: 0,
+		headPathX:        make([]float64, MaxHeadPathLen),
+		headPathY:        make([]float64, MaxHeadPathLen),
+		headPathLen:      0,
 		headPathIdx:      0,
 	}
-	// headPath: [0]=head, [1..n]=points behind (angle 0 = east, behind = west)
-	s.headPathBuf[0] = Point{X: headX, Y: headY}
-	for i := 1; i < InitialLength; i++ {
-		s.headPathBuf[i] = Point{
-			X: headX - float64(i)*PreferredDist,
-			Y: headY,
-		}
+	// headPath: [0]=head, [1..n]=points behind with HeadPathSampleDist spacing
+	// Need enough points for InitialLength segments: (InitialLength-1) * step points
+	step := int(math.Round(PreferredDist / HeadPathSampleDist))
+	if step < 1 {
+		step = 1
+	}
+	totalPoints := (InitialLength - 1) * step + 1
+	if totalPoints > MaxHeadPathLen {
+		totalPoints = MaxHeadPathLen
+	}
+	s.headPathX[0] = headX
+	s.headPathY[0] = headY
+	s.headPathLen = 1
+	for i := 1; i < totalPoints; i++ {
+		dist := float64(i) * HeadPathSampleDist
+		s.headPathX[i] = headX - dist
+		s.headPathY[i] = headY
+		s.headPathLen++
 	}
 	return s
 }
@@ -124,6 +138,7 @@ func (s *Snake) UpdatePosition(dt float64) {
 	s.CurrentAngle += delta
 
 	totalDist := speed * dt
+	s.distanceTraveled += totalDist
 	step := HeadPathSampleDist
 	remain := totalDist
 	for remain >= step {
@@ -140,15 +155,16 @@ func (s *Snake) UpdatePosition(dt float64) {
 	s.checkCycleComplete()
 }
 
-// addHeadPathPoint adds current head to path front (newest first). Zero allocations (ring buffer).
+// addHeadPathPoint adds current head to path front (newest first). Zero allocations (SoA ring buffer).
 func (s *Snake) addHeadPathPoint() {
-	cap := len(s.headPathBuf)
+	cap := len(s.headPathX)
 	if cap == 0 {
 		return
 	}
 	// Prepend: decrement head index (wrap), write newest at head
 	s.headPathIdx = (s.headPathIdx - 1 + cap) % cap
-	s.headPathBuf[s.headPathIdx] = Point{X: s.HeadX, Y: s.HeadY}
+	s.headPathX[s.headPathIdx] = s.HeadX
+	s.headPathY[s.headPathIdx] = s.HeadY
 	if s.headPathLen < cap {
 		s.headPathLen++
 	}
@@ -156,12 +172,12 @@ func (s *Snake) addHeadPathPoint() {
 
 // headPathAt returns logical index i (0=newest, 1=second newest, ...).
 func (s *Snake) headPathAt(i int) Point {
-	cap := len(s.headPathBuf)
+	cap := len(s.headPathX)
 	if cap == 0 {
 		return s.Head()
 	}
 	idx := (s.headPathIdx + i) % cap
-	return s.headPathBuf[idx]
+	return Point{X: s.headPathX[idx], Y: s.headPathY[idx]}
 }
 
 // PointOnPath returns the point at distFromHead along the path from head toward tail.
@@ -193,25 +209,33 @@ func (s *Snake) PointOnPath(distFromHead float64) (Point, bool) {
 	return s.headPathAt(s.headPathLen - 1), true
 }
 
-// BodyFromHeadPath computes body segments from headPath (head + tail) via PointOnPath.
+// BodyFromHeadPath computes body segments from headPath (head + tail) via direct index access.
+// HeadPathSampleDist = 2.5px фиксирован, поэтому step константный даже при boost.
 // Result is cached until next UpdatePosition.
 func (s *Snake) BodyFromHeadPath() []Point {
 	if s.bodyCacheValid && len(s.bodyCache) > 0 {
 		return s.bodyCache
 	}
-	// Reuse or grow cache slice (single allocation when snake grows)
-	if cap(s.bodyCache) < s.snakeLength {
-		s.bodyCache = make([]Point, 0, s.snakeLength+8)
+	// Прямой доступ: step = PreferredDist / HeadPathSampleDist ≈ 16-17 индексов
+	step := int(math.Round(PreferredDist / HeadPathSampleDist))
+	if step < 1 {
+		step = 1
+	}
+
+	count := s.snakeLength
+	if cap(s.bodyCache) < count {
+		s.bodyCache = make([]Point, 0, count+8)
 	} else {
 		s.bodyCache = s.bodyCache[:0]
 	}
-	for i := 0; i < s.snakeLength; i++ {
-		dist := PreferredDist * float64(i)
-		pt, ok := s.PointOnPath(dist)
-		if !ok {
-			break
-		}
-		s.bodyCache = append(s.bodyCache, pt)
+
+	cap := len(s.headPathX)
+	for i := 0; i < count; i++ {
+		idx := (s.headPathIdx + i*step) % cap
+		s.bodyCache = append(s.bodyCache, Point{
+			X: s.headPathX[idx],
+			Y: s.headPathY[idx],
+		})
 	}
 	if len(s.bodyCache) == 0 {
 		s.bodyCache = append(s.bodyCache, Point{X: s.HeadX, Y: s.HeadY})
@@ -220,36 +244,12 @@ func (s *Snake) BodyFromHeadPath() []Point {
 	return s.bodyCache
 }
 
-// checkCycleComplete: when segment 1 reaches lastHeadPosition, call onCycleComplete.
+// checkCycleComplete: when distanceTraveled >= PreferredDist, call onCycleComplete.
+// O(1) вместо O(n) итерации по path.
 func (s *Snake) checkCycleComplete() {
-	body := s.BodyFromHeadPath()
-	if len(body) < 2 {
-		s.lastHeadPosition = Point{X: s.HeadX, Y: s.HeadY}
-		return
-	}
-	// Cycle complete when segment 1 (at PreferredDist from head) reaches lastHeadPosition.
-	// Iterate path from head, accumulate distance. When we find lastHeadPosition at dist >= PreferredDist, seg1 has reached it.
-	distFromHead := 0.0
-	for i := 0; i < s.headPathLen-1; i++ {
-		p0 := s.headPathAt(i)
-		p1 := s.headPathAt(i + 1)
-		if math.Abs(p0.X-s.lastHeadPosition.X) < 0.01 && math.Abs(p0.Y-s.lastHeadPosition.Y) < 0.01 {
-			if distFromHead >= PreferredDist-0.5 {
-				s.lastHeadPosition = Point{X: s.HeadX, Y: s.HeadY}
-				s.onCycleComplete()
-			}
-			return
-		}
-		distFromHead += p0.Distance(p1)
-	}
-	if s.headPathLen > 0 {
-		pt := s.headPathAt(s.headPathLen - 1)
-		if math.Abs(pt.X-s.lastHeadPosition.X) < 0.01 && math.Abs(pt.Y-s.lastHeadPosition.Y) < 0.01 {
-			if distFromHead >= PreferredDist-0.5 {
-				s.lastHeadPosition = Point{X: s.HeadX, Y: s.HeadY}
-				s.onCycleComplete()
-			}
-		}
+	if s.distanceTraveled >= PreferredDist {
+		s.distanceTraveled = 0
+		s.onCycleComplete()
 	}
 }
 
@@ -263,17 +263,19 @@ func (s *Snake) onCycleComplete() {
 	}
 	last := body[len(body)-1]
 	s.bodyCacheValid = false
-	cap := len(s.headPathBuf)
+	cap := len(s.headPathX)
 	if cap == 0 {
 		return
 	}
 	if s.headPathLen < cap {
 		phys := (s.headPathIdx + s.headPathLen) % cap
-		s.headPathBuf[phys] = last
+		s.headPathX[phys] = last.X
+		s.headPathY[phys] = last.Y
 		s.headPathLen++
 	} else {
 		phys := (s.headPathIdx + cap - 1) % cap
-		s.headPathBuf[phys] = last
+		s.headPathX[phys] = last.X
+		s.headPathY[phys] = last.Y
 	}
 	s.snakeLength++
 	s.queuedSections--

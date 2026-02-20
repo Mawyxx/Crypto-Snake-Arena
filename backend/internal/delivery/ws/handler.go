@@ -308,6 +308,28 @@ func runReader(conn Conn, playerID uint64, room *game.Room, closeFn func(), reas
 		}
 		_ = conn.SetReadDeadline(time.Now().Add(readDeadline))
 		if isCashOutMessage(messageType, data) {
+			// Получаем score змейки перед закрытием соединения
+			room.Mu.RLock()
+			snake, hasSnake := room.Snakes[playerID]
+			reward := 0.0
+			if hasSnake && !snake.Dead {
+				reward = snake.Score
+			}
+			room.Mu.RUnlock()
+
+			// Отправляем reward клиенту перед закрытием
+			if reward > 0 {
+				response := map[string]interface{}{
+					"type":   "cash_out",
+					"reward": reward,
+					"score":  reward,
+				}
+				jsonData, err := json.Marshal(response)
+				if err == nil {
+					_ = conn.WriteMessage(websocket.TextMessage, jsonData)
+				}
+			}
+
 			*reason = "cash_out"
 			closeFn()
 			_ = conn.Close()

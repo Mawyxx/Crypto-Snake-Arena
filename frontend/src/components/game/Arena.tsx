@@ -69,6 +69,13 @@ export const Arena = ({
       ),
       onDeathDetected,
       onGrow: useCallback(() => setLastGrowAt(Date.now()), []),
+      onCashOut: useCallback(
+        (reward: number, score: number) => {
+          // Reward получен от сервера - вызываем onGameEnd
+          onGameEnd?.({ status: 'win', score, reward })
+        },
+        [onGameEnd]
+      ),
     }
   )
 
@@ -91,12 +98,11 @@ export const Arena = ({
 
   const cashOutHandled = useRef(false)
   useEffect(() => {
-    if (!cashOutRequested || !onGameEnd || cashOutHandled.current) return
+    if (!cashOutRequested || cashOutHandled.current) return
     cashOutHandled.current = true
-    const score = getLocalSnakeScore()
+    // Отправляем CASH_OUT на сервер - reward придет через onCashOut callback
     closeSocket(true) // send CASH_OUT to backend before close
-    onGameEnd({ status: 'win', score, reward: score })
-  }, [cashOutRequested, onGameEnd, getLocalSnakeScore, closeSocket])
+  }, [cashOutRequested, closeSocket])
 
   const sendInputStable = useCallback(sendInput, [])
   useInputHandler(sendInputStable, { containerRef, blockInputRef })

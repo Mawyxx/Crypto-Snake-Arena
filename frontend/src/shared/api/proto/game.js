@@ -719,6 +719,7 @@ export const game = $root.game = (() => {
          * @property {string|null} [id] Coin id
          * @property {game.IPoint|null} [pos] Coin pos
          * @property {number|null} [value] Coin value
+         * @property {number|Long|null} [consumingSnakeId] Coin consumingSnakeId
          */
 
         /**
@@ -761,6 +762,23 @@ export const game = $root.game = (() => {
         Coin.prototype.value = 0;
 
         /**
+         * Coin consumingSnakeId.
+         * @member {number|Long|null|undefined} consumingSnakeId
+         * @memberof game.Coin
+         * @instance
+         */
+        Coin.prototype.consumingSnakeId = null;
+
+        // OneOf field names bound to virtual getters and setters
+        let $oneOfFields;
+
+        // Virtual OneOf for proto3 optional field
+        Object.defineProperty(Coin.prototype, "_consumingSnakeId", {
+            get: $util.oneOfGetter($oneOfFields = ["consumingSnakeId"]),
+            set: $util.oneOfSetter($oneOfFields)
+        });
+
+        /**
          * Creates a new Coin instance using the specified properties.
          * @function create
          * @memberof game.Coin
@@ -790,6 +808,8 @@ export const game = $root.game = (() => {
                 $root.game.Point.encode(message.pos, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
             if (message.value != null && Object.hasOwnProperty.call(message, "value"))
                 writer.uint32(/* id 3, wireType 5 =*/29).float(message.value);
+            if (message.consumingSnakeId != null && Object.hasOwnProperty.call(message, "consumingSnakeId"))
+                writer.uint32(/* id 4, wireType 0 =*/32).uint64(message.consumingSnakeId);
             return writer;
         };
 
@@ -838,6 +858,10 @@ export const game = $root.game = (() => {
                         message.value = reader.float();
                         break;
                     }
+                case 4: {
+                        message.consumingSnakeId = reader.uint64();
+                        break;
+                    }
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -873,6 +897,7 @@ export const game = $root.game = (() => {
         Coin.verify = function verify(message) {
             if (typeof message !== "object" || message === null)
                 return "object expected";
+            let properties = {};
             if (message.id != null && message.hasOwnProperty("id"))
                 if (!$util.isString(message.id))
                     return "id: string expected";
@@ -884,6 +909,11 @@ export const game = $root.game = (() => {
             if (message.value != null && message.hasOwnProperty("value"))
                 if (typeof message.value !== "number")
                     return "value: number expected";
+            if (message.consumingSnakeId != null && message.hasOwnProperty("consumingSnakeId")) {
+                properties._consumingSnakeId = 1;
+                if (!$util.isInteger(message.consumingSnakeId) && !(message.consumingSnakeId && $util.isInteger(message.consumingSnakeId.low) && $util.isInteger(message.consumingSnakeId.high)))
+                    return "consumingSnakeId: integer|Long expected";
+            }
             return null;
         };
 
@@ -908,6 +938,15 @@ export const game = $root.game = (() => {
             }
             if (object.value != null)
                 message.value = Number(object.value);
+            if (object.consumingSnakeId != null)
+                if ($util.Long)
+                    (message.consumingSnakeId = $util.Long.fromValue(object.consumingSnakeId)).unsigned = true;
+                else if (typeof object.consumingSnakeId === "string")
+                    message.consumingSnakeId = parseInt(object.consumingSnakeId, 10);
+                else if (typeof object.consumingSnakeId === "number")
+                    message.consumingSnakeId = object.consumingSnakeId;
+                else if (typeof object.consumingSnakeId === "object")
+                    message.consumingSnakeId = new $util.LongBits(object.consumingSnakeId.low >>> 0, object.consumingSnakeId.high >>> 0).toNumber(true);
             return message;
         };
 
@@ -935,6 +974,14 @@ export const game = $root.game = (() => {
                 object.pos = $root.game.Point.toObject(message.pos, options);
             if (message.value != null && message.hasOwnProperty("value"))
                 object.value = options.json && !isFinite(message.value) ? String(message.value) : message.value;
+            if (message.consumingSnakeId != null && message.hasOwnProperty("consumingSnakeId")) {
+                if (typeof message.consumingSnakeId === "number")
+                    object.consumingSnakeId = options.longs === String ? String(message.consumingSnakeId) : message.consumingSnakeId;
+                else
+                    object.consumingSnakeId = options.longs === String ? $util.Long.prototype.toString.call(message.consumingSnakeId) : options.longs === Number ? new $util.LongBits(message.consumingSnakeId.low >>> 0, message.consumingSnakeId.high >>> 0).toNumber(true) : message.consumingSnakeId;
+                if (options.oneofs)
+                    object._consumingSnakeId = "consumingSnakeId";
+            }
             return object;
         };
 

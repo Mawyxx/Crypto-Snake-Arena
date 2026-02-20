@@ -1,7 +1,7 @@
-export {
-  useGameEngine,
-  type InterpolatedSnake,
-  type InterpolatedWorldSnapshot,
-  type GameEngineOptions,
-  type ConnectionStatus,
-} from './model/useGameEngine'
+export { useGameEngine } from './model/useGameEngine'
+export type {
+  InterpolatedSnake,
+  InterpolatedWorldSnapshot,
+  GameEngineOptions,
+  ConnectionStatus,
+} from './types'

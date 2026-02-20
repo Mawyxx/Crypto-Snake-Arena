@@ -175,12 +175,13 @@ func (x *Snake) GetSkinId() int32 {
 }
 
 type Coin struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Pos           *Point                 `protobuf:"bytes,2,opt,name=pos,proto3" json:"pos,omitempty"`
-	Value         float32                `protobuf:"fixed32,3,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Pos                *Point                 `protobuf:"bytes,2,opt,name=pos,proto3" json:"pos,omitempty"`
+	Value              float32                `protobuf:"fixed32,3,opt,name=value,proto3" json:"value,omitempty"`
+	ConsumingSnakeId   *uint64                `protobuf:"varint,4,opt,name=consuming_snake_id,json=consumingSnakeId,proto3,oneof" json:"consuming_snake_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Coin) Reset() {
@@ -230,6 +231,13 @@ func (x *Coin) GetPos() *Point {
 func (x *Coin) GetValue() float32 {
 	if x != nil {
 		return x.Value
+	}
+	return 0
+}
+
+func (x *Coin) GetConsumingSnakeId() uint64 {
+	if x != nil && x.ConsumingSnakeId != nil {
+		return *x.ConsumingSnakeId
 	}
 	return 0
 }

@@ -10,8 +10,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const spawnTries  = 15 // число попыток выбора точки спавна
-const spawnMargin = 50 // отступ от края арены (не спавнить у смертельной границы)
+const (
+	spawnTries  = 15 // число попыток выбора точки спавна
+	spawnMargin = 50 // отступ от края арены (не спавнить у смертельной границы)
+	SubSteps    = 4  // физика разбита на подшаги для точных коллизий
+)
 
 // cryptoFloat64 returns a random float64 in [0, 1) using crypto/rand (for coin spawn).
 func cryptoFloat64() float64 {
@@ -70,27 +73,47 @@ func PickSpawnPosition(grid *domain.SpatialGrid, snakes map[uint64]*domain.Snake
 	return bestX, bestY
 }
 
-// MoveSnakes обновляет позиции змеек, валидирует скорость и границы. Возвращает ID змеек для kill (speed/out-of-bounds).
+// MoveSnakes обновляет позиции змеек с sub-stepping, валидирует скорость и границы.
+// Проверяет коллизии на каждом подшаге. Возвращает ID змеек для kill.
 func MoveSnakes(dt float64, snakes map[uint64]*domain.Snake, grid *domain.SpatialGrid) []uint64 {
+	subDt := dt / float64(SubSteps)
 	toDelete := make([]uint64, 0, 8)
-	for _, snake := range snakes {
-		prevHead := snake.Head()
-		snake.UpdatePosition(dt)
-		if prevHead.Distance(snake.Head()) > domain.MaxMoveDistanceFor(dt) {
-			zap.L().Warn("room speed violation", zap.Uint64("snakeID", snake.ID))
-			toDelete = append(toDelete, snake.ID)
-			continue
+	for step := 0; step < SubSteps; step++ {
+		for _, snake := range snakes {
+			if contains(toDelete, snake.ID) {
+				continue
+			}
+			prevHead := snake.Head()
+			snake.UpdatePosition(subDt)
+			if prevHead.Distance(snake.Head()) > domain.MaxMoveDistanceFor(subDt) {
+				zap.L().Warn("room speed violation", zap.Uint64("snakeID", snake.ID))
+				toDelete = append(toDelete, snake.ID)
+				continue
+			}
+			if !grid.InBounds(snake.Head()) {
+				toDelete = append(toDelete, snake.ID)
+			}
 		}
-		if !grid.InBounds(snake.Head()) {
-			toDelete = append(toDelete, snake.ID)
-			continue
+		grid.ClearSnakes()
+		for _, s := range snakes {
+			if !contains(toDelete, s.ID) && grid.InBounds(s.Head()) {
+				grid.AddSnake(s)
+			}
 		}
-		grid.AddSnake(snake)
+		more := CheckCollisions(snakes, grid, toDelete)
+		toDelete = append(toDelete, more...)
 	}
 	return toDelete
 }
 
-// CheckCollisions проверяет snake-vs-snake и snake-vs-self. Возвращает доп. ID змеек для kill.
+// EdgePosition returns the collision point in front of the head (slither-clone edge).
+func EdgePosition(head domain.Point, angle float64) domain.Point {
+	dx := math.Cos(angle) * domain.EdgeOffset
+	dy := math.Sin(angle) * domain.EdgeOffset
+	return domain.Point{X: head.X + dx, Y: head.Y + dy}
+}
+
+// CheckCollisions проверяет edge-vs-body (snake-vs-snake и snake-vs-self). Edge — точка впереди головы.
 func CheckCollisions(snakes map[uint64]*domain.Snake, grid *domain.SpatialGrid, toDelete []uint64) []uint64 {
 	moreToDelete := make([]uint64, 0, 8)
 	for id, snake := range snakes {
@@ -98,16 +121,16 @@ func CheckCollisions(snakes map[uint64]*domain.Snake, grid *domain.SpatialGrid, 
 			continue
 		}
 		dead := false
+		edge := EdgePosition(snake.Head(), snake.CurrentAngle)
 
-		otherIDs := grid.GetSnakesInCell(snake.Head(), id)
+		otherIDs := grid.GetSnakesInCellRadius(edge, id)
 		for _, otherID := range otherIDs {
 			other, ok := snakes[otherID]
 			if !ok || contains(toDelete, otherID) {
 				continue
 			}
-			myHead := snake.Head()
 			for _, seg := range other.Body() {
-				if myHead.Distance(seg) < domain.SnakeRadius {
+				if edge.Distance(seg) < domain.SnakeRadius {
 					moreToDelete = append(moreToDelete, snake.ID)
 					dead = true
 					break
@@ -123,7 +146,7 @@ func CheckCollisions(snakes map[uint64]*domain.Snake, grid *domain.SpatialGrid, 
 
 		body := snake.Body()
 		for i := 1; i < len(body); i++ {
-			if snake.Head().Distance(body[i]) < domain.SnakeRadius {
+			if edge.Distance(body[i]) < domain.SnakeRadius {
 				moreToDelete = append(moreToDelete, snake.ID)
 				dead = true
 				break

@@ -6,31 +6,56 @@ import (
 	"github.com/crypto-snake-arena/server/internal/domain"
 )
 
-// ConsumeCoins проверяет для каждой живой змеи монеты в ячейке, при Intersects — Grow, AddScore.
-// consumedInTick защищает от дюпа: монета, съеденная одной змеёй, недоступна другим в этом тике.
-// Возвращает ID монет на удаление.
+const consumeLerpFactor = 0.2  // coin moves 20% toward head per tick
+const consumeCompleteDist = 2.0 // when coin reaches head, complete
+
+// ConsumeCoins: Phase 1 — head touches coin → enter Consuming. Phase 2 — consuming coins move toward head, then Grow.
 func ConsumeCoins(
 	snakes map[uint64]*domain.Snake,
+	coins map[string]*domain.Coin,
 	grid *domain.SpatialGrid,
 	toDeleteSnakes []uint64,
 	consumedInTick map[string]bool,
 ) []string {
 	toDeleteCoins := make([]string, 0, 16)
+
+	// Phase 1: Touch — enter consuming state
 	for id, snake := range snakes {
 		if contains(toDeleteSnakes, id) {
 			continue
 		}
 		coinsInCell := grid.GetCoinsNear(snake.Head())
 		for _, coin := range coinsInCell {
-			if consumedInTick[coin.ID] {
+			if consumedInTick[coin.ID] || coin.ConsumingSnakeID != 0 {
 				continue
 			}
 			if snake.Head().Intersects(coin) {
-				snake.Grow()
-				snake.AddScore(coin.Value)
-				toDeleteCoins = append(toDeleteCoins, coin.ID)
-				consumedInTick[coin.ID] = true
+				coin.ConsumingSnakeID = id
 			}
+		}
+	}
+
+	// Phase 2: Consuming coins move toward head
+	for _, coin := range coins {
+		if coin.ConsumingSnakeID == 0 || consumedInTick[coin.ID] {
+			continue
+		}
+		snake, ok := snakes[coin.ConsumingSnakeID]
+		if !ok || contains(toDeleteSnakes, coin.ConsumingSnakeID) {
+			coin.ConsumingSnakeID = 0
+			continue
+		}
+		head := snake.Head()
+		dx := head.X - coin.X
+		dy := head.Y - coin.Y
+		coin.X += dx * consumeLerpFactor
+		coin.Y += dy * consumeLerpFactor
+		coinPos := domain.Point{X: coin.X, Y: coin.Y}
+		if coinPos.Distance(head) < consumeCompleteDist {
+			snake.Grow()
+			snake.AddScore(coin.Value)
+			toDeleteCoins = append(toDeleteCoins, coin.ID)
+			consumedInTick[coin.ID] = true
 		}
 	}
 	return toDeleteCoins

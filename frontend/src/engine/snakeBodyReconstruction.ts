@@ -1,6 +1,6 @@
 /**
+ * @deprecated Replaced by entities/snake client-prediction (path-following).
  * snakeBodyReconstruction — клиентская Verlet-симуляция хвоста для своей змеи.
- * Синхронизировано с backend/internal/domain/snake.go.
  */
 
 export interface Point {

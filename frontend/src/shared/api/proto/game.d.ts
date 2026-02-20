@@ -256,6 +256,9 @@ export namespace game {
 
         /** Coin value */
         value?: (number|null);
+
+        /** Coin consumingSnakeId */
+        consumingSnakeId?: (number|Long|null);
     }
 
     /** Represents a Coin. */
@@ -275,6 +278,9 @@ export namespace game {
 
         /** Coin value. */
         public value: number;
+
+        /** Coin consumingSnakeId. */
+        public consumingSnakeId?: (number|Long|null);
 
         /**
          * Creates a new Coin instance using the specified properties.

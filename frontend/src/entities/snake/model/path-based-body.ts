@@ -38,7 +38,8 @@ export function interpolateBodyAlongPath(
   )
 
   if (prevPath.length < 2 && currPath.length < 2) {
-    return interpolatePosition(pH, cH, alpha) as unknown as Point[]
+    // Когда пути слишком короткие, возвращаем массив с одной интерполированной точкой
+    return [interpolatePosition(pH, cH, alpha)]
   }
 
   const samples: Point[] = []

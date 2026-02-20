@@ -154,15 +154,7 @@ func (r *Room) updateGameState(dt float64) {
 		}
 	}
 
-	moreToDelete := CheckCollisions(r.Snakes, r.Grid, toDeleteSnakes)
-	for _, id := range moreToDelete {
-		if snake, ok := r.Snakes[id]; ok {
-			ProcessDeath(r, snake)
-		}
-	}
-	toDeleteSnakes = append(toDeleteSnakes, moreToDelete...)
-
-	toDeleteCoins := ConsumeCoins(r.Snakes, r.Grid, toDeleteSnakes, consumedInTick)
+	toDeleteCoins := ConsumeCoins(r.Snakes, r.Coins, r.Grid, toDeleteSnakes, consumedInTick)
 
 	now := time.Now()
 	expiredToDelete, expiredTotal := ExpireCoins(r.Coins, now)

@@ -104,7 +104,10 @@ export function getInitData(): string {
 
 export function getUserIdFromInitData(): number | null {
   const unsafe = window.Telegram?.WebApp?.initDataUnsafe
-  if (unsafe?.user?.id) return unsafe.user.id
+  if (unsafe?.user) {
+    const user = normalizeTelegramUser(unsafe.user)
+    if (user) return user.id
+  }
 
   const raw = getInitData()
   if (!raw) return null
@@ -112,8 +115,9 @@ export function getUserIdFromInitData(): number | null {
     const params = new URLSearchParams(raw)
     const user = params.get('user')
     if (!user) return null
-    const parsed = JSON.parse(decodeURIComponent(user))
-    return parsed?.id ?? null
+    const parsed: unknown = JSON.parse(decodeURIComponent(user))
+    const normalized = normalizeTelegramUser(parsed)
+    return normalized?.id ?? null
   } catch {
     return null
   }
@@ -133,19 +137,56 @@ export interface TelegramUser {
   photo_url?: string
 }
 
-/** Нормализует user из разных источников (snake_case / camelCase) */
-function normalizeTelegramUser(raw: Record<string, unknown>): TelegramUser | null {
-  if (!raw?.id) return null
-  const first = (raw.first_name ?? raw.firstName) as string | undefined
-  const last = (raw.last_name ?? raw.lastName) as string | undefined
-  const username = (raw.username ?? raw.userName) as string | undefined
-  const photo = (raw.photo_url ?? raw.photoUrl) as string | undefined
+/** Сырые данные пользователя из Telegram API (может быть snake_case или camelCase) */
+interface TelegramUserRaw {
+  id: number | string
+  first_name?: string
+  firstName?: string
+  last_name?: string
+  lastName?: string
+  username?: string
+  userName?: string
+  photo_url?: string
+  photoUrl?: string
+}
+
+/** Type guard для валидации сырых данных пользователя Telegram */
+function isTelegramUserRaw(raw: unknown): raw is TelegramUserRaw {
+  if (!raw || typeof raw !== 'object') return false
+  const obj = raw as Record<string, unknown>
+  // id обязателен и должен быть числом или строкой, которую можно преобразовать в число
+  const id = obj.id
+  if (id == null) return false
+  if (typeof id !== 'number' && typeof id !== 'string') return false
+  if (typeof id === 'string' && isNaN(Number(id))) return false
+
+  // Остальные поля опциональны, но если есть - должны быть строками
+  const optionalStringFields = ['first_name', 'firstName', 'last_name', 'lastName', 'username', 'userName', 'photo_url', 'photoUrl']
+  for (const field of optionalStringFields) {
+    if (field in obj && typeof obj[field] !== 'string') return false
+  }
+
+  return true
+}
+
+/** Нормализует user из разных источников (snake_case / camelCase) с валидацией */
+function normalizeTelegramUser(raw: unknown): TelegramUser | null {
+  if (!isTelegramUserRaw(raw)) return null
+
+  const id = typeof raw.id === 'number' ? raw.id : Number(raw.id)
+  if (!Number.isFinite(id) || id <= 0) return null
+
+  const first = raw.first_name ?? raw.firstName
+  const last = raw.last_name ?? raw.lastName
+  const username = raw.username ?? raw.userName
+  const photo = raw.photo_url ?? raw.photoUrl
+
   return {
-    id: Number(raw.id),
-    first_name: first || undefined,
-    last_name: last || undefined,
-    username: username || undefined,
-    photo_url: photo || undefined,
+    id,
+    first_name: typeof first === 'string' ? first : undefined,
+    last_name: typeof last === 'string' ? last : undefined,
+    username: typeof username === 'string' ? username : undefined,
+    photo_url: typeof photo === 'string' ? photo : undefined,
   }
 }
 
@@ -153,7 +194,7 @@ function normalizeTelegramUser(raw: Record<string, unknown>): TelegramUser | nul
 export function getTelegramUserFromInitData(): TelegramUser | null {
   const unsafe = window.Telegram?.WebApp?.initDataUnsafe
   if (unsafe?.user) {
-    const user = normalizeTelegramUser(unsafe.user as Record<string, unknown>)
+    const user = normalizeTelegramUser(unsafe.user)
     if (user) return user
   }
 
@@ -163,7 +204,7 @@ export function getTelegramUserFromInitData(): TelegramUser | null {
     const params = new URLSearchParams(raw)
     const userStr = params.get('user')
     if (!userStr) return null
-    const parsed = JSON.parse(decodeURIComponent(userStr)) as Record<string, unknown>
+    const parsed: unknown = JSON.parse(decodeURIComponent(userStr))
     return normalizeTelegramUser(parsed)
   } catch {
     return null

@@ -27,11 +27,16 @@ func (r *Room) broadcastSnapshot() {
 	}
 	coins := make([]*gamepb.Coin, 0, len(r.Coins))
 	for id, c := range r.Coins {
-		coins = append(coins, &gamepb.Coin{
+		coin := &gamepb.Coin{
 			Id:    id,
 			Pos:   &gamepb.Point{X: float32(c.X), Y: float32(c.Y)},
 			Value: float32(c.Value),
-		})
+		}
+		if c.ConsumingSnakeID != 0 {
+			sid := c.ConsumingSnakeID
+			coin.ConsumingSnakeId = &sid
+		}
+		coins = append(coins, coin)
 	}
 	r.Mu.RUnlock()
 
@@ -73,9 +78,7 @@ func (r *Room) buildSnapshotForSubscriber(snakes []*gamepb.Snake, coins []*gamep
 			BodyLength: s.BodyLength,
 			SkinId:     s.SkinId,
 		}
-		if sub.snakeID != 0 && s.Id == sub.snakeID && !sub.firstSnapshot {
-			snake.Body = nil
-		}
+		// Always send body (from headPath) for interpolation; omit optimization removed for headPath consistency
 		pbSnakes = append(pbSnakes, snake)
 	}
 	return &gamepb.WorldSnapshot{

@@ -54,3 +54,64 @@ export interface RecentGameEntry {
   duration?: number // seconds
   created_at: number
 }
+
+/**
+ * WebSocket message types from backend
+ */
+
+export interface WebSocketQueueMessage {
+  type: 'queue'
+  position: number
+}
+
+export interface WebSocketCashOutMessage {
+  type: 'cash_out'
+  reward: number
+  score: number
+}
+
+export interface WebSocketErrorMessage {
+  error: string
+}
+
+export type WebSocketMessage = WebSocketQueueMessage | WebSocketCashOutMessage | WebSocketErrorMessage
+
+/**
+ * Type guards for WebSocket messages
+ */
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string'
+}
+
+export function isWebSocketQueueMessage(data: unknown): data is WebSocketQueueMessage {
+  if (!data || typeof data !== 'object') return false
+  const obj = data as Record<string, unknown>
+  return obj.type === 'queue' && isNumber(obj.position) && obj.position >= 0
+}
+
+export function isWebSocketCashOutMessage(data: unknown): data is WebSocketCashOutMessage {
+  if (!data || typeof data !== 'object') return false
+  const obj = data as Record<string, unknown>
+  return (
+    obj.type === 'cash_out' &&
+    isNumber(obj.reward) &&
+    isNumber(obj.score) &&
+    obj.reward >= 0 &&
+    obj.score >= 0
+  )
+}
+
+export function isWebSocketErrorMessage(data: unknown): data is WebSocketErrorMessage {
+  if (!data || typeof data !== 'object') return false
+  const obj = data as Record<string, unknown>
+  return 'error' in obj && isString(obj.error)
+}
+
+export function isWebSocketMessage(data: unknown): data is WebSocketMessage {
+  return isWebSocketQueueMessage(data) || isWebSocketCashOutMessage(data) || isWebSocketErrorMessage(data)
+}

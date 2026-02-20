@@ -96,7 +96,7 @@ function getWsBaseUrl(): string {
 
 export const GameView = React.memo(function GameView() {
   const { t } = useTranslation()
-  const { bet, setScreen, setInGame, setBalance, balance, userId } = useGameStore()
+  const { bet, setScreen, setInGame, balance, userId } = useGameStore()
   const { notify } = useHaptic()
   const { refetch: refetchBalance } = useBalance({ refetchOnMount: false })
   const [gameResult, setGameResult] = useState<GameResult | null>(null)
@@ -135,10 +135,13 @@ export const GameView = React.memo(function GameView() {
 
   const stakeAmount = useMemo(() => Math.max(0.3, bet / 100), [bet])
 
-  const victoryNewBalance = useMemo(
-    () => (Number(balance) || 0) + (Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0),
-    [balance, gameResult?.reward]
-  )
+  // Вычисляем новый баланс для отображения: текущий баланс + reward от сервера
+  // Баланс обновится через refetchBalance, но для UI показываем ожидаемое значение
+  const victoryNewBalance = useMemo(() => {
+    const currentBalance = Number(balance) || 0
+    const reward = Number.isFinite(Number(gameResult?.reward)) ? Number(gameResult?.reward) : 0
+    return currentBalance + reward
+  }, [balance, gameResult?.reward])
 
   const localSnakeId = useMemo((): number | null => {
     const fromTg = getUserIdFromInitData()
@@ -154,14 +157,12 @@ export const GameView = React.memo(function GameView() {
       setInGame(false)
       if (result.status === 'win') {
         notify?.('success')
-        const currentBalance = Number(useGameStore.getState().balance) || 0
-        const reward = Number.isFinite(Number(result.reward)) ? Number(result.reward) : 0
-        setBalance(currentBalance + reward)
+        // Баланс обновляется автоматически через useEffect с refetchBalance
       } else {
         notify?.('error')
       }
     },
-    [setInGame, setBalance, notify]
+    [setInGame, notify]
   )
 
   const handleExit = useCallback(() => {

@@ -29,6 +29,29 @@ function isRetryable(status: number): boolean {
   return status >= 500 || status === 408 || status === 429
 }
 
+/**
+ * Валидирует и парсит JSON ответ с опциональной проверкой типа
+ */
+function validateJsonResponse<T>(
+  text: string,
+  validator?: (data: unknown) => data is T
+): T | null {
+  if (!text || !text.trim()) return null
+  try {
+    const parsed: unknown = JSON.parse(text)
+    if (validator) {
+      if (validator(parsed)) {
+        return parsed
+      }
+      throw new ApiError(`Response validation failed: ${text.slice(0, 100)}`, 200)
+    }
+    return parsed as T
+  } catch (e) {
+    if (e instanceof ApiError) throw e
+    throw new ApiError(`Invalid JSON: ${text.slice(0, 100)}`, 200)
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: ApiFetchOptions
@@ -67,12 +90,12 @@ export async function apiFetch<T>(
       }
 
       const text = await res.text()
-      if (!text || !text.trim()) return {} as T
-      try {
-        return JSON.parse(text) as T
-      } catch {
-        throw new ApiError(`Invalid JSON: ${text.slice(0, 100)}`, res.status)
+      const result = validateJsonResponse<T>(text)
+      if (result === null) {
+        // Пустой ответ - возвращаем null, вызывающий код должен обработать
+        throw new ApiError('Empty response', res.status)
       }
+      return result
     } catch (e) {
       if (e instanceof ApiError) throw e
       lastError = e
@@ -95,7 +118,7 @@ export async function apiPatch<T>(
   path: string,
   body: Record<string, unknown>,
   initData?: string | null
-): Promise<T> {
+): Promise<T | null> {
   const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -116,20 +139,20 @@ export async function apiPatch<T>(
   const text = await res.text()
   const ct = res.headers.get('content-type')
   if (ct?.includes('application/json') && text) {
-    try {
-      return JSON.parse(text) as T
-    } catch {
-      /* fallthrough to empty */
+    const result = validateJsonResponse<T>(text)
+    if (result !== null) {
+      return result
     }
   }
-  return {} as T
+  // Пустой ответ для PATCH - допустимо для некоторых endpoints
+  return null
 }
 
 export async function apiPost<T>(
   path: string,
   body?: Record<string, unknown> | null,
   initData?: string | null
-): Promise<T> {
+): Promise<T | null> {
   const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -150,11 +173,11 @@ export async function apiPost<T>(
   const text = await res.text()
   const ct = res.headers.get('content-type')
   if (ct?.includes('application/json') && text) {
-    try {
-      return JSON.parse(text) as T
-    } catch {
-      /* fallthrough */
+    const result = validateJsonResponse<T>(text)
+    if (result !== null) {
+      return result
     }
   }
-  return {} as T
+  // Пустой ответ для POST - допустимо для некоторых endpoints
+  return null
 }

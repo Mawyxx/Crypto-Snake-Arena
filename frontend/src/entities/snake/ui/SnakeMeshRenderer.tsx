@@ -44,22 +44,31 @@ export interface SnakeMeshRef {
   trailGraphics: Graphics
   ropePoints: Point[]
   shadowPoints: Point[]
+  maxRopePoints: number // максимальное количество точек для предвыделения пула
 }
 
-function ensureRopePoints(
-  points: Point[],
-  path: { x: number; y: number }[]
+/**
+ * Обновляет координаты точек из path (zero alloc для существующих точек).
+ * Предвыделяет пул точек если нужно.
+ */
+function updatePointsFromSoA(
+  ropePoints: Point[],
+  path: { x: number; y: number }[],
+  maxPoints: number
 ): Point[] {
-  while (points.length < path.length) {
-    points.push(new Point(0, 0))
+  const length = path.length
+  // Обеспечить достаточное количество точек в пуле (предвыделение)
+  while (ropePoints.length < length && ropePoints.length < maxPoints) {
+    ropePoints.push(new Point(0, 0))
   }
-  if (points.length > path.length) {
-    points.length = path.length
+  // Обрезать до нужной длины
+  ropePoints.length = Math.min(length, maxPoints)
+  
+  // Обновить координаты существующих точек (zero alloc)
+  for (let i = 0; i < ropePoints.length; i++) {
+    ropePoints[i].set(path[i].x, path[i].y)
   }
-  for (let i = 0; i < path.length; i++) {
-    points[i].set(path[i].x, path[i].y)
-  }
-  return points
+  return ropePoints
 }
 
 function updateHeadTrail(
@@ -76,6 +85,8 @@ function updateHeadTrail(
   if (buffer.length > TRAIL_LENGTH) buffer.shift()
 }
 
+const MAX_POOL_POINTS = 200 // максимальное количество точек для предвыделения пула
+
 export function createSnakeMeshRef(): SnakeMeshRef {
   const shadowContainer = new Container()
   shadowContainer.x = 2
@@ -90,6 +101,14 @@ export function createSnakeMeshRef(): SnakeMeshRef {
   const trailGraphics = new Graphics()
   trailGraphics.blendMode = BLEND_MODES.ADD
 
+  // Предвыделить пул точек для zero alloc
+  const ropePoints: Point[] = []
+  const shadowPoints: Point[] = []
+  for (let i = 0; i < MAX_POOL_POINTS; i++) {
+    ropePoints.push(new Point(0, 0))
+    shadowPoints.push(new Point(0, 0))
+  }
+
   return {
     shadowContainer,
     shadowRope,
@@ -99,8 +118,9 @@ export function createSnakeMeshRef(): SnakeMeshRef {
     eyesGraphics,
     flashGraphics,
     trailGraphics,
-    ropePoints: [],
-    shadowPoints: [],
+    ropePoints,
+    shadowPoints,
+    maxRopePoints: MAX_POOL_POINTS,
   }
 }
 
@@ -144,7 +164,7 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
 
   // Shadow layer
   if (path.length >= 2) {
-    ref.shadowPoints = ensureRopePoints(ref.shadowPoints, path)
+    ref.shadowPoints = updatePointsFromSoA(ref.shadowPoints, path, ref.maxRopePoints)
     if (!ref.shadowRope) {
       const shadowTexture = createShadowTexture()
       ref.shadowRope = new SimpleRope(shadowTexture, ref.shadowPoints, TEXTURE_SCALE)
@@ -162,7 +182,7 @@ export function updateSnakeMesh(container: Container, ref: SnakeMeshRef, props: 
   // Body rope
   if (path.length >= 2) {
     const bodyTexture = createBodyTexture(skin.bodyColor)
-    ref.ropePoints = ensureRopePoints(ref.ropePoints, path)
+    ref.ropePoints = updatePointsFromSoA(ref.ropePoints, path, ref.maxRopePoints)
     if (!ref.bodyRope) {
       ref.bodyRope = new SimpleRope(bodyTexture, ref.ropePoints, TEXTURE_SCALE)
       ref.bodyContainer.addChild(ref.bodyRope)

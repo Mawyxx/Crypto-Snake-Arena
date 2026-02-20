@@ -17,21 +17,33 @@ interface SnakeViewProps {
   growthFlash?: number
 }
 
-type SnakeContainerRef = SnakeMeshRef & {
-  __trailState: { buffer: { x: number; y: number }[]; lastHead: { x: number; y: number } | null }
+interface TrailState {
+  buffer: { x: number; y: number }[]
+  lastHead: { x: number; y: number } | null
 }
+
+type SnakeContainerRef = SnakeMeshRef & {
+  __trailState: TrailState
+}
+
+// WeakMap для хранения custom refs без расширения Container
+const containerRefs = new WeakMap<Container, SnakeContainerRef>()
 
 const SnakeContainer = PixiComponent<SnakeViewProps, Container>('SnakeContainer', {
   create: () => {
     const container = new Container()
     const meshRef = createSnakeMeshRef()
-    const ref = { ...meshRef, __trailState: { buffer: [], lastHead: null } }
-    ;(container as unknown as SnakeContainerRef).__trailState = ref.__trailState
-    Object.assign(container as unknown as SnakeContainerRef, meshRef, ref)
+    const ref: SnakeContainerRef = {
+      ...meshRef,
+      __trailState: { buffer: [], lastHead: null },
+    }
+    containerRefs.set(container, ref)
     return container
   },
   applyProps: (instance, _oldProps, newProps) => {
-    const ref = instance as unknown as SnakeContainerRef
+    const ref = containerRefs.get(instance)
+    if (!ref) return
+
     const head = newProps.snake?.head
     if (!head) return
 

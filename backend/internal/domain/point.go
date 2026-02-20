@@ -13,6 +13,9 @@ const CoinRadius = 8.0
 // SnakeRadius — радиус змейки для проверки столкновений (Narrow Phase).
 const SnakeRadius = 10.0
 
+// EdgeOffset — смещение «edge» (точки столкновения) впереди головы (slither-clone style).
+const EdgeOffset = 8.0
+
 // Intersects проверяет пересечение точки с монетой.
 func (p Point) Intersects(c *Coin) bool {
 	return p.Distance(c.Position()) < CoinRadius

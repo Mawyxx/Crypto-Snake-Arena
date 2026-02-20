@@ -25,6 +25,7 @@ message Coin {
     string id = 1;
     Point pos = 2;
     float value = 3;
+    optional uint64 consuming_snake_id = 4;  // when set, coin is being pulled toward snake head
 }
 
 message Point {
